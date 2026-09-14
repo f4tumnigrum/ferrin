@@ -59,6 +59,7 @@ allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+allow-wildcard-paths = true
 deny = [
     { crate = "openssl", reason = "rustls only" },
     { crate = "openssl-sys", reason = "rustls only" },
@@ -72,6 +73,10 @@ unknown-git = "deny"
 ```
 
 【事实】骨架依赖图中 `MIT-0` 来自 `borrow-or-share`（`jsonschema` → `referencing` → `fluent-uri`），`CDLA-Permissive-2.0` 来自 `webpki-root-certs`（`rustls-platform-verifier` 携带的 Mozilla 根证书数据），两者均为宽松许可，加入允许列表。【决策】`ferrin-provider-util` 不提供 `native-tls` feature：`[graph] all-features = true` 下该 feature 会把 `openssl` 引入依赖图并触发禁用项；系统信任库的需求由 reqwest 0.13 默认的 `rustls-platform-verifier` 满足。
+
+【事实】（2026-09-14）`[workspace.dependencies]` 的 `ferrin-testing` 改为不带版本的 path 依赖后（见[版本与发布](06-versioning-and-release.md)第 3 步的发布记录），`ci.yml` 的 `deny` 作业在 run 34814996884（9ac9c5c）与 run 34815425396（00e9b61）失败：`cargo deny` 0.20.2 对每个把 `ferrin-testing` 列为开发依赖的 crate 报 `error[wildcard]: found 2 wildcard dependencies`，其余作业不受影响。cargo-deny 文档（`docs/src/checks/bans/cfg.md`，当日读取）说明 `allow-wildcard-paths`：开启后，path/git 型 `dev-dependencies` 在公开与私有 crate 中都不再告警或报错，公开 crate 的 path/git 型 `dependencies`/`build-dependencies` 仍然报错。
+
+【决策】`[bans]` 设置 `allow-wildcard-paths = true`，`wildcards` 保持 `"deny"`。依据：Cargo 打包时剔除不带版本要求的路径型开发依赖，发布出的清单不含通配版本，这一情形不是该规则要防止的问题；普通依赖的通配版本仍被拒绝。修正后本地 `cargo deny check` 四项通过。
 
 ## 4. 平台矩阵
 
