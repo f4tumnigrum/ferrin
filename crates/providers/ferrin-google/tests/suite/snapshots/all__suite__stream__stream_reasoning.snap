@@ -1,0 +1,95 @@
+---
+source: crates/providers/ferrin-google/tests/suite/stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "resp-reasoning-stream"
+  },
+  {
+    "type": "reasoning-start",
+    "id": "0"
+  },
+  {
+    "type": "reasoning-delta",
+    "id": "0",
+    "delta": "Let me think."
+  },
+  {
+    "type": "reasoning-delta",
+    "id": "0",
+    "delta": " Three r's.",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "sig-thought"
+      }
+    }
+  },
+  {
+    "type": "reasoning-end",
+    "id": "0"
+  },
+  {
+    "type": "text-start",
+    "id": "1"
+  },
+  {
+    "type": "text-delta",
+    "id": "1",
+    "delta": "There are 3 r's."
+  },
+  {
+    "type": "text-delta",
+    "id": "1",
+    "delta": "",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "sig-text"
+      }
+    }
+  },
+  {
+    "type": "text-end",
+    "id": "1"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "STOP"
+    },
+    "usage": {
+      "input": {
+        "total": 12,
+        "no_cache": 12,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 46,
+        "text": 6,
+        "reasoning": 40
+      }
+    },
+    "provider_metadata": {
+      "google": {
+        "promptFeedback": null,
+        "groundingMetadata": null,
+        "urlContextMetadata": null,
+        "safetyRatings": null,
+        "usageMetadata": {
+          "promptTokenCount": 12,
+          "candidatesTokenCount": 6,
+          "totalTokenCount": 58,
+          "thoughtsTokenCount": 40
+        },
+        "finishMessage": null,
+        "serviceTier": null
+      }
+    }
+  }
+]

@@ -1,0 +1,5 @@
+{"custom_id": "req-1", "result": {"type": "succeeded", "message": {"id": "msg_batch_1", "type": "message", "role": "assistant", "model": "claude-sonnet-4-5", "content": [{"type": "text", "text": "one"}], "stop_reason": "end_turn", "stop_sequence": null, "usage": {"input_tokens": 5, "output_tokens": 2}}}}
+{"custom_id": "req-2", "result": {"type": "errored", "error": {"type": "error", "error": {"type": "invalid_request_error", "message": "prompt is too long"}, "request_id": "req_batch_2"}}}
+{"custom_id": "req-3", "result": {"type": "canceled"}}
+{"custom_id": "req-4", "result": {"type": "expired"}}
+{"custom_id": "req-5", "result": {"type": "mystery"}}

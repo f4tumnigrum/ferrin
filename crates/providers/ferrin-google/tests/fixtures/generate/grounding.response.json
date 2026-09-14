@@ -1,0 +1,38 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {"text": "Ferrin is a Rust AI SDK."}
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "groundingMetadata": {
+        "webSearchQueries": ["ferrin rust sdk"],
+        "groundingChunks": [
+          {"web": {"uri": "https://example.test/ferrin", "title": "Ferrin"}},
+          {"retrievedContext": {"uri": "https://example.test/docs.pdf", "title": "Docs", "text": "Design notes", "fileSearchStore": "fileSearchStores/store-1"}},
+          {"image": {"sourceUri": "https://example.test/image-source", "imageUri": "https://example.test/image.png", "title": "Diagram"}},
+          {"maps": {"uri": "https://maps.example.test/place/1", "title": "HQ"}}
+        ],
+        "groundingSupports": [
+          {"segment": {"startIndex": 0, "endIndex": 24, "text": "Ferrin is a Rust AI SDK."}, "groundingChunkIndices": [0]}
+        ]
+      },
+      "urlContextMetadata": {
+        "urlMetadata": [
+          {"retrievedUrl": "https://example.test/ferrin", "urlRetrievalStatus": "URL_RETRIEVAL_STATUS_SUCCESS"}
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 20,
+    "candidatesTokenCount": 8,
+    "totalTokenCount": 28
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "resp-grounding"
+}

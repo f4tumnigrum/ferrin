@@ -1,0 +1,6 @@
+{
+  "status": 429,
+  "headers": {
+    "retry-after": "2"
+  }
+}

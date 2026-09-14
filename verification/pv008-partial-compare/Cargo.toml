@@ -1,0 +1,8 @@
+[package]
+name = "pv008-partial-compare"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json = { workspace = true }

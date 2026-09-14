@@ -1,0 +1,25 @@
+[package]
+name = "example-otel"
+description = "Ferrin example: OpenTelemetry spans for a text generation call (not published)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "example-otel"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin = { workspace = true, features = ["openai", "otel"] }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+tracing = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+anyhow = { workspace = true }

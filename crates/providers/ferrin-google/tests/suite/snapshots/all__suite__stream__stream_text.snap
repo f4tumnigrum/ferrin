@@ -1,0 +1,83 @@
+---
+source: crates/providers/ferrin-google/tests/suite/stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "bH6LaZW8Fp_3nsEPqtaSwQ4"
+  },
+  {
+    "type": "text-start",
+    "id": "0"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "There are **3**"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": " \"r\"s in strawberry.\n\nst**r**awbe**rr**y"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "EqsFCqgFAb4+9vvtAF5n87lB4OGDOoTRMOqp35jW65XsYXh6BySMwl9nvrbAvPcl2U0xITaYUyV4CmREEDB1z0ZPpCg7iEwiZcj40Eh1jXoL8Y/BbPqxdgZKvKxdBsJx92y2ML5ytajQHVFQb9ohEMMnjs9uNadLAhDEsOU1nC5tl3FQkx94uaGfWvg61bJT3Y9OxFdo/kbpm4RBngvYhVkBzHKkHBj72T2bUd8J4HPssi7ORC5iPosPRIOyH/CAVHEtMzFYMwb7OhRu+CW8Z9u7gDieME5iJjXtJtLrNGDxgR7XtWfRRyGjsj6uDS+KvjR3SUSWPdn5eeH6w+LXZm1X///Hvhhcx+NHxsuGjF3fGhyzTVAoIzk0lxyB4+/A9I4Xa0o/T4coVDiewMzGZDwmket//ig8x9UC8cyWr/hy1joZWUO7ooJlLncv8gy4Ng+y1JdievZokSFDNWfMMNAQr3kgUwJDucqDp44C1xMtgR3lhJ75IBBnprHCE/ThgvNXujmqNkwAjp5dS4PjVbrw8fqSylfE80tvU0g9dXqg4pEyG+hGIxbANLhsWjAKLqh69hyqvVLg2Ds3wppphf61IfC4VoeLWj85CjBZMf+k85NsUIJQ6+DQS9IPNbM29ZOzpUbHoWKJB6VzNCSJse7Pi07L+pd6skl77km00y4lJdHIGHfEgi8PaOonakBcxbRqKzGJAA/urlP0tiWya2fTWrvNZOybJHyyofNNSI4s5y76yKEjP1wnPqC7ujrQk6xb7eyCeqH9ekByy3vv0JfgERFptoSUoG2toIr9M3lS/LKpnwfCvZh+z3J0iMb83d4MaPKhGhE49J4660XUsEmjygAZNi9HnjfC3KtaU/07Sx4JCezMtpsLKUxBgy4xaNqwew3FwAG37eeWcow="
+      }
+    }
+  },
+  {
+    "type": "text-end",
+    "id": "0"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "STOP"
+    },
+    "usage": {
+      "input": {
+        "total": 9,
+        "no_cache": 9,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 208,
+        "text": 23,
+        "reasoning": 185
+      }
+    },
+    "provider_metadata": {
+      "google": {
+        "promptFeedback": null,
+        "groundingMetadata": null,
+        "urlContextMetadata": null,
+        "safetyRatings": null,
+        "usageMetadata": {
+          "promptTokenCount": 9,
+          "candidatesTokenCount": 23,
+          "totalTokenCount": 217,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 9
+            }
+          ],
+          "thoughtsTokenCount": 185
+        },
+        "finishMessage": null,
+        "serviceTier": null
+      }
+    }
+  }
+]

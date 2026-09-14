@@ -1,0 +1,17 @@
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+await-holding-invalid-types = [
+    "tokio::sync::MutexGuard",
+    "tokio::sync::RwLockReadGuard",
+    "tokio::sync::RwLockWriteGuard",
+]
+large-error-threshold = 128
+disallowed-methods = [
+    { path = "reqwest::Client::get", reason = "Route all HTTP through ferrin_provider_util::http." },
+    { path = "reqwest::Client::post", reason = "Route all HTTP through ferrin_provider_util::http." },
+    { path = "reqwest::Client::request", reason = "Route all HTTP through ferrin_provider_util::http." },
+    { path = "reqwest::Client::execute", reason = "Route all HTTP through ferrin_provider_util::http." },
+    { path = "reqwest::get", reason = "Route all HTTP through ferrin_provider_util::http." },
+    { path = "std::env::var", reason = "Use ferrin_provider_util::settings for environment lookups." },
+    { path = "tokio::spawn", reason = "Use JoinSet so tasks are cancelled with their owner.", allow-invalid = true },
+]

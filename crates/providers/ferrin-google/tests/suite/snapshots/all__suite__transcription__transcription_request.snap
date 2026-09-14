@@ -1,0 +1,31 @@
+---
+source: crates/providers/ferrin-google/tests/suite/transcription.rs
+expression: request
+---
+{
+  "model": "gemini-3.1-flash-preview",
+  "input": [
+    {
+      "type": "audio",
+      "data": "UklGRmF1ZGlv",
+      "mime_type": "audio/wav"
+    }
+  ],
+  "generation_config": {
+    "transcription_config": {
+      "language_codes": [
+        "en-US"
+      ],
+      "custom_vocabulary": [
+        "Ferrin"
+      ],
+      "mode": {
+        "type": "smart",
+        "diarization_mode": "speaker",
+        "timestamp_granularities": [
+          "word"
+        ]
+      }
+    }
+  }
+}

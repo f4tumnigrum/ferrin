@@ -1,0 +1,20 @@
+[package]
+name = "example-agent"
+description = "Ferrin example: a tool-loop agent with macro-defined tools (not published)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "example-agent"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin = { workspace = true, features = ["openai"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+anyhow = { workspace = true }

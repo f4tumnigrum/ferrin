@@ -1,0 +1,203 @@
+{
+  "crate": "ferrin-otel",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_otel::OtelTelemetry",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "telemetry::OtelTelemetry",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn builder() -> OtelTelemetryBuilder",
+        "fn new() -> Self"
+      ],
+      "traits": [
+        "impl Debug for OtelTelemetry",
+        "impl Default for OtelTelemetry",
+        "impl Telemetry for OtelTelemetry"
+      ]
+    },
+    {
+      "path": "ferrin_otel::OtelTelemetryBuilder",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "telemetry::OtelTelemetryBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> OtelTelemetry",
+        "fn meter_provider<P: MeterProvider + ?Sized>(self, provider: &P) -> Self",
+        "fn record_tool_content(self) -> Self",
+        "fn tracer_provider<P>(self, provider: &P) -> Self where P: TracerProvider, <P as TracerProvider>::Tracer: ObjectSafeTracer + Send + Sync + 'static",
+        "fn without_metrics(self) -> Self"
+      ],
+      "traits": [
+        "impl Debug for OtelTelemetryBuilder"
+      ]
+    },
+    {
+      "path": "ferrin_otel::semconv",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_otel::semconv::DURATION_BOUNDARIES",
+      "kind": "constant",
+      "signature": "const: [f64; 14]"
+    },
+    {
+      "path": "ferrin_otel::semconv::ERROR_TYPE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::FERRIN_CALL_ID",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::FERRIN_FUNCTION_ID",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::FERRIN_STEP_NUMBER",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::FERRIN_STREAMING",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_OPERATION_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_PROVIDER_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_REQUEST_MODEL",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_RESPONSE_FINISH_REASONS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_RESPONSE_ID",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_RESPONSE_MODEL",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOKEN_TYPE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOOL_CALL_ARGUMENTS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOOL_CALL_ID",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOOL_CALL_RESULT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOOL_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_TOOL_TYPE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_USAGE_INPUT_TOKENS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::GEN_AI_USAGE_OUTPUT_TOKENS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::METRIC_EXECUTE_TOOL_DURATION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::METRIC_OPERATION_DURATION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::METRIC_TIME_TO_FIRST_CHUNK",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::METRIC_TOKEN_USAGE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::OPERATION_CHAT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::OPERATION_EMBEDDINGS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::OPERATION_EXECUTE_TOOL",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::OPERATION_RERANK",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::SCOPE_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_otel::semconv::TOKEN_USAGE_BOUNDARIES",
+      "kind": "constant",
+      "signature": "const: [f64; 14]"
+    },
+    {
+      "path": "ferrin_otel::semconv::TOOL_TYPE_FUNCTION",
+      "kind": "constant",
+      "signature": "const: &str"
+    }
+  ]
+}

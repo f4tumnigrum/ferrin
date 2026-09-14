@@ -1,0 +1,10 @@
+{
+  "object": "file",
+  "id": "file-batch-in",
+  "purpose": "batch",
+  "filename": "batch.jsonl",
+  "bytes": 512,
+  "created_at": 1757722500,
+  "expires_at": 1757895300,
+  "status": "processed"
+}

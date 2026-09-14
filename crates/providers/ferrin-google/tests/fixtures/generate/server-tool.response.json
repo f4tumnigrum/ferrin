@@ -1,0 +1,22 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "toolCall": {"toolType": "google_search", "args": {"query": "ferrin"}, "id": "stc-1"},
+            "thoughtSignature": "sig-server-1"
+          },
+          {"toolResponse": {"toolType": "google_search", "id": "stc-1", "response": {"results": ["r1"]}}},
+          {"text": "Found it."}
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 3, "totalTokenCount": 8},
+  "modelVersion": "gemini-3-pro-preview",
+  "responseId": "resp-server-tool"
+}

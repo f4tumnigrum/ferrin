@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+ --> tests/ui/async_fn_with_ref_param.rs:9:33
+  |
+9 |     assert_tool_fn(move |input| lookup(&db, input));
+  |                    ------------ ^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+  |                    |          |
+  |                    |          return type of closure `impl Future<Output = String>` contains a lifetime `'2`
+  |                    lifetime `'1` represents this closure's body
+  |
+  = note: closure implements `Fn`, so references to captured variables can't escape the closure

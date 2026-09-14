@@ -1,0 +1,25 @@
+{
+  "id": "batch_abc",
+  "object": "batch",
+  "endpoint": "/v1/responses",
+  "input_file_id": "file-batch-in",
+  "completion_window": "24h",
+  "status": "failed",
+  "created_at": 1757722500,
+  "expires_at": 1757808900,
+  "request_counts": {
+    "total": 2,
+    "completed": 0,
+    "failed": 0
+  },
+  "errors": {
+    "object": "list",
+    "data": [
+      {
+        "code": "invalid_json_line",
+        "message": "Line 3 is not valid JSON",
+        "line": 3
+      }
+    ]
+  }
+}

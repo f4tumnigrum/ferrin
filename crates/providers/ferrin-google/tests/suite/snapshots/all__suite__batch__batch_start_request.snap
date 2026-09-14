@@ -1,0 +1,59 @@
+---
+source: crates/providers/ferrin-google/tests/suite/batch.rs
+expression: request
+---
+{
+  "batch": {
+    "displayName": "ferrin-batch-id-0",
+    "webhookConfig": {
+      "uris": [
+        "https://example.test/hook"
+      ]
+    },
+    "inputConfig": {
+      "requests": {
+        "requests": [
+          {
+            "request": {
+              "generationConfig": {},
+              "contents": [
+                {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "one"
+                    }
+                  ]
+                }
+              ]
+            },
+            "metadata": {
+              "key": "req-1"
+            }
+          },
+          {
+            "request": {
+              "generationConfig": {
+                "maxOutputTokens": 50
+              },
+              "contents": [
+                {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "two"
+                    }
+                  ]
+                }
+              ],
+              "cachedContent": "cachedContents/a"
+            },
+            "metadata": {
+              "key": "req-2"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

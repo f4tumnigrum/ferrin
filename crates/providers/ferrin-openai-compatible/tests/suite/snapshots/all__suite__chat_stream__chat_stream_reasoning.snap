@@ -1,0 +1,69 @@
+---
+source: crates/providers/ferrin-openai-compatible/tests/suite/chat_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "chatcmpl_rs",
+    "timestamp": "2025-09-13T00:05:01Z",
+    "model_id": "example-reasoner"
+  },
+  {
+    "type": "reasoning-start",
+    "id": "reasoning-0"
+  },
+  {
+    "type": "reasoning-delta",
+    "id": "reasoning-0",
+    "delta": "Thinking "
+  },
+  {
+    "type": "reasoning-delta",
+    "id": "reasoning-0",
+    "delta": "hard."
+  },
+  {
+    "type": "reasoning-end",
+    "id": "reasoning-0"
+  },
+  {
+    "type": "text-start",
+    "id": "txt-0"
+  },
+  {
+    "type": "text-delta",
+    "id": "txt-0",
+    "delta": "Answer."
+  },
+  {
+    "type": "text-end",
+    "id": "txt-0"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "stop"
+    },
+    "usage": {
+      "input": {
+        "total": 12,
+        "no_cache": 12,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 9,
+        "text": 5,
+        "reasoning": 4
+      }
+    },
+    "provider_metadata": {
+      "example": {}
+    }
+  }
+]

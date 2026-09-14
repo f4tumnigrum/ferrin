@@ -1,0 +1,51 @@
+---
+source: crates/providers/ferrin-google/tests/suite/prompt.rs
+expression: converted.contents
+---
+[
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "Describe these"
+      },
+      {
+        "inlineData": {
+          "mimeType": "image/png",
+          "data": "iVBORw=="
+        }
+      },
+      {
+        "fileData": {
+          "mimeType": "application/pdf",
+          "fileUri": "https://example.test/paper.pdf"
+        }
+      },
+      {
+        "fileData": {
+          "mimeType": "video/mp4",
+          "fileUri": "https://generativelanguage.googleapis.com/v1beta/files/abc"
+        }
+      },
+      {
+        "inlineData": {
+          "mimeType": "text/plain",
+          "data": "cGxhaW4gbm90ZXM="
+        }
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "text": "Sure.",
+        "thoughtSignature": "sig-1"
+      },
+      {
+        "text": "thinking...",
+        "thought": true
+      }
+    ]
+  }
+]

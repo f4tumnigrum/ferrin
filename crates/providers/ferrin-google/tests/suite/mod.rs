@@ -1,0 +1,16 @@
+mod batch;
+mod common;
+mod embedding;
+mod files;
+mod generate;
+mod image;
+mod prompt;
+mod provider;
+mod realtime;
+mod request;
+mod speech;
+mod stream;
+mod tools;
+mod transcription;
+mod unit;
+mod video;

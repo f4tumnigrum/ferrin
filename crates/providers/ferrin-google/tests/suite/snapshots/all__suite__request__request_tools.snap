@@ -1,0 +1,47 @@
+---
+source: crates/providers/ferrin-google/tests/suite/request.rs
+expression: "prepared.body[\"tools\"]"
+---
+[
+  {
+    "functionDeclarations": [
+      {
+        "name": "get_weather",
+        "description": "Weather lookup",
+        "parameters": {
+          "required": [
+            "city"
+          ],
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "tree",
+        "description": "",
+        "parametersJsonSchema": {
+          "type": "object",
+          "properties": {
+            "child": {
+              "$ref": "#/$defs/node"
+            }
+          },
+          "$defs": {
+            "node": {
+              "type": "object",
+              "properties": {
+                "child": {
+                  "$ref": "#/$defs/node"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+]

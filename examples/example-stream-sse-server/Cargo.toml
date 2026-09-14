@@ -1,0 +1,26 @@
+[package]
+name = "example-stream-sse-server"
+description = "Ferrin example: an HTTP server forwarding stream events as SSE (not published)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "example-stream-sse-server"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin = { workspace = true, features = ["openai"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net"] }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+http-body-util = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+url = { workspace = true }
+anyhow = { workspace = true }

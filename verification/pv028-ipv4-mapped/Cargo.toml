@@ -1,0 +1,9 @@
+[package]
+name = "pv028-ipv4-mapped"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+ipnet = { workspace = true }
+tokio = { workspace = true }

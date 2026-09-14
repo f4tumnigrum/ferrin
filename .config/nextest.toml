@@ -1,0 +1,28 @@
+# Test runner profiles. Retries are disabled on purpose: flaky tests must be fixed,
+# not retried (docs/03-engineering/04-testing.md).
+
+[profile.default]
+retries = 0
+slow-timeout = { period = "60s", terminate-after = 1 }
+fail-fast = false
+
+[profile.local]
+inherits = "default"
+
+[profile.ci]
+inherits = "default"
+failure-output = "immediate-final"
+
+[profile.ci.junit]
+path = "junit.xml"
+
+[[profile.default.overrides]]
+# Live tests talk to real providers and are only run with `--run-ignored only`.
+filter = 'test(live_)'
+slow-timeout = { period = "300s", terminate-after = 1 }
+
+[[profile.default.overrides]]
+# The trybuild case of `#[ferrin::tool]` builds a separate project on first
+# run (cold cache), which exceeds the default period.
+filter = 'test(tool_macro_ui)'
+slow-timeout = { period = "180s", terminate-after = 2 }

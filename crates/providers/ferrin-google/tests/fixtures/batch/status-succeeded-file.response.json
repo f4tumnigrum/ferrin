@@ -1,0 +1,9 @@
+{
+  "name": "batches/batch-123",
+  "done": true,
+  "metadata": {
+    "state": "BATCH_STATE_SUCCEEDED",
+    "createTime": "2026-09-14T08:00:00.000000Z",
+    "output": {"responsesFile": "files/batch-123-output"}
+  }
+}

@@ -1,0 +1,118 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_request.rs
+expression: prepared.body
+---
+{
+  "model": "claude-opus-4-6",
+  "max_tokens": 128000,
+  "thinking": {
+    "type": "adaptive",
+    "display": "updates"
+  },
+  "output_config": {
+    "effort": "high",
+    "task_budget": {
+      "type": "tokens",
+      "total": 50000,
+      "remaining": 20000
+    }
+  },
+  "speed": "fast",
+  "service_tier": "auto",
+  "inference_geo": "us",
+  "fallbacks": "default",
+  "cache_control": {
+    "type": "ephemeral",
+    "ttl": "1h"
+  },
+  "metadata": {
+    "user_id": "user-1"
+  },
+  "mcp_servers": [
+    {
+      "type": "url",
+      "name": "docs",
+      "url": "https://mcp.example.test/sse",
+      "authorization_token": "mcp-token",
+      "tool_configuration": {
+        "allowed_tools": [
+          "search"
+        ],
+        "enabled": true
+      }
+    }
+  ],
+  "container": {
+    "id": "container_1",
+    "skills": [
+      {
+        "type": "anthropic",
+        "skill_id": "pdf",
+        "version": "latest"
+      },
+      {
+        "type": "custom",
+        "skill_id": "skill_abc"
+      }
+    ]
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "Be brief."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello"
+        }
+      ]
+    }
+  ],
+  "context_management": {
+    "edits": [
+      {
+        "type": "clear_tool_uses_20250919",
+        "trigger": {
+          "type": "input_tokens",
+          "value": 1000
+        },
+        "keep": {
+          "type": "tool_uses",
+          "value": 2
+        },
+        "clear_at_least": {
+          "type": "input_tokens",
+          "value": 100
+        },
+        "clear_tool_inputs": true,
+        "exclude_tools": [
+          "search"
+        ]
+      },
+      {
+        "type": "clear_thinking_20251015",
+        "keep": "all"
+      },
+      {
+        "type": "compact_20260112",
+        "pause_after_compaction": true,
+        "instructions": "keep facts"
+      }
+    ]
+  },
+  "tools": [
+    {
+      "type": "code_execution_20250825",
+      "name": "code_execution"
+    }
+  ],
+  "tool_choice": {
+    "type": "auto",
+    "disable_parallel_tool_use": true
+  }
+}

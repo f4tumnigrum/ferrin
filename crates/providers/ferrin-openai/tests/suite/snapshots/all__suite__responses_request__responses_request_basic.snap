@@ -1,0 +1,43 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/responses_request.rs
+expression: prepared.body
+---
+{
+  "model": "gpt-4.1",
+  "input": [
+    {
+      "role": "system",
+      "content": "Be brief."
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Hello"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hi!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "How are you?"
+        }
+      ]
+    }
+  ],
+  "temperature": 0.3,
+  "top_p": 0.9,
+  "max_output_tokens": 100
+}

@@ -1,0 +1,5 @@
+error: tool parameters must be owned types (use String instead of &str)
+ --> tests/ui/fail/explicit_lifetime.rs:3:16
+  |
+3 | async fn upper<'a>(input: std::borrow::Cow<'a, str>) -> Result<String, ferrin::tool::ToolError> {
+  |                ^^

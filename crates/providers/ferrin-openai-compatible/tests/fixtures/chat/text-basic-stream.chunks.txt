@@ -1,0 +1,6 @@
+data: {"id": "chatcmpl_s", "object": "chat.completion.chunk", "created": 1757721900, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": null}]}
+data: {"id": "chatcmpl_s", "object": "chat.completion.chunk", "created": 1757721900, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"content": "Hello "}, "finish_reason": null}]}
+data: {"id": "chatcmpl_s", "object": "chat.completion.chunk", "created": 1757721900, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"content": "streamed chat."}, "finish_reason": null}]}
+data: {"id": "chatcmpl_s", "object": "chat.completion.chunk", "created": 1757721900, "model": "example-model-2026", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+data: {"id": "chatcmpl_s", "object": "chat.completion.chunk", "created": 1757721900, "model": "example-model-2026", "choices": [], "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30, "prompt_tokens_details": {"cached_tokens": 5}, "completion_tokens_details": {"reasoning_tokens": 2, "accepted_prediction_tokens": 1, "rejected_prediction_tokens": 0}}}
+data: [DONE]

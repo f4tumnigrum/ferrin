@@ -1,0 +1,5 @@
+error: tool parameters must be owned types (use String instead of &str)
+ --> tests/ui/fail/nested_reference_parameter.rs:3:26
+  |
+3 | async fn join(input: Vec<&str>) -> Result<String, ferrin::tool::ToolError> {
+  |                          ^

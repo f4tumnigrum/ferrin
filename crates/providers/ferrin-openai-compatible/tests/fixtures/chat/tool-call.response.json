@@ -1,0 +1,43 @@
+{
+  "id": "chatcmpl_2",
+  "object": "chat.completion",
+  "created": 1757721801,
+  "model": "example-model-2026",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_c1",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"city\":\"Paris\"}"
+            }
+          },
+          {
+            "type": "function",
+            "function": {
+              "name": "get_time",
+              "arguments": "{\"zone\":\"CET\"}"
+            },
+            "extra_content": {
+              "google": {
+                "thought_signature": "sig-123"
+              }
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 15,
+    "completion_tokens": 6,
+    "total_tokens": 21
+  }
+}

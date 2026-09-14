@@ -1,0 +1,18 @@
+{
+  "task": "transcribe",
+  "language": "german",
+  "duration": 1.0,
+  "text": "Hallo Welt",
+  "words": [
+    {
+      "word": "Hallo",
+      "start": 0.0,
+      "end": 0.4
+    },
+    {
+      "word": "Welt",
+      "start": 0.5,
+      "end": 1.0
+    }
+  ]
+}

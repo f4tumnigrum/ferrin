@@ -1,0 +1,54 @@
+[package]
+name = "ferrin-mcp"
+description = "Ferrin MCP client: JSON-RPC, Streamable HTTP and stdio transports, tool bridging, OAuth."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_mcp"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = ["stdio", "oauth"]
+stdio = ["tokio/process", "tokio/io-util"]
+oauth = []
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-schema = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+ferrin-tool = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
+tokio-util = { workspace = true }
+futures-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+rand = { workspace = true }
+secrecy = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+pretty_assertions = { workspace = true }
+insta = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

@@ -1,0 +1,4 @@
+edition = "2024"
+# Nightly-only option: stable rustfmt warns and ignores it. `just fmt` and CI
+# pass `--config imports_granularity=Item` explicitly.
+imports_granularity = "Item"

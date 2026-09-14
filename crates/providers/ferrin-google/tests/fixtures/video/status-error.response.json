@@ -1,0 +1,5 @@
+{
+  "name": "models/veo-3.1-generate-preview/operations/op-123",
+  "done": true,
+  "error": {"code": 3, "message": "prompt violates the usage policy", "status": "INVALID_ARGUMENT"}
+}

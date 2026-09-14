@@ -1,0 +1,40 @@
+{
+  "name": "batches/batch-123",
+  "done": true,
+  "metadata": {
+    "state": "BATCH_STATE_SUCCEEDED",
+    "createTime": "2026-09-14T08:00:00.000000Z",
+    "batchStats": {"requestCount": 4, "successfulRequestCount": 2, "failedRequestCount": 2, "pendingRequestCount": 0}
+  },
+  "response": {
+    "inlinedResponses": {
+      "inlinedResponses": [
+        {
+          "metadata": {"key": "req-1"},
+          "response": {
+            "candidates": [{"content": {"parts": [{"text": "one"}], "role": "model"}, "finishReason": "STOP"}],
+            "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 1, "totalTokenCount": 4},
+            "modelVersion": "gemini-2.5-flash",
+            "responseId": "resp-batch-1"
+          }
+        },
+        {
+          "metadata": {"key": "req-2"},
+          "error": {"code": 1, "message": "Request was cancelled", "status": "CANCELLED"}
+        },
+        {
+          "metadata": {"key": "req-3"},
+          "response": {"candidates": [], "promptFeedback": {"blockReason": "SAFETY"}}
+        },
+        {
+          "metadata": {"key": "req-4"},
+          "response": {
+            "candidates": [{"content": {"parts": [{"text": "img"}, {"inlineData": {"mimeType": "image/png", "data": "iVBORw0KGgo="}}], "role": "model"}, "finishReason": "STOP"}],
+            "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 1000, "totalTokenCount": 1003},
+            "modelVersion": "gemini-2.5-flash-image"
+          }
+        }
+      ]
+    }
+  }
+}

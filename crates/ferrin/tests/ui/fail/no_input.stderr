@@ -1,0 +1,5 @@
+error: tool functions take one input parameter (an owned type implementing Deserialize and JsonSchema) and an optional ToolContext parameter
+ --> tests/ui/fail/no_input.rs:3:13
+  |
+3 | async fn now() -> Result<u64, ferrin::tool::ToolError> {
+  |             ^^

@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Counting the letters one by one.",
+            "thought": true,
+            "thoughtSignature": "sig-thought-1"
+          },
+          {
+            "text": "There are 3 r's in strawberry.",
+            "thoughtSignature": "sig-text-1"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": [
+        {"category": "HARM_CATEGORY_HARASSMENT", "probability": "NEGLIGIBLE"}
+      ]
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 12,
+    "candidatesTokenCount": 10,
+    "totalTokenCount": 62,
+    "thoughtsTokenCount": 40,
+    "cachedContentTokenCount": 4
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "resp-reasoning",
+  "createTime": "2026-09-14T08:00:00.000000Z"
+}

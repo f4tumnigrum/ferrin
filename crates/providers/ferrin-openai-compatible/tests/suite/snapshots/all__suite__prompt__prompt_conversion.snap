@@ -1,0 +1,138 @@
+---
+source: crates/providers/ferrin-openai-compatible/tests/suite/prompt.rs
+expression: converted.messages
+---
+[
+  {
+    "role": "system",
+    "content": "Be brief.",
+    "name": "sys"
+  },
+  {
+    "role": "user",
+    "content": "Single text"
+  },
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Look"
+      },
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "data:image/jpeg;base64,/9j/4AAA"
+        }
+      },
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "https://example.test/a.png"
+        }
+      },
+      {
+        "type": "video_url",
+        "video_url": {
+          "url": "https://example.test/a.mp4"
+        }
+      },
+      {
+        "type": "input_audio",
+        "input_audio": {
+          "data": "UklGRi4uLi5XQVZF",
+          "format": "wav"
+        }
+      },
+      {
+        "type": "input_audio",
+        "input_audio": {
+          "data": "SUQzLi4uLg==",
+          "format": "mp3"
+        }
+      },
+      {
+        "type": "file",
+        "file": {
+          "filename": "notes.pdf",
+          "file_data": "data:application/pdf;base64,JVBERi0xLjQ="
+        }
+      },
+      {
+        "type": "file",
+        "file": {
+          "filename": "document.pdf",
+          "file_data": "data:application/pdf;base64,JVBERi0xLjQ="
+        }
+      },
+      {
+        "type": "text",
+        "text": "plain text"
+      },
+      {
+        "type": "text",
+        "text": "https://example.test/a.txt"
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": "Sure.",
+    "reasoning_content": "Because",
+    "tool_calls": [
+      {
+        "id": "call_1",
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "arguments": "{\"city\":\"Paris\"}"
+        },
+        "extra_content": {
+          "google": {
+            "thought_signature": "sig-1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": null,
+    "tool_calls": [
+      {
+        "id": "call_2",
+        "type": "function",
+        "function": {
+          "name": "get_time",
+          "arguments": "{}"
+        },
+        "extra_content": {
+          "google": {
+            "thought_signature": "sig-2"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "role": "tool",
+    "tool_call_id": "call_1",
+    "content": "{\"temperature\":21}",
+    "name": "get_weather"
+  },
+  {
+    "role": "tool",
+    "tool_call_id": "call_2",
+    "content": "12:00"
+  },
+  {
+    "role": "tool",
+    "tool_call_id": "call_3",
+    "content": "Tool call execution denied."
+  },
+  {
+    "role": "tool",
+    "tool_call_id": "call_4",
+    "content": "[{\"type\":\"text\",\"text\":\"found\"}]"
+  }
+]

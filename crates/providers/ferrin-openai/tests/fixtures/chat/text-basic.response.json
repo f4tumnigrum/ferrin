@@ -1,0 +1,41 @@
+{
+  "id": "chatcmpl_1",
+  "object": "chat.completion",
+  "created": 1757721800,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello from chat.",
+        "annotations": [
+          {
+            "type": "url_citation",
+            "url_citation": {
+              "url": "https://example.com/a",
+              "title": "Example A",
+              "start_index": 0,
+              "end_index": 5
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop",
+      "logprobs": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 10,
+    "total_tokens": 30,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2,
+      "accepted_prediction_tokens": 1,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}

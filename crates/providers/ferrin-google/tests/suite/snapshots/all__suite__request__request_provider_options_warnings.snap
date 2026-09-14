@@ -1,0 +1,14 @@
+---
+source: crates/providers/ferrin-google/tests/suite/request.rs
+expression: prepared.warnings
+---
+[
+  {
+    "type": "other",
+    "message": "'streamFunctionCallArguments' is only supported on Vertex AI and was ignored"
+  },
+  {
+    "type": "other",
+    "message": "'imageConfig.personGeneration', 'imageConfig.imageOutputOptions' are Vertex AI options and are ignored with the Gemini API"
+  }
+]

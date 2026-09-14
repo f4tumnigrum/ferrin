@@ -1,0 +1,2 @@
+{"id": "batch_req_2", "custom_id": "req-2", "response": {"status_code": 400, "request_id": "req_x2", "body": {"error": {"message": "Invalid model", "type": "invalid_request_error", "param": "model", "code": "model_not_found"}}}, "error": null}
+{"id": "batch_req_3", "custom_id": "req-3", "response": null, "error": {"code": "batch_expired", "message": "The batch expired before this request ran."}}

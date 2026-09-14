@@ -1,0 +1,102 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "msg_code_stream",
+    "model_id": "claude-sonnet-4-5"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "srvtoolu_code",
+    "tool_name": "code_execution",
+    "provider_executed": true
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "srvtoolu_code",
+    "delta": "{\"type\": \"programmatic-tool-call\",\"code\": \"print(1)\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "srvtoolu_code"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "srvtoolu_code",
+    "tool_name": "code_execution",
+    "input": "{\"type\":\"programmatic-tool-call\",\"code\":\"print(1)\"}",
+    "provider_executed": true
+  },
+  {
+    "type": "tool-result",
+    "tool_call_id": "srvtoolu_code",
+    "tool_name": "code_execution",
+    "result": {
+      "type": "code_execution_result",
+      "stdout": "1\n",
+      "stderr": "",
+      "return_code": 0,
+      "content": []
+    }
+  },
+  {
+    "type": "text-start",
+    "id": "2"
+  },
+  {
+    "type": "text-delta",
+    "id": "2",
+    "delta": "The output is 1."
+  },
+  {
+    "type": "text-end",
+    "id": "2"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "end_turn"
+    },
+    "usage": {
+      "input": {
+        "total": 30,
+        "no_cache": 30,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "output": {
+        "total": 33
+      }
+    },
+    "provider_metadata": {
+      "anthropic": {
+        "usage": {
+          "input_tokens": 30,
+          "output_tokens": 33
+        },
+        "stopSequence": null,
+        "iterations": null,
+        "container": {
+          "expiresAt": "2026-09-13T12:00:00Z",
+          "id": "container_1",
+          "skills": [
+            {
+              "type": "anthropic",
+              "skillId": "pdf",
+              "version": "latest"
+            }
+          ]
+        },
+        "contextManagement": null
+      }
+    }
+  }
+]

@@ -1,0 +1,42 @@
+[package]
+name = "ferrin-openai-compatible"
+description = "Ferrin provider for OpenAI-compatible endpoints (Chat Completions, Completions, embeddings, images)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_openai_compatible"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+http = { workspace = true }
+secrecy = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

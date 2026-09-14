@@ -1,0 +1,26 @@
+---
+source: crates/providers/ferrin-google/tests/suite/generate.rs
+expression: result.content
+---
+[
+  {
+    "type": "tool-call",
+    "tool_call_id": "id-0",
+    "tool_name": "code_execution",
+    "input": "{\"language\":\"PYTHON\",\"code\":\"print(2 + 2)\"}",
+    "provider_executed": true
+  },
+  {
+    "type": "tool-result",
+    "tool_call_id": "id-0",
+    "tool_name": "code_execution",
+    "result": {
+      "outcome": "OUTCOME_OK",
+      "output": "4\n"
+    }
+  },
+  {
+    "type": "text",
+    "text": "The result is 4."
+  }
+]

@@ -1,0 +1,12 @@
+[package]
+name = "pv023-api-changes"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64 = { workspace = true }
+rand = { workspace = true }
+tokio-tungstenite = { workspace = true, features = ["connect", "rustls-tls-webpki-roots"] }
+tokio = { workspace = true }
+

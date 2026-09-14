@@ -1,0 +1,33 @@
+{
+  "id": "resp_text_basic",
+  "object": "response",
+  "created_at": 1757721600,
+  "model": "gpt-5",
+  "status": "completed",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_1",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello from Ferrin.",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "service_tier": "default",
+  "usage": {
+    "input_tokens": 42,
+    "input_tokens_details": {
+      "cached_tokens": 10
+    },
+    "output_tokens": 12,
+    "output_tokens_details": {
+      "reasoning_tokens": 4
+    }
+  }
+}

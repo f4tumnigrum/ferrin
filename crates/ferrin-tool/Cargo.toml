@@ -1,0 +1,48 @@
+[package]
+name = "ferrin-tool"
+description = "Ferrin tool system: tool definitions, tool sets, approval, repair, fingerprints, sandbox trait."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_tool"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+sandbox = ["dep:bytes", "dep:tokio", "tokio/process", "tokio/fs", "tokio/io-util"]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-schema = { workspace = true }
+ferrin-message = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+indexmap = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+thiserror = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+tokio-util = { workspace = true }
+bytes = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros"] }
+schemars = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

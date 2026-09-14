@@ -1,0 +1,22 @@
+{
+  "created": 1757722200,
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+      "revised_prompt": "A tiny red square"
+    }
+  ],
+  "background": "opaque",
+  "output_format": "png",
+  "size": "1024x1024",
+  "quality": "high",
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 1000,
+    "total_tokens": 1012,
+    "input_tokens_details": {
+      "image_tokens": 0,
+      "text_tokens": 12
+    }
+  }
+}

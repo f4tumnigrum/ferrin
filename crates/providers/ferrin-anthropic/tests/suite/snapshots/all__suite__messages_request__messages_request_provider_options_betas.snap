@@ -1,0 +1,17 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_request.rs
+expression: betas(&prepared)
+---
+[
+  "code-execution-2025-08-25",
+  "compact-2026-01-12",
+  "context-management-2025-06-27",
+  "extra-beta",
+  "fast-mode-2026-02-01",
+  "files-api-2025-04-14",
+  "mcp-client-2025-04-04",
+  "server-side-fallback-2026-07-01",
+  "skills-2025-10-02",
+  "task-budgets-2026-03-13",
+  "thinking-display-updates-2026-08-18"
+]

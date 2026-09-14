@@ -1,0 +1,11 @@
+[package]
+name = "pv005-static-capture"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+
+[dev-dependencies]
+trybuild = { workspace = true }

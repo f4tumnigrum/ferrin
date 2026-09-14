@@ -1,0 +1,4 @@
+data: {"id": "chatcmpl_el", "object": "chat.completion.chunk", "created": 1757721904, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Before "}, "finish_reason": null}]}
+data: {"error": {"message": "Rate limit reached", "type": "rate_limit_error", "code": "rate_limit_exceeded"}}
+data: {"id": "chatcmpl_el", "object": "chat.completion.chunk", "created": 1757721904, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"content": "after"}, "finish_reason": "stop"}]}
+data: [DONE]

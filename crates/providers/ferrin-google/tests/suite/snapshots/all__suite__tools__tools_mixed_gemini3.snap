@@ -1,0 +1,30 @@
+---
+source: crates/providers/ferrin-google/tests/suite/tools.rs
+expression: prepared.tools
+---
+[
+  {
+    "googleSearch": {
+      "timeRangeFilter": {
+        "startTime": "2026-01-01T00:00:00Z",
+        "endTime": "2026-09-01T00:00:00Z"
+      }
+    }
+  },
+  {
+    "functionDeclarations": [
+      {
+        "name": "get_weather",
+        "description": "",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ]
+  }
+]

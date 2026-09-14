@@ -1,0 +1,5 @@
+data: {"id": "cmpl_s", "object": "text_completion", "created": 1757722100, "model": "example-completion", "choices": [{"text": "Hello ", "index": 0, "logprobs": null, "finish_reason": null}]}
+data: {"id": "cmpl_s", "object": "text_completion", "created": 1757722100, "model": "example-completion", "choices": [{"text": "streamed completion.", "index": 0, "logprobs": null, "finish_reason": null}]}
+data: {"id": "cmpl_s", "object": "text_completion", "created": 1757722100, "model": "example-completion", "choices": [{"text": "", "index": 0, "logprobs": null, "finish_reason": "stop"}]}
+data: {"id": "cmpl_s", "object": "text_completion", "created": 1757722100, "model": "example-completion", "choices": [], "usage": {"prompt_tokens": 8, "completion_tokens": 5, "total_tokens": 13}}
+data: [DONE]

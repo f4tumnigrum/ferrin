@@ -1,0 +1,5 @@
+{"key": "req-1", "response": {"candidates": [{"content": {"parts": [{"text": "one"}], "role": "model"}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": 3, "candidatesTokenCount": 1, "totalTokenCount": 4}, "modelVersion": "gemini-2.5-flash"}}
+{"key": "req-2", "error": {"code": 3, "message": "Invalid request", "status": "INVALID_ARGUMENT"}}
+{"key": "req-3"}
+{"key": "req-4", "response": {"candidates": [{"content": {"parts": [{"inlineData": {"mimeType": "application/pdf", "data": "JVBERi0="}}], "role": "model"}, "finishReason": "STOP"}]}}
+{"key": "req-5", "response": {"candidates": [{"content": {"parts": [{"text": "not a list"}], "role": "model"}, "finishReason": "STOP"}], "usageMetadata": {"promptTokenCount": "bad"}}}

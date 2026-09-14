@@ -1,0 +1,63 @@
+[package]
+name = "ferrin"
+description = "Ferrin: a Rust AI SDK for text generation, streaming, tools, agents, structured output and MCP."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = ["macros"]
+macros = ["dep:ferrin-macros"]
+openai = ["dep:ferrin-openai"]
+anthropic = ["dep:ferrin-anthropic"]
+google = ["dep:ferrin-google"]
+openai-compatible = ["dep:ferrin-openai-compatible"]
+mcp = ["dep:ferrin-mcp"]
+otel = ["dep:ferrin-otel"]
+realtime = ["ferrin-core/realtime"]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-schema = { workspace = true }
+ferrin-message = { workspace = true }
+ferrin-tool = { workspace = true }
+ferrin-provider-util = { workspace = true, default-features = true }
+ferrin-core = { workspace = true, default-features = true }
+ferrin-macros = { workspace = true, optional = true }
+ferrin-openai = { workspace = true, optional = true }
+ferrin-anthropic = { workspace = true, optional = true }
+ferrin-google = { workspace = true, optional = true }
+ferrin-openai-compatible = { workspace = true, optional = true }
+ferrin-mcp = { workspace = true, optional = true }
+ferrin-otel = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures-util = { workspace = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+trybuild = { workspace = true }
+pretty_assertions = { workspace = true }
+url = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-shear]
+# trybuild cases are compiled by tests/suite/ui.rs, not linked as modules.
+ignored-paths = ["tests/ui/**/*.rs"]

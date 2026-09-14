@@ -1,0 +1,8 @@
+{
+  "operations": [
+    {"name": "batches/batch-123", "metadata": {"state": "BATCH_STATE_SUCCEEDED"}, "done": true},
+    {"name": "batches/batch-456", "metadata": {"state": "JOB_STATE_RUNNING"}},
+    {"name": "batches/batch-789", "done": true}
+  ],
+  "nextPageToken": "page-2"
+}

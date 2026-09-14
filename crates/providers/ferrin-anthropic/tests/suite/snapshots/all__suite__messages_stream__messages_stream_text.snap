@@ -1,0 +1,65 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "msg_stream",
+    "model_id": "claude-sonnet-4-5"
+  },
+  {
+    "type": "text-start",
+    "id": "0"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "Hello "
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "streamed world."
+  },
+  {
+    "type": "text-end",
+    "id": "0"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "end_turn"
+    },
+    "usage": {
+      "input": {
+        "total": 52,
+        "no_cache": 42,
+        "cache_read": 10,
+        "cache_write": 0
+      },
+      "output": {
+        "total": 12
+      }
+    },
+    "provider_metadata": {
+      "anthropic": {
+        "usage": {
+          "input_tokens": 42,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 10,
+          "output_tokens": 12
+        },
+        "stopSequence": null,
+        "iterations": null,
+        "container": null,
+        "contextManagement": null
+      }
+    }
+  }
+]

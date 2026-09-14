@@ -1,0 +1,1953 @@
+{
+  "crate": "ferrin-anthropic",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_anthropic::AnthropicBatch",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::batch::AnthropicBatch",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Batch for AnthropicBatch",
+        "impl Clone for AnthropicBatch",
+        "impl Debug for AnthropicBatch"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::config::AnthropicConfig",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "credential: Option<Credential>",
+        "headers: Headers",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>",
+        "supports_strict_tools: bool",
+        "supports_native_structured_output: bool"
+      ],
+      "methods": [
+        "fn betas_from_headers(&self, call_headers: &Headers) -> BTreeSet<String>",
+        "fn credential(&self) -> Result<Credential, ProviderError>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers, betas: &BTreeSet<String>) -> Result<Headers, ProviderError>",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn options_key(&self) -> &str",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn url(&self, path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for AnthropicConfig"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicFiles",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::files::AnthropicFiles",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicFiles",
+        "impl Debug for AnthropicFiles",
+        "impl Files for AnthropicFiles"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicMessagesLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::messages::AnthropicMessagesLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicMessagesLanguageModel",
+        "impl Debug for AnthropicMessagesLanguageModel",
+        "impl LanguageModel for AnthropicMessagesLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicProvider",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn batch(&self) -> AnthropicBatch",
+        "fn chat(&self, model_id: &str) -> AnthropicMessagesLanguageModel",
+        "fn config(&self) -> &SharedConfig",
+        "fn files(&self) -> AnthropicFiles",
+        "fn from_config(config: SharedConfig) -> Self",
+        "fn messages(&self, model_id: &str) -> AnthropicMessagesLanguageModel",
+        "fn skills(&self) -> AnthropicSkills",
+        "fn tools(&self) -> &AnthropicTools"
+      ],
+      "traits": [
+        "impl Clone for AnthropicProvider",
+        "impl Debug for AnthropicProvider",
+        "impl Provider for AnthropicProvider"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "base_url: Option<Url>",
+        "api_key: Option<SecretString>",
+        "auth_token: Option<SecretString>",
+        "headers: Headers",
+        "name: Option<String>",
+        "transport: Option<SharedTransport>",
+        "id_generator: Option<Arc<dyn IdGenerator>>"
+      ],
+      "traits": [
+        "impl Debug for AnthropicSettings",
+        "impl Default for AnthropicSettings"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicSkills",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::skills::AnthropicSkills",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicSkills",
+        "impl Debug for AnthropicSkills",
+        "impl Skills for AnthropicSkills"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::AnthropicTools",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::tools::AnthropicTools",
+      "methods": [
+        "fn advisor_20260301(&self, args: AdvisorArgs) -> Tool",
+        "fn bash_20241022(&self) -> Tool",
+        "fn bash_20250124(&self) -> Tool",
+        "fn code_execution_20250522(&self) -> Tool",
+        "fn code_execution_20250825(&self) -> Tool",
+        "fn code_execution_20260120(&self) -> Tool",
+        "fn computer_20241022(&self, args: ComputerArgs) -> Tool",
+        "fn computer_20250124(&self, args: ComputerArgs) -> Tool",
+        "fn computer_20251124(&self, args: ComputerArgs) -> Tool",
+        "fn memory_20250818(&self) -> Tool",
+        "fn new() -> Self",
+        "fn text_editor_20241022(&self) -> Tool",
+        "fn text_editor_20250124(&self) -> Tool",
+        "fn text_editor_20250429(&self) -> Tool",
+        "fn text_editor_20250728(&self, args: TextEditorArgs) -> Tool",
+        "fn tool_search_bm25_20251119(&self) -> Tool",
+        "fn tool_search_regex_20251119(&self) -> Tool",
+        "fn web_fetch_20250910(&self, args: WebFetchArgs) -> Tool",
+        "fn web_fetch_20260209(&self, args: WebFetchArgs) -> Tool",
+        "fn web_search_20250305(&self, args: WebSearchArgs) -> Tool",
+        "fn web_search_20260209(&self, args: WebSearchArgs) -> Tool"
+      ],
+      "traits": [
+        "impl Clone for AnthropicTools",
+        "impl Copy for AnthropicTools",
+        "impl Debug for AnthropicTools",
+        "impl Default for AnthropicTools",
+        "impl Eq for AnthropicTools",
+        "impl PartialEq for AnthropicTools",
+        "impl StructuralPartialEq for AnthropicTools"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::Credential",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "crate::config::Credential",
+      "variants": [
+        "ApiKey(SecretString)",
+        "AuthToken(SecretString)"
+      ],
+      "traits": [
+        "impl Clone for Credential",
+        "impl Debug for Credential"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<AnthropicConfig>",
+      "source": "crate::config::SharedConfig"
+    },
+    {
+      "path": "ferrin_anthropic::VERSION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::api_types",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::api_types::AnthropicChunk",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "MessageStart { message: MessageStart }",
+        "ContentBlockStart { index: u64, content_block: ContentBlock }",
+        "ContentBlockDelta { index: u64, delta: Delta }",
+        "ContentBlockStop { index: u64 }",
+        "Error { error: JsonObject }",
+        "MessageDelta { delta: MessageDeltaBody, usage: AnthropicUsage, input_transformations: Option<JsonValue>, context_management: Option<ResponseContextManagement> }",
+        "MessageStop",
+        "Ping",
+        "Unknown"
+      ],
+      "traits": [
+        "impl Clone for AnthropicChunk",
+        "impl Debug for AnthropicChunk",
+        "impl PartialEq for AnthropicChunk",
+        "impl StructuralPartialEq for AnthropicChunk",
+        "impl<'de> Deserialize<'de> for AnthropicChunk"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::AnthropicResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "model: Option<String>",
+        "content: Vec<ContentBlock>",
+        "stop_reason: Option<String>",
+        "stop_sequence: Option<String>",
+        "stop_details: Option<StopDetails>",
+        "input_transformations: Option<JsonValue>",
+        "usage: AnthropicUsage",
+        "container: Option<ContainerInfo>",
+        "context_management: Option<ResponseContextManagement>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicResponse",
+        "impl Debug for AnthropicResponse",
+        "impl Default for AnthropicResponse",
+        "impl PartialEq for AnthropicResponse",
+        "impl StructuralPartialEq for AnthropicResponse",
+        "impl<'de> Deserialize<'de> for AnthropicResponse"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::AnthropicUsage",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "input_tokens: Option<u64>",
+        "output_tokens: Option<u64>",
+        "output_tokens_details: Option<OutputTokensDetails>",
+        "cache_creation_input_tokens: Option<u64>",
+        "cache_read_input_tokens: Option<u64>",
+        "iterations: Option<Vec<UsageIteration>>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicUsage",
+        "impl Debug for AnthropicUsage",
+        "impl Default for AnthropicUsage",
+        "impl Eq for AnthropicUsage",
+        "impl PartialEq for AnthropicUsage",
+        "impl StructuralPartialEq for AnthropicUsage",
+        "impl<'de> Deserialize<'de> for AnthropicUsage"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::AppliedEdit",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "cleared_tool_uses: Option<u64>",
+        "cleared_thinking_turns: Option<u64>",
+        "cleared_input_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for AppliedEdit",
+        "impl Debug for AppliedEdit",
+        "impl Default for AppliedEdit",
+        "impl Eq for AppliedEdit",
+        "impl PartialEq for AppliedEdit",
+        "impl StructuralPartialEq for AppliedEdit",
+        "impl<'de> Deserialize<'de> for AppliedEdit"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::Caller",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "tool_id: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for Caller",
+        "impl Debug for Caller",
+        "impl Default for Caller",
+        "impl Eq for Caller",
+        "impl PartialEq for Caller",
+        "impl StructuralPartialEq for Caller",
+        "impl<'de> Deserialize<'de> for Caller"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::ContainerInfo",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: String",
+        "expires_at: Option<String>",
+        "skills: Option<Vec<ContainerSkillInfo>>"
+      ],
+      "traits": [
+        "impl Clone for ContainerInfo",
+        "impl Debug for ContainerInfo",
+        "impl Default for ContainerInfo",
+        "impl Eq for ContainerInfo",
+        "impl PartialEq for ContainerInfo",
+        "impl StructuralPartialEq for ContainerInfo",
+        "impl<'de> Deserialize<'de> for ContainerInfo"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::ContainerSkillInfo",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "skill_id: String",
+        "version: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ContainerSkillInfo",
+        "impl Debug for ContainerSkillInfo",
+        "impl Default for ContainerSkillInfo",
+        "impl Eq for ContainerSkillInfo",
+        "impl PartialEq for ContainerSkillInfo",
+        "impl StructuralPartialEq for ContainerSkillInfo",
+        "impl<'de> Deserialize<'de> for ContainerSkillInfo"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::ContentBlock",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "Text { text: String, citations: Option<Vec<JsonValue>> }",
+        "Thinking { thinking: String, signature: Option<String> }",
+        "RedactedThinking { data: String }",
+        "ToolUse { id: String, name: String, input: Option<JsonValue>, caller: Option<Caller> }",
+        "ServerToolUse { id: String, name: String, input: Option<JsonValue>, caller: Option<Caller> }",
+        "McpToolUse { id: String, name: String, input: Option<JsonValue>, server_name: String }",
+        "McpToolResult { tool_use_id: String, is_error: bool, content: JsonValue }",
+        "WebFetchToolResult { tool_use_id: String, content: JsonValue, caller: Option<Caller> }",
+        "WebSearchToolResult { tool_use_id: String, content: JsonValue, caller: Option<Caller> }",
+        "CodeExecutionToolResult { tool_use_id: String, content: JsonValue }",
+        "BashCodeExecutionToolResult { tool_use_id: String, content: JsonValue }",
+        "TextEditorCodeExecutionToolResult { tool_use_id: String, content: JsonValue }",
+        "ToolSearchToolResult { tool_use_id: String, content: JsonValue }",
+        "AdvisorToolResult { tool_use_id: String, content: JsonValue }",
+        "ContainerUpload { file_id: String }",
+        "Compaction { content: Option<String> }",
+        "Fallback { model: Option<String> }",
+        "Unknown"
+      ],
+      "traits": [
+        "impl Clone for ContentBlock",
+        "impl Debug for ContentBlock",
+        "impl PartialEq for ContentBlock",
+        "impl StructuralPartialEq for ContentBlock",
+        "impl<'de> Deserialize<'de> for ContentBlock"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::Delta",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "InputJson { partial_json: String }",
+        "Text { text: String }",
+        "Thinking { thinking: String }",
+        "Signature { signature: String }",
+        "Compaction { content: Option<String> }",
+        "Citations { citation: JsonValue }",
+        "Unknown"
+      ],
+      "traits": [
+        "impl Clone for Delta",
+        "impl Debug for Delta",
+        "impl PartialEq for Delta",
+        "impl StructuralPartialEq for Delta",
+        "impl<'de> Deserialize<'de> for Delta"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::MessageDeltaBody",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "stop_reason: Option<String>",
+        "stop_sequence: Option<String>",
+        "stop_details: Option<StopDetails>",
+        "container: Option<ContainerInfo>"
+      ],
+      "traits": [
+        "impl Clone for MessageDeltaBody",
+        "impl Debug for MessageDeltaBody",
+        "impl Default for MessageDeltaBody",
+        "impl Eq for MessageDeltaBody",
+        "impl PartialEq for MessageDeltaBody",
+        "impl StructuralPartialEq for MessageDeltaBody",
+        "impl<'de> Deserialize<'de> for MessageDeltaBody"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::MessageStart",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "model: Option<String>",
+        "usage: AnthropicUsage",
+        "content: Option<Vec<ContentBlock>>",
+        "container: Option<ContainerInfo>",
+        "stop_reason: Option<String>",
+        "input_transformations: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for MessageStart",
+        "impl Debug for MessageStart",
+        "impl Default for MessageStart",
+        "impl PartialEq for MessageStart",
+        "impl StructuralPartialEq for MessageStart",
+        "impl<'de> Deserialize<'de> for MessageStart"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::OutputTokensDetails",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "thinking_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for OutputTokensDetails",
+        "impl Debug for OutputTokensDetails",
+        "impl Default for OutputTokensDetails",
+        "impl Eq for OutputTokensDetails",
+        "impl PartialEq for OutputTokensDetails",
+        "impl StructuralPartialEq for OutputTokensDetails",
+        "impl<'de> Deserialize<'de> for OutputTokensDetails"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::ResponseContextManagement",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "applied_edits: Vec<AppliedEdit>"
+      ],
+      "traits": [
+        "impl Clone for ResponseContextManagement",
+        "impl Debug for ResponseContextManagement",
+        "impl Default for ResponseContextManagement",
+        "impl Eq for ResponseContextManagement",
+        "impl PartialEq for ResponseContextManagement",
+        "impl StructuralPartialEq for ResponseContextManagement",
+        "impl<'de> Deserialize<'de> for ResponseContextManagement"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::StopDetails",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "category: Option<String>",
+        "explanation: Option<String>",
+        "recommended_model: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for StopDetails",
+        "impl Debug for StopDetails",
+        "impl Default for StopDetails",
+        "impl Eq for StopDetails",
+        "impl PartialEq for StopDetails",
+        "impl StructuralPartialEq for StopDetails",
+        "impl<'de> Deserialize<'de> for StopDetails"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::api_types::UsageIteration",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "model: Option<String>",
+        "input_tokens: Option<u64>",
+        "output_tokens: Option<u64>",
+        "cache_creation_input_tokens: Option<u64>",
+        "cache_read_input_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for UsageIteration",
+        "impl Debug for UsageIteration",
+        "impl Default for UsageIteration",
+        "impl Eq for UsageIteration",
+        "impl PartialEq for UsageIteration",
+        "impl StructuralPartialEq for UsageIteration",
+        "impl<'de> Deserialize<'de> for UsageIteration"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::batch::AnthropicBatch",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Batch for AnthropicBatch",
+        "impl Clone for AnthropicBatch",
+        "impl Debug for AnthropicBatch"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::AnthropicBatchList",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "data: Vec<AnthropicBatchObject>",
+        "has_more: bool",
+        "last_id: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicBatchList",
+        "impl Debug for AnthropicBatchList",
+        "impl Default for AnthropicBatchList",
+        "impl Eq for AnthropicBatchList",
+        "impl PartialEq for AnthropicBatchList",
+        "impl StructuralPartialEq for AnthropicBatchList",
+        "impl<'de> Deserialize<'de> for AnthropicBatchList"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::AnthropicBatchObject",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: String",
+        "processing_status: String",
+        "request_counts: AnthropicBatchRequestCounts",
+        "created_at: Option<String>",
+        "expires_at: Option<String>",
+        "archived_at: Option<String>",
+        "cancel_initiated_at: Option<String>",
+        "ended_at: Option<String>",
+        "results_url: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicBatchObject",
+        "impl Debug for AnthropicBatchObject",
+        "impl Default for AnthropicBatchObject",
+        "impl Eq for AnthropicBatchObject",
+        "impl PartialEq for AnthropicBatchObject",
+        "impl StructuralPartialEq for AnthropicBatchObject",
+        "impl<'de> Deserialize<'de> for AnthropicBatchObject"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::AnthropicBatchRequestCounts",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "processing: u64",
+        "succeeded: u64",
+        "errored: u64",
+        "canceled: u64",
+        "expired: u64"
+      ],
+      "traits": [
+        "impl Clone for AnthropicBatchRequestCounts",
+        "impl Debug for AnthropicBatchRequestCounts",
+        "impl Default for AnthropicBatchRequestCounts",
+        "impl Eq for AnthropicBatchRequestCounts",
+        "impl PartialEq for AnthropicBatchRequestCounts",
+        "impl StructuralPartialEq for AnthropicBatchRequestCounts",
+        "impl<'de> Deserialize<'de> for AnthropicBatchRequestCounts"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::is_valid_request_id",
+      "kind": "function",
+      "signature": "fn is_valid_request_id(id: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::map_state",
+      "kind": "function",
+      "signature": "fn map_state(raw: &str) -> BatchState",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::map_status",
+      "kind": "function",
+      "signature": "fn map_status(batch: &AnthropicBatchObject) -> BatchStatus",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::results",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::batch::results::BatchResultLine",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "custom_id: String",
+        "result: JsonValue"
+      ],
+      "traits": [
+        "impl Clone for BatchResultLine",
+        "impl Debug for BatchResultLine",
+        "impl<'de> Deserialize<'de> for BatchResultLine"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::results::convert_line",
+      "kind": "function",
+      "signature": "fn convert_line(config: &SharedConfig, line: BatchResultLine) -> BatchItemResult",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::batch::results::convert_response",
+      "kind": "function",
+      "signature": "fn convert_response(config: &SharedConfig, response: &AnthropicResponse, body: JsonValue) -> GenerateResult",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::cache_control",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::cache_control::CacheControlValidator",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn get(&mut self, config: &AnthropicConfig, provider_options: Option<&ProviderOptions>, context: &str, can_cache: bool) -> Option<JsonValue>",
+        "fn into_warnings(self) -> Vec<Warning>",
+        "fn new() -> Self"
+      ],
+      "traits": [
+        "impl Debug for CacheControlValidator",
+        "impl Default for CacheControlValidator"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::cache_control::MAX_CACHE_BREAKPOINTS",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_anthropic::cache_control::cache_control_value",
+      "kind": "function",
+      "signature": "fn cache_control_value(options: Option<&JsonObject>) -> Option<JsonValue>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::capabilities",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::capabilities::ModelCapabilities",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "max_output_tokens: u32",
+        "supports_structured_output: bool",
+        "supports_adaptive_thinking: bool",
+        "rejects_sampling_parameters: bool",
+        "supports_xhigh_effort: bool",
+        "rejects_thinking_disabled_above_high_effort: bool",
+        "is_known_model: bool"
+      ],
+      "traits": [
+        "impl Clone for ModelCapabilities",
+        "impl Copy for ModelCapabilities",
+        "impl Debug for ModelCapabilities",
+        "impl Eq for ModelCapabilities",
+        "impl PartialEq for ModelCapabilities",
+        "impl StructuralPartialEq for ModelCapabilities"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::capabilities::model_capabilities",
+      "kind": "function",
+      "signature": "fn model_capabilities(model_id: &str) -> ModelCapabilities",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::config",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::config::API_KEY_ENV",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::API_VERSION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::AUTH_TOKEN_ENV",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::AnthropicConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "credential: Option<Credential>",
+        "headers: Headers",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>",
+        "supports_strict_tools: bool",
+        "supports_native_structured_output: bool"
+      ],
+      "methods": [
+        "fn betas_from_headers(&self, call_headers: &Headers) -> BTreeSet<String>",
+        "fn credential(&self) -> Result<Credential, ProviderError>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers, betas: &BTreeSet<String>) -> Result<Headers, ProviderError>",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn options_key(&self) -> &str",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn url(&self, path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for AnthropicConfig"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::config::BASE_URL_ENV",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::BETA_HEADER",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::CANONICAL_OPTIONS_KEY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::Credential",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "ApiKey(SecretString)",
+        "AuthToken(SecretString)"
+      ],
+      "traits": [
+        "impl Clone for Credential",
+        "impl Debug for Credential"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::config::DEFAULT_BASE_URL",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<AnthropicConfig>"
+    },
+    {
+      "path": "ferrin_anthropic::config::USER_AGENT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::config::normalize_base_url",
+      "kind": "function",
+      "signature": "fn normalize_base_url(base_url: &str) -> Result<Url, InvalidArgumentError>"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_FILES_API",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_MID_CONVERSATION_CLEAR_AT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_MID_CONVERSATION_EFFORT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_MID_CONVERSATION_SYSTEM",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_MID_CONVERSATION_TOOL_CHANGES",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::BETA_PDFS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::ConvertedPrompt",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "system: Option<Vec<JsonValue>>",
+        "messages: Vec<JsonValue>",
+        "betas: BTreeSet<String>",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for ConvertedPrompt",
+        "impl Debug for ConvertedPrompt",
+        "impl Default for ConvertedPrompt",
+        "impl PartialEq for ConvertedPrompt",
+        "impl StructuralPartialEq for ConvertedPrompt"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::convert_prompt::convert_prompt",
+      "kind": "function",
+      "signature": "fn convert_prompt(config: &AnthropicConfig, prompt: &[PromptMessage], mapping: &ToolNameMapping, send_reasoning: bool) -> Result<ConvertedPrompt, ProviderError>"
+    },
+    {
+      "path": "ferrin_anthropic::create_anthropic",
+      "kind": "function",
+      "signature": "fn create_anthropic(settings: AnthropicSettings) -> Result<AnthropicProvider, ProviderError>"
+    },
+    {
+      "path": "ferrin_anthropic::error",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::error::AnthropicErrorData",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: Option<String>",
+        "error: AnthropicErrorDetail"
+      ],
+      "traits": [
+        "impl Clone for AnthropicErrorData",
+        "impl Debug for AnthropicErrorData",
+        "impl<'de> Deserialize<'de> for AnthropicErrorData"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::error::AnthropicErrorDetail",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "error_type: Option<String>",
+        "message: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicErrorDetail",
+        "impl Debug for AnthropicErrorDetail",
+        "impl<'de> Deserialize<'de> for AnthropicErrorDetail"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::error::FrameError",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "message: String",
+        "error_type: Option<String>"
+      ],
+      "methods": [
+        "fn from_error_object(error: &JsonValue) -> Self",
+        "fn is_retryable(&self) -> bool",
+        "fn status_code(&self) -> u16",
+        "fn to_api_call_error(&self, url: Url, frame: &JsonValue) -> ApiCallError",
+        "fn to_stream_error(&self, frame: &JsonValue) -> StreamError"
+      ],
+      "traits": [
+        "impl Clone for FrameError",
+        "impl Debug for FrameError",
+        "impl Eq for FrameError",
+        "impl PartialEq for FrameError",
+        "impl StructuralPartialEq for FrameError"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::error::failed_response_handler",
+      "kind": "function",
+      "signature": "fn failed_response_handler() -> JsonErrorResponseHandler<AnthropicErrorData>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::error::status_for_error_type",
+      "kind": "function",
+      "signature": "fn status_for_error_type(error_type: Option<&str>) -> (u16, bool)",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::files",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::files::AnthropicFileObject",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: String",
+        "filename: Option<String>",
+        "mime_type: Option<String>",
+        "size_bytes: Option<u64>",
+        "created_at: Option<String>",
+        "downloadable: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicFileObject",
+        "impl Debug for AnthropicFileObject",
+        "impl<'de> Deserialize<'de> for AnthropicFileObject"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::files::AnthropicFiles",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicFiles",
+        "impl Debug for AnthropicFiles",
+        "impl Files for AnthropicFiles"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::files::FILES_BETA",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::json_schema",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::json_schema::sanitize_json_schema",
+      "kind": "function",
+      "signature": "fn sanitize_json_schema(schema: &JsonValue) -> JsonValue",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::messages",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::messages::AnthropicMessagesLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicMessagesLanguageModel",
+        "impl Debug for AnthropicMessagesLanguageModel",
+        "impl LanguageModel for AnthropicMessagesLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::messages::supported_urls",
+      "kind": "function",
+      "signature": "fn supported_urls() -> SupportedUrls",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::options::AnthropicLanguageModelOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "send_reasoning: Option<bool>",
+        "structured_output_mode: Option<String>",
+        "thinking: Option<Thinking>",
+        "disable_parallel_tool_use: Option<bool>",
+        "cache_control: Option<CacheControl>",
+        "metadata: Option<Metadata>",
+        "mcp_servers: Option<Vec<McpServer>>",
+        "container: Option<Container>",
+        "tool_streaming: Option<bool>",
+        "effort: Option<String>",
+        "task_budget: Option<TaskBudget>",
+        "speed: Option<String>",
+        "service_tier: Option<String>",
+        "inference_geo: Option<String>",
+        "fallbacks: Option<Fallbacks>",
+        "anthropic_beta: Option<Vec<String>>",
+        "context_management: Option<ContextManagement>"
+      ],
+      "traits": [
+        "impl Clone for AnthropicLanguageModelOptions",
+        "impl Debug for AnthropicLanguageModelOptions",
+        "impl Default for AnthropicLanguageModelOptions",
+        "impl PartialEq for AnthropicLanguageModelOptions",
+        "impl StructuralPartialEq for AnthropicLanguageModelOptions",
+        "impl<'de> Deserialize<'de> for AnthropicLanguageModelOptions"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::BlockBinding",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prefix_mismatch_behavior: String"
+      ],
+      "traits": [
+        "impl Clone for BlockBinding",
+        "impl Debug for BlockBinding",
+        "impl Eq for BlockBinding",
+        "impl PartialEq for BlockBinding",
+        "impl Serialize for BlockBinding",
+        "impl StructuralPartialEq for BlockBinding",
+        "impl<'de> Deserialize<'de> for BlockBinding"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::CacheControl",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "ttl: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for CacheControl",
+        "impl Debug for CacheControl",
+        "impl Eq for CacheControl",
+        "impl PartialEq for CacheControl",
+        "impl Serialize for CacheControl",
+        "impl StructuralPartialEq for CacheControl",
+        "impl<'de> Deserialize<'de> for CacheControl"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::Citations",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "enabled: bool"
+      ],
+      "traits": [
+        "impl Clone for Citations",
+        "impl Debug for Citations",
+        "impl Default for Citations",
+        "impl Eq for Citations",
+        "impl PartialEq for Citations",
+        "impl Serialize for Citations",
+        "impl StructuralPartialEq for Citations",
+        "impl<'de> Deserialize<'de> for Citations"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::Container",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "skills: Option<Vec<ContainerSkill>>"
+      ],
+      "traits": [
+        "impl Clone for Container",
+        "impl Debug for Container",
+        "impl Default for Container",
+        "impl Eq for Container",
+        "impl PartialEq for Container",
+        "impl StructuralPartialEq for Container",
+        "impl<'de> Deserialize<'de> for Container"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ContainerSkill",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "Anthropic { skill_id: String, version: Option<String> }",
+        "Custom { provider_reference: ProviderReference, version: Option<String> }"
+      ],
+      "traits": [
+        "impl Clone for ContainerSkill",
+        "impl Debug for ContainerSkill",
+        "impl Eq for ContainerSkill",
+        "impl PartialEq for ContainerSkill",
+        "impl StructuralPartialEq for ContainerSkill",
+        "impl<'de> Deserialize<'de> for ContainerSkill"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ContextEdit",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "ClearToolUses { trigger: Option<JsonValue>, keep: Option<JsonValue>, clear_at_least: Option<JsonValue>, clear_tool_inputs: Option<bool>, exclude_tools: Option<Vec<String>> }",
+        "ClearThinking { keep: Option<JsonValue> }",
+        "Compact { trigger: Option<JsonValue>, pause_after_compaction: Option<bool>, instructions: Option<String> }"
+      ],
+      "traits": [
+        "impl Clone for ContextEdit",
+        "impl Debug for ContextEdit",
+        "impl PartialEq for ContextEdit",
+        "impl StructuralPartialEq for ContextEdit",
+        "impl<'de> Deserialize<'de> for ContextEdit"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ContextManagement",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "edits: Vec<ContextEdit>"
+      ],
+      "traits": [
+        "impl Clone for ContextManagement",
+        "impl Debug for ContextManagement",
+        "impl Default for ContextManagement",
+        "impl PartialEq for ContextManagement",
+        "impl StructuralPartialEq for ContextManagement",
+        "impl<'de> Deserialize<'de> for ContextManagement"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::Fallbacks",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "Default(String)",
+        "Models(Vec<JsonObject>)"
+      ],
+      "traits": [
+        "impl Clone for Fallbacks",
+        "impl Debug for Fallbacks",
+        "impl PartialEq for Fallbacks",
+        "impl StructuralPartialEq for Fallbacks",
+        "impl<'de> Deserialize<'de> for Fallbacks"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::FilePartOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "container_upload: Option<bool>",
+        "citations: Option<Citations>",
+        "title: Option<String>",
+        "context: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for FilePartOptions",
+        "impl Debug for FilePartOptions",
+        "impl Default for FilePartOptions",
+        "impl Eq for FilePartOptions",
+        "impl PartialEq for FilePartOptions",
+        "impl StructuralPartialEq for FilePartOptions",
+        "impl<'de> Deserialize<'de> for FilePartOptions"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::McpServer",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "name: String",
+        "url: String",
+        "authorization_token: Option<String>",
+        "tool_configuration: Option<McpToolConfiguration>"
+      ],
+      "traits": [
+        "impl Clone for McpServer",
+        "impl Debug for McpServer",
+        "impl Eq for McpServer",
+        "impl PartialEq for McpServer",
+        "impl StructuralPartialEq for McpServer",
+        "impl<'de> Deserialize<'de> for McpServer"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::McpToolConfiguration",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "enabled: Option<bool>",
+        "allowed_tools: Option<Vec<String>>"
+      ],
+      "traits": [
+        "impl Clone for McpToolConfiguration",
+        "impl Debug for McpToolConfiguration",
+        "impl Default for McpToolConfiguration",
+        "impl Eq for McpToolConfiguration",
+        "impl PartialEq for McpToolConfiguration",
+        "impl StructuralPartialEq for McpToolConfiguration",
+        "impl<'de> Deserialize<'de> for McpToolConfiguration"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::Metadata",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "user_id: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for Metadata",
+        "impl Debug for Metadata",
+        "impl Default for Metadata",
+        "impl Eq for Metadata",
+        "impl PartialEq for Metadata",
+        "impl StructuralPartialEq for Metadata",
+        "impl<'de> Deserialize<'de> for Metadata"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ParsedOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "options: AnthropicLanguageModelOptions",
+        "used_custom_key: bool"
+      ],
+      "traits": [
+        "impl Clone for ParsedOptions",
+        "impl Debug for ParsedOptions",
+        "impl Default for ParsedOptions"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ReasoningMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "signature: Option<String>",
+        "redacted_data: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ReasoningMetadata",
+        "impl Debug for ReasoningMetadata",
+        "impl Default for ReasoningMetadata",
+        "impl Eq for ReasoningMetadata",
+        "impl PartialEq for ReasoningMetadata",
+        "impl StructuralPartialEq for ReasoningMetadata",
+        "impl<'de> Deserialize<'de> for ReasoningMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::SystemMessageOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "clear_at: Option<String>",
+        "effort: Option<String>",
+        "tool_changes: Option<Vec<ToolChange>>"
+      ],
+      "traits": [
+        "impl Clone for SystemMessageOptions",
+        "impl Debug for SystemMessageOptions",
+        "impl Default for SystemMessageOptions",
+        "impl Eq for SystemMessageOptions",
+        "impl PartialEq for SystemMessageOptions",
+        "impl StructuralPartialEq for SystemMessageOptions",
+        "impl<'de> Deserialize<'de> for SystemMessageOptions"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::TaskBudget",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "total: u64",
+        "remaining: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for TaskBudget",
+        "impl Debug for TaskBudget",
+        "impl Eq for TaskBudget",
+        "impl PartialEq for TaskBudget",
+        "impl StructuralPartialEq for TaskBudget",
+        "impl<'de> Deserialize<'de> for TaskBudget"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::Thinking",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: Option<String>",
+        "budget_tokens: Option<u32>",
+        "display: Option<String>",
+        "block_binding: Option<BlockBinding>"
+      ],
+      "traits": [
+        "impl Clone for Thinking",
+        "impl Debug for Thinking",
+        "impl Default for Thinking",
+        "impl Eq for Thinking",
+        "impl PartialEq for Thinking",
+        "impl StructuralPartialEq for Thinking",
+        "impl<'de> Deserialize<'de> for Thinking"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ToolChange",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: String",
+        "tool_name: String"
+      ],
+      "traits": [
+        "impl Clone for ToolChange",
+        "impl Debug for ToolChange",
+        "impl Eq for ToolChange",
+        "impl PartialEq for ToolChange",
+        "impl StructuralPartialEq for ToolChange",
+        "impl<'de> Deserialize<'de> for ToolChange"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::ToolOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "defer_loading: Option<bool>",
+        "allowed_callers: Option<Vec<String>>",
+        "eager_input_streaming: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for ToolOptions",
+        "impl Debug for ToolOptions",
+        "impl Default for ToolOptions",
+        "impl Eq for ToolOptions",
+        "impl PartialEq for ToolOptions",
+        "impl StructuralPartialEq for ToolOptions",
+        "impl<'de> Deserialize<'de> for ToolOptions"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::parse_options",
+      "kind": "function",
+      "signature": "fn parse_options(config: &AnthropicConfig, provider_options: &ProviderOptions) -> Result<ParsedOptions, InvalidArgumentError>"
+    },
+    {
+      "path": "ferrin_anthropic::options::part_options",
+      "kind": "function",
+      "signature": "fn part_options<'a>(config: &AnthropicConfig, provider_options: Option<&'a ProviderOptions>) -> Option<&'a JsonObject>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::options::read_options",
+      "kind": "function",
+      "signature": "fn read_options<T: DeserializeOwned>(object: Option<&JsonObject>) -> Option<T>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::output::CONTAINER_UPLOAD_KIND",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::output::CitationDocument",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "title: String",
+        "filename: Option<String>",
+        "media_type: String"
+      ],
+      "traits": [
+        "impl Clone for CitationDocument",
+        "impl Debug for CitationDocument",
+        "impl Eq for CitationDocument",
+        "impl PartialEq for CitationDocument",
+        "impl StructuralPartialEq for CitationDocument"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::MessageMetadata",
+      "kind": "struct",
+      "signature": "struct<'a>",
+      "source": "self::metadata::MessageMetadata",
+      "fields": [
+        "usage: Option<JsonObject>",
+        "stop_sequence: Option<String>",
+        "stop_details: Option<&'a StopDetails>",
+        "input_transformations: Option<&'a JsonValue>",
+        "iterations: Option<&'a [UsageIteration]>",
+        "container: Option<JsonValue>",
+        "context_management: Option<&'a ResponseContextManagement>"
+      ],
+      "methods": [
+        "fn build(self, custom_key: Option<&str>) -> ProviderMetadata"
+      ],
+      "traits": [
+        "impl<'a> Debug for MessageMetadata<'a>",
+        "impl<'a> Default for MessageMetadata<'a>"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::OutputMapper",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "uses_json_response_tool: bool",
+        "mark_code_execution_dynamic: bool",
+        "citation_documents: Vec<CitationDocument>",
+        "json_response_from_tool: bool",
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn citation_source(&self, citation: &JsonValue) -> Option<Source>",
+        "fn custom_name(&self, provider_tool_name: &str) -> ToolName",
+        "fn is_dynamic(&self, provider_tool_name: &str) -> bool",
+        "fn map_block(&mut self, block: &ContentBlock) -> Vec<Content>",
+        "fn map_result_block(&mut self, block: &ContentBlock) -> Option<Vec<Content>>",
+        "fn mcp_tool_use(&mut self, id: &str, name: &str, input: Option<&JsonValue>, server_name: &str) -> ToolCall",
+        "fn new(config: SharedConfig, mapping: ToolNameMapping) -> Self",
+        "fn remember_tool_search(&mut self, id: &str, provider_tool_name: &str)",
+        "fn server_tool_use(&mut self, id: &str, name: &str, input: Option<&JsonValue>, caller: Option<&Caller>) -> Option<ToolCall>"
+      ],
+      "traits": [
+        "impl Debug for OutputMapper"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::anthropic_metadata",
+      "kind": "function",
+      "signature": "fn anthropic_metadata(value: JsonObject) -> ProviderMetadata",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::caller_metadata",
+      "kind": "function",
+      "signature": "fn caller_metadata(caller: Option<&Caller>) -> Option<ProviderMetadata>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::citation_documents",
+      "kind": "function",
+      "signature": "fn citation_documents(config: &AnthropicConfig, prompt: &[PromptMessage]) -> Vec<CitationDocument>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::container_metadata",
+      "kind": "function",
+      "signature": "fn container_metadata(container: &ContainerInfo, include_skills: bool) -> JsonValue",
+      "source": "self::metadata::container_metadata",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::context_management_metadata",
+      "kind": "function",
+      "signature": "fn context_management_metadata(context: &ResponseContextManagement) -> JsonValue",
+      "source": "self::metadata::context_management_metadata",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::programmatic_tool_call",
+      "kind": "function",
+      "signature": "fn programmatic_tool_call(input: JsonValue) -> JsonValue",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::output::web_tool_20260209_without_code_execution",
+      "kind": "function",
+      "signature": "fn web_tool_20260209_without_code_execution(tools: &[ToolDefinition]) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::BETA_ADVANCED_TOOL_USE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::BETA_STRUCTURED_OUTPUTS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::PROVIDER_TOOL_NAMES",
+      "kind": "constant",
+      "signature": "const: &[(&str, &str)]"
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::PrepareToolsSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "disable_parallel_tool_use: bool",
+        "supports_structured_output: bool",
+        "supports_strict_tools: bool",
+        "default_eager_input_streaming: bool"
+      ],
+      "traits": [
+        "impl Clone for PrepareToolsSettings",
+        "impl Copy for PrepareToolsSettings",
+        "impl Debug for PrepareToolsSettings"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::PreparedTools",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "tools: Option<Vec<JsonValue>>",
+        "tool_choice: Option<JsonValue>",
+        "warnings: Vec<Warning>",
+        "betas: BTreeSet<String>"
+      ],
+      "traits": [
+        "impl Clone for PreparedTools",
+        "impl Debug for PreparedTools",
+        "impl Default for PreparedTools",
+        "impl PartialEq for PreparedTools",
+        "impl StructuralPartialEq for PreparedTools"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::prepare_tools",
+      "kind": "function",
+      "signature": "fn prepare_tools(config: &AnthropicConfig, tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, settings: PrepareToolsSettings, cache: &mut CacheControlValidator) -> PreparedTools",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::prepare_tools::tool_name_mapping",
+      "kind": "function",
+      "signature": "fn tool_name_mapping(tools: &[ToolDefinition]) -> ToolNameMapping",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::request",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::request::DEFAULT_THINKING_BUDGET",
+      "kind": "constant",
+      "signature": "const: u32"
+    },
+    {
+      "path": "ferrin_anthropic::request::JSON_RESPONSE_TOOL_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::request::PreparedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonObject",
+        "warnings: Vec<Warning>",
+        "betas: BTreeSet<String>",
+        "uses_json_response_tool: bool",
+        "tool_name_mapping: ToolNameMapping",
+        "used_custom_key: bool"
+      ],
+      "traits": [
+        "impl Clone for PreparedRequest",
+        "impl Debug for PreparedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::request::prepare_request",
+      "kind": "function",
+      "signature": "fn prepare_request(config: &AnthropicConfig, model_id: &str, options: &CallOptions, stream: bool, user_supplied_betas: BTreeSet<String>) -> Result<PreparedRequest, ProviderError>"
+    },
+    {
+      "path": "ferrin_anthropic::skills",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::skills::AnthropicSkills",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AnthropicSkills",
+        "impl Debug for AnthropicSkills",
+        "impl Skills for AnthropicSkills"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::skills::SKILLS_BETA",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_anthropic::stream",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::stream::AnthropicStreamState",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(mapper: OutputMapper, custom_key: Option<String>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for AnthropicStreamState",
+        "impl StreamMachine for AnthropicStreamState"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::tools::AdvisorArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "model: String",
+        "max_uses: Option<u32>",
+        "max_tokens: Option<u32>",
+        "caching: Option<AdvisorCaching>"
+      ],
+      "traits": [
+        "impl Clone for AdvisorArgs",
+        "impl Debug for AdvisorArgs",
+        "impl Default for AdvisorArgs",
+        "impl Eq for AdvisorArgs",
+        "impl PartialEq for AdvisorArgs",
+        "impl Serialize for AdvisorArgs",
+        "impl StructuralPartialEq for AdvisorArgs"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::AdvisorCaching",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: &'static str",
+        "ttl: String"
+      ],
+      "methods": [
+        "fn ephemeral(ttl: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AdvisorCaching",
+        "impl Debug for AdvisorCaching",
+        "impl Default for AdvisorCaching",
+        "impl Eq for AdvisorCaching",
+        "impl PartialEq for AdvisorCaching",
+        "impl Serialize for AdvisorCaching",
+        "impl StructuralPartialEq for AdvisorCaching"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::AnthropicTools",
+      "kind": "struct",
+      "signature": "struct",
+      "methods": [
+        "fn advisor_20260301(&self, args: AdvisorArgs) -> Tool",
+        "fn bash_20241022(&self) -> Tool",
+        "fn bash_20250124(&self) -> Tool",
+        "fn code_execution_20250522(&self) -> Tool",
+        "fn code_execution_20250825(&self) -> Tool",
+        "fn code_execution_20260120(&self) -> Tool",
+        "fn computer_20241022(&self, args: ComputerArgs) -> Tool",
+        "fn computer_20250124(&self, args: ComputerArgs) -> Tool",
+        "fn computer_20251124(&self, args: ComputerArgs) -> Tool",
+        "fn memory_20250818(&self) -> Tool",
+        "fn new() -> Self",
+        "fn text_editor_20241022(&self) -> Tool",
+        "fn text_editor_20250124(&self) -> Tool",
+        "fn text_editor_20250429(&self) -> Tool",
+        "fn text_editor_20250728(&self, args: TextEditorArgs) -> Tool",
+        "fn tool_search_bm25_20251119(&self) -> Tool",
+        "fn tool_search_regex_20251119(&self) -> Tool",
+        "fn web_fetch_20250910(&self, args: WebFetchArgs) -> Tool",
+        "fn web_fetch_20260209(&self, args: WebFetchArgs) -> Tool",
+        "fn web_search_20250305(&self, args: WebSearchArgs) -> Tool",
+        "fn web_search_20260209(&self, args: WebSearchArgs) -> Tool"
+      ],
+      "traits": [
+        "impl Clone for AnthropicTools",
+        "impl Copy for AnthropicTools",
+        "impl Debug for AnthropicTools",
+        "impl Default for AnthropicTools",
+        "impl Eq for AnthropicTools",
+        "impl PartialEq for AnthropicTools",
+        "impl StructuralPartialEq for AnthropicTools"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::CitationsArg",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "enabled: bool"
+      ],
+      "traits": [
+        "impl Clone for CitationsArg",
+        "impl Debug for CitationsArg",
+        "impl Default for CitationsArg",
+        "impl Eq for CitationsArg",
+        "impl PartialEq for CitationsArg",
+        "impl Serialize for CitationsArg",
+        "impl StructuralPartialEq for CitationsArg"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::ComputerArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "display_width_px: u32",
+        "display_height_px: u32",
+        "display_number: Option<u32>",
+        "enable_zoom: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for ComputerArgs",
+        "impl Debug for ComputerArgs",
+        "impl Default for ComputerArgs",
+        "impl Eq for ComputerArgs",
+        "impl PartialEq for ComputerArgs",
+        "impl Serialize for ComputerArgs",
+        "impl StructuralPartialEq for ComputerArgs"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::TextEditorArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "max_characters: Option<u32>"
+      ],
+      "traits": [
+        "impl Clone for TextEditorArgs",
+        "impl Debug for TextEditorArgs",
+        "impl Default for TextEditorArgs",
+        "impl Eq for TextEditorArgs",
+        "impl PartialEq for TextEditorArgs",
+        "impl Serialize for TextEditorArgs",
+        "impl StructuralPartialEq for TextEditorArgs"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::UserLocation",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "kind: &'static str",
+        "city: Option<String>",
+        "region: Option<String>",
+        "country: Option<String>",
+        "timezone: Option<String>"
+      ],
+      "methods": [
+        "fn approximate() -> Self"
+      ],
+      "traits": [
+        "impl Clone for UserLocation",
+        "impl Debug for UserLocation",
+        "impl Default for UserLocation",
+        "impl Eq for UserLocation",
+        "impl PartialEq for UserLocation",
+        "impl Serialize for UserLocation",
+        "impl StructuralPartialEq for UserLocation"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::WebFetchArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "max_uses: Option<u32>",
+        "allowed_domains: Option<Vec<String>>",
+        "blocked_domains: Option<Vec<String>>",
+        "citations: Option<CitationsArg>",
+        "max_content_tokens: Option<u32>"
+      ],
+      "traits": [
+        "impl Clone for WebFetchArgs",
+        "impl Debug for WebFetchArgs",
+        "impl Default for WebFetchArgs",
+        "impl Eq for WebFetchArgs",
+        "impl PartialEq for WebFetchArgs",
+        "impl Serialize for WebFetchArgs",
+        "impl StructuralPartialEq for WebFetchArgs"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::tools::WebSearchArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "max_uses: Option<u32>",
+        "allowed_domains: Option<Vec<String>>",
+        "blocked_domains: Option<Vec<String>>",
+        "user_location: Option<UserLocation>"
+      ],
+      "traits": [
+        "impl Clone for WebSearchArgs",
+        "impl Debug for WebSearchArgs",
+        "impl Default for WebSearchArgs",
+        "impl Eq for WebSearchArgs",
+        "impl PartialEq for WebSearchArgs",
+        "impl Serialize for WebSearchArgs",
+        "impl StructuralPartialEq for WebSearchArgs"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::usage",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_anthropic::usage::convert_usage",
+      "kind": "function",
+      "signature": "fn convert_usage(usage: &AnthropicUsage, raw: Option<JsonObject>) -> Usage",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_anthropic::usage::map_stop_reason",
+      "kind": "function",
+      "signature": "fn map_stop_reason(stop_reason: Option<&str>, json_response_from_tool: bool) -> FinishReason",
+      "attrs": [
+        "must_use"
+      ]
+    }
+  ]
+}

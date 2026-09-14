@@ -1,0 +1,8 @@
+[package]
+name = "pv016-header-values"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+http = { workspace = true }

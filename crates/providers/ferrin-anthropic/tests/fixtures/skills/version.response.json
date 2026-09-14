@@ -1,0 +1,6 @@
+{
+  "type": "skill_version",
+  "skill_id": "skill_abc",
+  "name": "weather-helper",
+  "description": "Weather lookups"
+}

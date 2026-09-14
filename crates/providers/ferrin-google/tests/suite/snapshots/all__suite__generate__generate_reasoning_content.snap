@@ -1,0 +1,24 @@
+---
+source: crates/providers/ferrin-google/tests/suite/generate.rs
+expression: result.content
+---
+[
+  {
+    "type": "reasoning",
+    "text": "Counting the letters one by one.",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "sig-thought-1"
+      }
+    }
+  },
+  {
+    "type": "text",
+    "text": "There are 3 r's in strawberry.",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "sig-text-1"
+      }
+    }
+  }
+]

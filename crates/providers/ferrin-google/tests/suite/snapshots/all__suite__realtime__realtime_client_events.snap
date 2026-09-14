@@ -1,0 +1,92 @@
+---
+source: crates/providers/ferrin-google/tests/suite/realtime.rs
+expression: serialized
+---
+[
+  {
+    "setup": {
+      "model": "models/gemini-2.5-flash-native-audio-preview",
+      "generationConfig": {
+        "responseModalities": [
+          "AUDIO"
+        ],
+        "speechConfig": {
+          "voiceConfig": {
+            "prebuiltVoiceConfig": {
+              "voiceName": "Kore"
+            }
+          }
+        },
+        "translationConfig": {
+          "targetLanguageCode": "de"
+        }
+      },
+      "systemInstruction": {
+        "parts": [
+          {
+            "text": "Be helpful."
+          }
+        ]
+      },
+      "tools": [
+        {
+          "functionDeclarations": [
+            {
+              "name": "get_weather",
+              "description": "Weather",
+              "parameters": {
+                "required": [
+                  "city"
+                ],
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "inputAudioTranscription": {},
+      "sessionResumption": {}
+    }
+  },
+  {
+    "realtimeInput": {
+      "audio": {
+        "data": "AQI=",
+        "mimeType": "audio/pcm;rate=24000"
+      }
+    }
+  },
+  {
+    "realtimeInput": {
+      "audioStreamEnd": true
+    }
+  },
+  {
+    "realtimeInput": {
+      "text": "Hello"
+    }
+  },
+  {
+    "toolResponse": {
+      "functionResponses": [
+        {
+          "id": "call-1",
+          "name": "get_weather",
+          "response": {
+            "temp": 21
+          }
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,132 @@
+---
+source: crates/providers/ferrin-google/tests/suite/stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "dqHOab6xGLzWodAPkPuViA4"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "id-0",
+    "tool_name": "getWeather",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "CiMBjz1rX25KieIB4d4AwFn8/WbsHTRNHBXso88PtemwfsSfRAp6AY89a1/e2FrmrE2HtlOxvV7vy8Kn5Og9n6CepcBKYW9aBT5QdXtTD4PGv9pDDWLEDAfsd86Et6k7HDEV976M3kC0ahLS8FCrwRntUKr+GF5uiUfPvgpzqNl5m8d8EwYykfwo1VwuTStR7q3mr/TzDcNzepafpVLdZloKYQGPPWtfkohmdau0GqGi3DuPbFTUBe5Ac/UbCvUk+P7KFbCGb93vFmnjmmTV7228DcAddqtWfe4iVePtSumw3JptYE6PIeVao2r8q7FXZKazzEiA9c04nmq6Vv9lOtt5NsgKrwEBjz1rX1ajIx3yeG/QI78uO+MsKoqgwrCI7PAEaDRqbyDCW/NX/4Vfuz1wp96oT3h/ttJ5ejzQyGamOrYreUUFvJBR/0TvFBdWOXwwCOWtvJ0Jh7SinV9HNqBDM1WWH8e+tGWY0r7xU/o/M1Fkwd73bvyp3BmSm5orrQL4jUZ1TN6ECqw7T7wHEkIfuBXGMZhQwAPzaapGVCdn0LjFJwd1aVReWmt6pE4ut993/K+0CqsBAY89a1+ts0Nggt7GZxVw/dQhH2Gc6KxRbAZKFMTuYRcNufJ5CyTvq85rMWEhTPWQxlQe1V7NIOlsQzyDhlejiCVbq0chDVrwRY23BmLrhSLi+SfKukEc0M+V9LdFiqxxLgUBrVdCvxA17g11j6HGdmXiNze2WDKm7ZXgMYvEiVmglpRZOb4JeJzxNPFsxhv2k6VkKB+GRtO48XwNz/i2taQ8Nq+LO5tED6HhCp4BAY89a18wBKoSkBT2IRo530FeNq/lpVozY0+k+p+H//TAtKoWZBamKCwra81idaMm1TTaWZGlX85Pq0kBvx1sQLFEhILeQrbH0O3Iuk9JlKLKctAwnBj8BZUGJEGtbigTKaSgWcMBhW+jfKWi1xwSxyJLRkIcXmE8U3FE/XHCLeiBy0NRa0yKn3xh62JU9087Q2nOMClxy5Zy5VsZ0qQ="
+      }
+    }
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "id-0",
+    "delta": "{\"location\":\"Boston"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "id-0",
+    "delta": "\"}",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "CiMBjz1rX25KieIB4d4AwFn8/WbsHTRNHBXso88PtemwfsSfRAp6AY89a1/e2FrmrE2HtlOxvV7vy8Kn5Og9n6CepcBKYW9aBT5QdXtTD4PGv9pDDWLEDAfsd86Et6k7HDEV976M3kC0ahLS8FCrwRntUKr+GF5uiUfPvgpzqNl5m8d8EwYykfwo1VwuTStR7q3mr/TzDcNzepafpVLdZloKYQGPPWtfkohmdau0GqGi3DuPbFTUBe5Ac/UbCvUk+P7KFbCGb93vFmnjmmTV7228DcAddqtWfe4iVePtSumw3JptYE6PIeVao2r8q7FXZKazzEiA9c04nmq6Vv9lOtt5NsgKrwEBjz1rX1ajIx3yeG/QI78uO+MsKoqgwrCI7PAEaDRqbyDCW/NX/4Vfuz1wp96oT3h/ttJ5ejzQyGamOrYreUUFvJBR/0TvFBdWOXwwCOWtvJ0Jh7SinV9HNqBDM1WWH8e+tGWY0r7xU/o/M1Fkwd73bvyp3BmSm5orrQL4jUZ1TN6ECqw7T7wHEkIfuBXGMZhQwAPzaapGVCdn0LjFJwd1aVReWmt6pE4ut993/K+0CqsBAY89a1+ts0Nggt7GZxVw/dQhH2Gc6KxRbAZKFMTuYRcNufJ5CyTvq85rMWEhTPWQxlQe1V7NIOlsQzyDhlejiCVbq0chDVrwRY23BmLrhSLi+SfKukEc0M+V9LdFiqxxLgUBrVdCvxA17g11j6HGdmXiNze2WDKm7ZXgMYvEiVmglpRZOb4JeJzxNPFsxhv2k6VkKB+GRtO48XwNz/i2taQ8Nq+LO5tED6HhCp4BAY89a18wBKoSkBT2IRo530FeNq/lpVozY0+k+p+H//TAtKoWZBamKCwra81idaMm1TTaWZGlX85Pq0kBvx1sQLFEhILeQrbH0O3Iuk9JlKLKctAwnBj8BZUGJEGtbigTKaSgWcMBhW+jfKWi1xwSxyJLRkIcXmE8U3FE/XHCLeiBy0NRa0yKn3xh62JU9087Q2nOMClxy5Zy5VsZ0qQ="
+      }
+    }
+  },
+  {
+    "type": "tool-input-end",
+    "id": "id-0",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "CiMBjz1rX25KieIB4d4AwFn8/WbsHTRNHBXso88PtemwfsSfRAp6AY89a1/e2FrmrE2HtlOxvV7vy8Kn5Og9n6CepcBKYW9aBT5QdXtTD4PGv9pDDWLEDAfsd86Et6k7HDEV976M3kC0ahLS8FCrwRntUKr+GF5uiUfPvgpzqNl5m8d8EwYykfwo1VwuTStR7q3mr/TzDcNzepafpVLdZloKYQGPPWtfkohmdau0GqGi3DuPbFTUBe5Ac/UbCvUk+P7KFbCGb93vFmnjmmTV7228DcAddqtWfe4iVePtSumw3JptYE6PIeVao2r8q7FXZKazzEiA9c04nmq6Vv9lOtt5NsgKrwEBjz1rX1ajIx3yeG/QI78uO+MsKoqgwrCI7PAEaDRqbyDCW/NX/4Vfuz1wp96oT3h/ttJ5ejzQyGamOrYreUUFvJBR/0TvFBdWOXwwCOWtvJ0Jh7SinV9HNqBDM1WWH8e+tGWY0r7xU/o/M1Fkwd73bvyp3BmSm5orrQL4jUZ1TN6ECqw7T7wHEkIfuBXGMZhQwAPzaapGVCdn0LjFJwd1aVReWmt6pE4ut993/K+0CqsBAY89a1+ts0Nggt7GZxVw/dQhH2Gc6KxRbAZKFMTuYRcNufJ5CyTvq85rMWEhTPWQxlQe1V7NIOlsQzyDhlejiCVbq0chDVrwRY23BmLrhSLi+SfKukEc0M+V9LdFiqxxLgUBrVdCvxA17g11j6HGdmXiNze2WDKm7ZXgMYvEiVmglpRZOb4JeJzxNPFsxhv2k6VkKB+GRtO48XwNz/i2taQ8Nq+LO5tED6HhCp4BAY89a18wBKoSkBT2IRo530FeNq/lpVozY0+k+p+H//TAtKoWZBamKCwra81idaMm1TTaWZGlX85Pq0kBvx1sQLFEhILeQrbH0O3Iuk9JlKLKctAwnBj8BZUGJEGtbigTKaSgWcMBhW+jfKWi1xwSxyJLRkIcXmE8U3FE/XHCLeiBy0NRa0yKn3xh62JU9087Q2nOMClxy5Zy5VsZ0qQ="
+      }
+    }
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "id-0",
+    "tool_name": "getWeather",
+    "input": "{\"location\":\"Boston\"}",
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "CiMBjz1rX25KieIB4d4AwFn8/WbsHTRNHBXso88PtemwfsSfRAp6AY89a1/e2FrmrE2HtlOxvV7vy8Kn5Og9n6CepcBKYW9aBT5QdXtTD4PGv9pDDWLEDAfsd86Et6k7HDEV976M3kC0ahLS8FCrwRntUKr+GF5uiUfPvgpzqNl5m8d8EwYykfwo1VwuTStR7q3mr/TzDcNzepafpVLdZloKYQGPPWtfkohmdau0GqGi3DuPbFTUBe5Ac/UbCvUk+P7KFbCGb93vFmnjmmTV7228DcAddqtWfe4iVePtSumw3JptYE6PIeVao2r8q7FXZKazzEiA9c04nmq6Vv9lOtt5NsgKrwEBjz1rX1ajIx3yeG/QI78uO+MsKoqgwrCI7PAEaDRqbyDCW/NX/4Vfuz1wp96oT3h/ttJ5ejzQyGamOrYreUUFvJBR/0TvFBdWOXwwCOWtvJ0Jh7SinV9HNqBDM1WWH8e+tGWY0r7xU/o/M1Fkwd73bvyp3BmSm5orrQL4jUZ1TN6ECqw7T7wHEkIfuBXGMZhQwAPzaapGVCdn0LjFJwd1aVReWmt6pE4ut993/K+0CqsBAY89a1+ts0Nggt7GZxVw/dQhH2Gc6KxRbAZKFMTuYRcNufJ5CyTvq85rMWEhTPWQxlQe1V7NIOlsQzyDhlejiCVbq0chDVrwRY23BmLrhSLi+SfKukEc0M+V9LdFiqxxLgUBrVdCvxA17g11j6HGdmXiNze2WDKm7ZXgMYvEiVmglpRZOb4JeJzxNPFsxhv2k6VkKB+GRtO48XwNz/i2taQ8Nq+LO5tED6HhCp4BAY89a18wBKoSkBT2IRo530FeNq/lpVozY0+k+p+H//TAtKoWZBamKCwra81idaMm1TTaWZGlX85Pq0kBvx1sQLFEhILeQrbH0O3Iuk9JlKLKctAwnBj8BZUGJEGtbigTKaSgWcMBhW+jfKWi1xwSxyJLRkIcXmE8U3FE/XHCLeiBy0NRa0yKn3xh62JU9087Q2nOMClxy5Zy5VsZ0qQ="
+      }
+    }
+  },
+  {
+    "type": "tool-input-start",
+    "id": "id-1",
+    "tool_name": "getWeather"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "id-1",
+    "delta": "{\"location\":\"San Francisco"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "id-1",
+    "delta": "\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "id-1"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "id-1",
+    "tool_name": "getWeather",
+    "input": "{\"location\":\"San Francisco\"}"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "tool-calls",
+      "raw": "STOP"
+    },
+    "usage": {
+      "input": {
+        "total": 26,
+        "no_cache": 26,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 155,
+        "text": 23,
+        "reasoning": 132
+      }
+    },
+    "provider_metadata": {
+      "google": {
+        "promptFeedback": null,
+        "groundingMetadata": null,
+        "urlContextMetadata": null,
+        "safetyRatings": null,
+        "usageMetadata": {
+          "promptTokenCount": 26,
+          "candidatesTokenCount": 23,
+          "totalTokenCount": 181,
+          "trafficType": "ON_DEMAND",
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 26
+            }
+          ],
+          "candidatesTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 23
+            }
+          ],
+          "thoughtsTokenCount": 132
+        },
+        "finishMessage": null,
+        "serviceTier": null
+      }
+    }
+  }
+]

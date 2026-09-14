@@ -1,0 +1,72 @@
+---
+source: crates/providers/ferrin-openai-compatible/tests/suite/chat.rs
+expression: prepared.body
+---
+{
+  "model": "example-model",
+  "user": "u1",
+  "max_tokens": 100,
+  "temperature": 0.5,
+  "top_p": 0.9,
+  "frequency_penalty": 0.1,
+  "presence_penalty": 0.2,
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          }
+        }
+      },
+      "strict": false,
+      "name": "answer",
+      "description": "The answer"
+    }
+  },
+  "stop": [
+    "END"
+  ],
+  "seed": 42,
+  "customFlag": true,
+  "nested": {
+    "a": 1
+  },
+  "reasoning_effort": "low",
+  "verbosity": "low",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are terse."
+    },
+    {
+      "role": "user",
+      "content": "Say hello"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          }
+        },
+        "strict": true
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "get_weather"
+    }
+  }
+}

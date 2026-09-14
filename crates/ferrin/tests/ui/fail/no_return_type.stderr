@@ -1,0 +1,5 @@
+error: tool functions must return Result<T, ToolError>
+ --> tests/ui/fail/no_return_type.rs:3:14
+  |
+3 | async fn show(input: String) {
+  |              ^^^^^^^^^^^^^^^

@@ -1,0 +1,115 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/prompt.rs
+expression: "json!({\"system\": converted.system, \"messages\": converted.messages, \"betas\":\n    betas})"
+---
+{
+  "system": [
+    {
+      "type": "text",
+      "text": "You are terse."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Describe these:"
+        },
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/jpeg",
+            "data": "/9j/4A=="
+          }
+        },
+        {
+          "type": "document",
+          "source": {
+            "type": "base64",
+            "media_type": "application/pdf",
+            "data": "JVBERi0xLjQgZmFrZQ=="
+          },
+          "title": "report.pdf",
+          "context": "Quarterly report",
+          "citations": {
+            "enabled": true
+          }
+        },
+        {
+          "type": "image",
+          "source": {
+            "type": "url",
+            "url": "https://example.test/cat.png"
+          }
+        },
+        {
+          "type": "document",
+          "source": {
+            "type": "text",
+            "media_type": "text/plain",
+            "data": "plain notes"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "Thinking about it.",
+          "signature": "sig_1"
+        },
+        {
+          "type": "redacted_thinking",
+          "data": "red_1"
+        },
+        {
+          "type": "text",
+          "text": "Let me look."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_1",
+          "name": "get_weather",
+          "input": {
+            "city": "Paris"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_1",
+          "content": "{\"temperature\":21}"
+        },
+        {
+          "type": "text",
+          "text": "Thanks",
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "5m"
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are welcome."
+        }
+      ]
+    }
+  ],
+  "betas": [
+    "pdfs-2024-09-25"
+  ]
+}

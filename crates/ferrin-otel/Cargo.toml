@@ -1,0 +1,39 @@
+[package]
+name = "ferrin-otel"
+description = "Ferrin OpenTelemetry bridge: GenAI semantic-convention spans and metrics via tracing-opentelemetry."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_otel"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-core = { workspace = true }
+ferrin-tool = { workspace = true }
+tracing = { workspace = true }
+opentelemetry = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
+tokio = { workspace = true, features = ["rt", "macros"] }
+tracing-subscriber = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

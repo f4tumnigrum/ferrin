@@ -1,0 +1,111 @@
+---
+source: crates/providers/ferrin-google/tests/suite/prompt.rs
+expression: converted.contents
+---
+[
+  {
+    "role": "user",
+    "parts": [
+      {
+        "text": "Weather and a chart please"
+      }
+    ]
+  },
+  {
+    "role": "model",
+    "parts": [
+      {
+        "functionCall": {
+          "id": "call-1",
+          "name": "get_weather",
+          "args": {
+            "city": "Berlin"
+          }
+        },
+        "thoughtSignature": "sig-call"
+      },
+      {
+        "functionCall": {
+          "id": "call-2",
+          "name": "render_chart",
+          "args": {
+            "kind": "bar"
+          }
+        }
+      },
+      {
+        "functionCall": {
+          "id": "call-3",
+          "name": "deny_me",
+          "args": {}
+        }
+      },
+      {
+        "functionCall": {
+          "id": "call-4",
+          "name": "lookup",
+          "args": {}
+        }
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "parts": [
+      {
+        "functionResponse": {
+          "id": "call-1",
+          "name": "get_weather",
+          "response": {
+            "name": "get_weather",
+            "content": "Sunny, 21C"
+          }
+        }
+      },
+      {
+        "functionResponse": {
+          "id": "call-2",
+          "name": "render_chart",
+          "response": {
+            "name": "render_chart",
+            "content": "Here is the chart"
+          }
+        }
+      },
+      {
+        "inlineData": {
+          "mimeType": "image/png",
+          "data": "iVBORw=="
+        }
+      },
+      {
+        "text": "Tool executed successfully and returned this image as a response"
+      },
+      {
+        "functionResponse": {
+          "id": "call-3",
+          "name": "deny_me",
+          "response": {
+            "name": "deny_me",
+            "content": "not allowed"
+          }
+        }
+      },
+      {
+        "functionResponse": {
+          "id": "call-4",
+          "name": "lookup",
+          "response": {
+            "name": "lookup",
+            "content": {
+              "rows": [
+                1,
+                2
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+]

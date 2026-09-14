@@ -1,0 +1,47 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/chat.rs
+expression: converted.messages
+---
+[
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Look"
+      },
+      {
+        "type": "image_url",
+        "image_url": {
+          "url": "data:image/jpeg;base64,/9j/4AAA"
+        }
+      },
+      {
+        "type": "input_audio",
+        "input_audio": {
+          "data": "UklGRi4uLi5XQVZF",
+          "format": "wav"
+        }
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": null,
+    "tool_calls": [
+      {
+        "id": "call_1",
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "arguments": "{\"city\":\"Paris\"}"
+        }
+      }
+    ]
+  },
+  {
+    "role": "tool",
+    "tool_call_id": "call_1",
+    "content": "{\"temperature\":21}"
+  }
+]

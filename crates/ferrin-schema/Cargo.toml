@@ -1,0 +1,39 @@
+[package]
+name = "ferrin-schema"
+description = "Ferrin JSON Schema generation (schemars, draft-07 default) and optional dynamic validation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_schema"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = ["json-schema-validation"]
+json-schema-validation = ["dep:jsonschema"]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+jsonschema = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+proptest = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

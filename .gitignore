@@ -1,0 +1,13 @@
+/target
+/verification/target
+/verification/**/target
+**/*.rs.bk
+*.pending-snap
+*.profraw
+*.profdata
+/lcov.info
+/junit.xml
+.DS_Store
+/.claude/settings.local.json
+.env
+.env.*

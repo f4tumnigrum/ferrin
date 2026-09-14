@@ -1,0 +1,45 @@
+[package]
+name = "ferrin-anthropic"
+description = "Ferrin provider for Anthropic (Messages API, tools, files, batches)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_anthropic"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+ferrin-tool = { workspace = true }
+tokio-util = { workspace = true }
+futures-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+secrecy = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
