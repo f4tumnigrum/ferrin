@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-14
+
 ### Added
 
 - `Tool` with `ToolKind::{Function, Dynamic, ProviderDefined, ProviderExecuted}`,

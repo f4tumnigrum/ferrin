@@ -6,7 +6,7 @@ declarations (`NeedsApproval`), model-output normalisation, caller
 restrictions, tool fingerprints and (feature `sandbox`) the `Sandbox` trait
 with a local-process implementation.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/06-tool-system.md`, ADR 0012.
 
 ## Example

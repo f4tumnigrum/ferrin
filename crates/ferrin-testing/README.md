@@ -4,7 +4,7 @@ Ferrin testing support: mock language models, stream simulation, a fixture
 server for provider tests, specification contract checks and a recording HTTP
 transport.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/03-engineering/04-testing.md`. Intended for tests of applications and
 provider crates; not for production use.
 

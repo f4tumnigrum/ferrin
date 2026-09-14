@@ -6,7 +6,7 @@ sources, code execution, provider-executed tools), embeddings, Gemini image
 generation, text-to-speech, transcription through the Interactions API, Veo
 video operations, the Files API, batch generation and Live API sessions.
 
-Part of the [Ferrin](../../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/17-provider-implementation-guide.md`; capability
 matrix, provider options and metadata: `docs/providers/google.md`.
 

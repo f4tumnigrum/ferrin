@@ -6,7 +6,7 @@ MCP connectors, containers and skills), provider-defined and
 provider-executed tools, file and skill uploads, and the Message Batches
 API.
 
-Part of the [Ferrin](../../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/17-provider-implementation-guide.md`; capability
 matrix, provider options and metadata: `docs/providers/anthropic.md`.
 

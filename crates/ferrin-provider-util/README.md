@@ -2,7 +2,7 @@
 
 Shared infrastructure for Ferrin provider adapters.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/14-http-and-security.md`, `docs/01-architecture/02-crates.md`.
 
 ## Contents

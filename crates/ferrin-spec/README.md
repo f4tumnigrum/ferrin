@@ -22,7 +22,7 @@ types they exchange with the core.
 Async trait methods are written as `fn name(..) -> impl Future<..> + Send`;
 implementations may use `async fn`.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/03-core-data-model.md`,
 `docs/01-architecture/04-provider-spec.md`,
 `docs/02-api/02-api-reference.md`.

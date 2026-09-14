@@ -9,7 +9,7 @@ histograms `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`,
 `gen_ai.execute_tool.duration`. Attribute and metric names are defined in
 `ferrin_otel::semconv`.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/13-observability.md`.
 
 ## Example

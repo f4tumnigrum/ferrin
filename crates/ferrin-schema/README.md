@@ -20,7 +20,7 @@ JSON Schema support for Ferrin tool inputs and structured output.
 |---|---|---|
 | `json-schema-validation` | on | validates raw JSON Schemas with `jsonschema` when a `Schema` is built from JSON |
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/08-structured-output.md`, ADR 0004.
 
 ## License

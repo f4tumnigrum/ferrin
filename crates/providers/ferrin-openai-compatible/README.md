@@ -6,7 +6,7 @@ and image endpoints. Use it directly against any endpoint, or as the building
 block of a dedicated provider crate that supplies its own name, error body
 structure, metadata extractor and request body transformer.
 
-Part of the [Ferrin](../../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/02-crates.md`; capability matrix, settings and provider
 options: `docs/providers/openai-compatible.md`.
 
