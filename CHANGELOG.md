@@ -13,6 +13,12 @@ lists releases and cross-crate changes. The format follows
   (HTTP 429) and retries, and `ferrin-testing` is a path-only workspace
   dev-dependency so published manifests no longer reference it.
 
+### Fixed
+
+- `cargo deny` no longer rejects the path-only `ferrin-testing`
+  dev-dependency as a wildcard version (`allow-wildcard-paths = true`); the
+  `deny` CI job had failed since that dependency change.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

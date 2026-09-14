@@ -30,6 +30,9 @@ confidence-threshold = 0.8
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# Path dependencies without a version requirement (`ferrin-testing` as a
+# dev-dependency, dropped from published manifests by cargo) are not wildcards.
+allow-wildcard-paths = true
 deny = [
     { crate = "openssl", reason = "rustls only" },
     { crate = "openssl-sys", reason = "rustls only" },
