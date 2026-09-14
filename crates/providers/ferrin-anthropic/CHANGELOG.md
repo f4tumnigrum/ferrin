@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `messages` benchmark: `do_generate` and `do_stream` against the fixture
+  server replaying the `text-basic`, `text-basic-stream` and
+  `reasoning-stream` fixtures.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

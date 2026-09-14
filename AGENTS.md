@@ -59,6 +59,11 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
     environment variables (`OPENAI_API_KEY`, optional `OPENAI_BASE_URL`,
     `OPENAI_MODEL`, `OPENAI_PROVIDER_OPTIONS`, `OPENAI_COMPATIBLE_*`).
   - `just doctest`: `cargo test --doc` (nextest does not run doc examples).
+  - `just bench [filter]`: `cargo bench --workspace --all-features` (criterion;
+    HTML report in `target/criterion/report/index.html`). Only a name filter
+    can be passed workspace-wide; criterion options such as
+    `--save-baseline` need one target:
+    `cargo bench -p <crate> --bench <name> -- <options>`.
   - `just doc`, `just api-check` (`cargo xtask api-snapshot --check`),
     `just module-size`, `just deny`, `just shear`, `just features`
     (`cargo hack --each-feature`), `just typos`, `just docs-lint`,
@@ -129,6 +134,11 @@ line.
   `tests/suite/*.rs`, aggregated into one binary by `tests/all.rs` (which
   allows `clippy::unwrap_used`/`expect_used` at the crate root). Only logic
   that needs crate-internal visibility is tested from `src/tests/`.
+  Benchmarks live in `benches/<name>.rs` (`[[bench]] harness = false`,
+  criterion) and allow `clippy::unwrap_used`/`expect_used` at the crate root
+  like `tests/all.rs`; they drive `MockLanguageModel` or `FixtureServer`,
+  never the network or `sleep`, and their results are not committed
+  (`bench.yml` is manual and not a gate).
   Fixtures live in `tests/fixtures/<area>/<case>.*`. `trybuild` cases live in
   `crates/ferrin/tests/ui/`.
 - Compare whole objects with `pretty_assertions::assert_eq!`, not field by

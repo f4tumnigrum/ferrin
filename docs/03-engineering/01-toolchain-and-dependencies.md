@@ -77,6 +77,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | `insta` | 1.48.0 | 快照测试（请求体、事件序列） |
 | `pretty_assertions` | 1.4.1 | 差异输出 |
 | `proptest` | 1.11.0 | 属性测试（部分 JSON 修复、SSE 解码） |
+| `criterion` | 0.8.2 | 基准测试（features `async_tokio`、`html_reports`；见[测试规范](04-testing.md)第 11 节） |
 | `trybuild` | 1.0.121 | 过程宏编译失败用例 |
 | `tracing-subscriber` | 0.3.23 | 测试中的日志捕获 |
 | `static_assertions` | 1.1.0 | `Error` 尺寸断言（PV-013） |
@@ -110,6 +111,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-14 | `opentelemetry`、`opentelemetry_sdk`、`tracing-opentelemetry`（crates.io API `max_stable_version`） | 0.32.0 / 0.32.1 / 0.33.0，与本文及 `Cargo.lock` 一致 | 实现 `ferrin-otel` |
 | 2026-09-14 | 工作区全部 52 个直接外部依赖（`cargo xtask check-versions`，crates.io 稀疏索引，取未 yank 的最高非预发布版本） | `Cargo.lock` 解析版本全部为最新稳定版 | 实现 `check-versions` 后首次运行 |
 | 2026-09-14 | `cargo shear --deny-warnings` 清理：从工作区表移除无成员使用的 `assert_matches`、`async-stream`、`criterion`、`data-url`（PV-002 已决定不采用）、`rustls`（仅经 reqwest 传递）、`serde_with`、`subtle`（审批签名用 `hmac::Mac::verify_slice` 常量时间比较）、`tempfile`、`tokio-test`、`uuid`（ID 由 `ferrin_provider_util::IdGenerator` 生成）；从成员清单移除未使用的 `ferrin-core`（`subtle`、`insta`、`proptest`、`tokio-test`、`assert_matches`、`tracing-subscriber`、`criterion`）、`ferrin-provider-util`（`percent-encoding`、`tracing`、`proptest`、`tokio-test`）、`ferrin-testing`（`futures-core`、`thiserror`、`tracing`）、`ferrin-openai-compatible`（`futures-util`、`regex`）声明；`ferrin-message` 的 `serde_json` 改为开发依赖 | `cargo shear --deny-warnings` 无报告 | 清理阶段 |
+| 2026-09-14 | `criterion` 0.8.2（crates.io 最新稳定版，2026-02-04 发布，Apache-2.0 OR MIT，`rust-version` 1.86）重新加入工作区，作为 9 个 crate 的开发依赖用于基准测试 | `cargo shear --deny-warnings` 无报告，`cargo deny check` 四项通过，`cargo hack check --each-feature` 通过；`bench.yml` 只引用已固定 SHA 的 `actions/checkout`、`dtolnay/rust-toolchain`、`Swatinem/rust-cache`、`actions/upload-artifact` | 基准测试阶段 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
 

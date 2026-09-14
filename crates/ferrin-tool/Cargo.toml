@@ -42,6 +42,11 @@ tokio = { workspace = true, optional = true }
 pretty_assertions = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }
 schemars = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "fingerprint"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true

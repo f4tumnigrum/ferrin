@@ -15,7 +15,7 @@ ferrin/
   justfile
   .cargo/config.toml         # `cargo xtask` 别名
   .config/nextest.toml
-  .github/workflows/         # ci、typos、semver、coverage、live-tests、versions、release
+  .github/workflows/         # ci、typos、semver、coverage、live-tests、versions、release、bench
   .github/dependabot.yml
   .github/pull_request_template.md
   scripts/docs_lint.py       # 文档链接与【待验证】编号检查（CI docs-lint 作业）
@@ -162,7 +162,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 【决策】2026-09-13 起不采用与源码同级的 `*_tests.rs` 约定，改为上述布局。依据：测试文件与源码文件分离后，源码目录只含实现，评审与模块规模统计不受测试代码干扰。
 - fixture 位于 `tests/fixtures/<area>/<case>.*`。
-- 基准测试位于 `benches/`，只对热点路径（SSE 解码、部分 JSON 修复、事件处理器）编写。
+- 基准测试位于 `benches/<name>.rs`（清单声明 `[[bench]] harness = false`，criterion），只对热点路径编写：SSE 解码、部分 JSON 修复、schema、消息裁剪、工具指纹、生成与流式管线、供应商适配器、门面端到端；目标清单与运行方式见[测试规范](04-testing.md)第 11 节。
 
 ## 5. 示例目录
 

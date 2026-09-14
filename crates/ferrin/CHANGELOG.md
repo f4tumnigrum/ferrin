@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `end_to_end` benchmark (feature `openai`): `stream_text` through the
+  Responses adapter against a fixture server replaying a synthetic text
+  stream, single stream and 1/16/64 concurrent streams.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

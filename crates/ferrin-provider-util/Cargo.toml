@@ -49,6 +49,11 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 wiremock = { workspace = true }
 pretty_assertions = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "sse"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true

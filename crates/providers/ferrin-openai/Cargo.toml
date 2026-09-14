@@ -56,6 +56,11 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net"] }
 tokio-tungstenite = { workspace = true, features = ["connect"] }
 insta = { workspace = true }
 pretty_assertions = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "responses"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true

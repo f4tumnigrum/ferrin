@@ -45,6 +45,11 @@ typos:
 docs-lint:
     python3 scripts/docs_lint.py
 
+# Criterion benchmarks; the HTML report lands in target/criterion/report/index.html.
+# Filter by name: `just bench sse`, `just bench end_to_end`.
+bench *args:
+    RUST_MIN_STACK=8388608 cargo bench --workspace --all-features {{args}}
+
 # Package every publishable crate in dependency order (what `release.yml` publishes).
 package:
     cargo package --locked $(cargo xtask publish-order | xargs -n1 printf ' -p %s')

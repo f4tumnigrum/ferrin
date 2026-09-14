@@ -12,6 +12,7 @@ Ferrin 工作流：
 | `semver.yml` | PR 改动 `Cargo.toml` 或 `crates/**`（含加标签事件） | 以基线分支可达的最近 `v*` tag 为基线运行 `cargo semver-checks`；尚无发布 tag 时输出提示并跳过 |
 | `coverage.yml` | push 到 main、PR | `cargo llvm-cov`；摘要写入作业摘要，lcov 报告作为构建产物保留 14 天 |
 | `live-tests.yml` | 手动触发、每周定时 | 在线测试（需要 secret） |
+| `bench.yml` | 手动触发（输入 `filter`） | `cargo bench --workspace --all-features`（criterion），`target/criterion` 报告作为构建产物保留 30 天；不是门禁，基准代码由 `ci.yml` 的 `clippy` 作业（`--all-targets`）编译检查（见[测试规范](04-testing.md)第 11 节） |
 | `versions.yml` | 每周定时、手动触发 | `cargo xtask check-versions`，过期依赖开 issue；`cargo deny check advisories`，有漏洞开 issue |
 | `release.yml` | tag `v*` | 按依赖顺序 `cargo publish`（见[版本与发布](06-versioning-and-release.md)） |
 | `typos.yml` | PR | `typos` |

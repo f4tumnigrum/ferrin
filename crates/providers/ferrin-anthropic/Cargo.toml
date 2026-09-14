@@ -39,6 +39,11 @@ ferrin-testing = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 insta = { workspace = true }
 pretty_assertions = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "messages"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true

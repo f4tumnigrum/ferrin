@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `sse` benchmark: `SseDecoder::feed` by chunk size and `decode_stream` over a
+  2000-event Responses-style body.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

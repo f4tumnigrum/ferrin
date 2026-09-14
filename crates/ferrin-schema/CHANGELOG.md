@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `partial_json` benchmark (`repair`, `parse_partial` on document prefixes,
+  `serde_json` baseline) and `schema` benchmark (derivation, `openai_strict`,
+  typed and raw JSON Schema validation).
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

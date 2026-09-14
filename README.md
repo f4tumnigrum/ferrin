@@ -322,6 +322,7 @@ just check-all        # fmt, clippy, tests, doctests, docs, API snapshot, deny, 
 - 测试只放在 `crates/<crate>/tests/suite/*.rs`，由 `tests/all.rs` 聚合；供应商测试回放 `tests/fixtures/` 下的录制响应，不访问网络。
 - 在线测试以 `live_` 开头并标记 `#[ignore]`：`OPENAI_API_KEY=... just test -- --run-ignored only -E 'test(live_)'`。
 - `cargo xtask` 提供 `publish-order`、`check-module-size`、`check-versions`、`record-fixture`、`api-snapshot`。公共 API 变化后运行 `cargo xtask api-snapshot` 并提交 `docs/api/`。
+- 基准测试：`just bench`（criterion，报告在 `target/criterion/report/index.html`，`just bench sse` 按名称过滤）。覆盖 SSE 解码、部分 JSON 修复、schema、消息裁剪、工具指纹、生成与流式管线、三个供应商适配器（本地 fixture 服务器）和门面端到端流式；不访问网络，结果不入库，也不是 CI 门禁。
 - 贡献流程与代码规则见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [AGENTS.md](AGENTS.md)；每个 crate 的 `CHANGELOG.md` 随改动更新。
 
 ## 文档

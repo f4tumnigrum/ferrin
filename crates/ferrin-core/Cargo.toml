@@ -64,6 +64,15 @@ tokio = { workspace = true, features = ["rt-multi-thread", "test-util", "net"] }
 tokio-tungstenite = { workspace = true, features = ["connect"] }
 pretty_assertions = { workspace = true }
 static_assertions = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "generate_text"
+harness = false
+
+[[bench]]
+name = "stream_text"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true
