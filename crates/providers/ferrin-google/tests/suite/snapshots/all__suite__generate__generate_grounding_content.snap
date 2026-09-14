@@ -1,0 +1,38 @@
+---
+source: crates/providers/ferrin-google/tests/suite/generate.rs
+expression: result.content
+---
+[
+  {
+    "type": "text",
+    "text": "Ferrin is a Rust AI SDK."
+  },
+  {
+    "type": "source",
+    "source_type": "url",
+    "id": "id-0",
+    "url": "https://example.test/ferrin",
+    "title": "Ferrin"
+  },
+  {
+    "type": "source",
+    "source_type": "url",
+    "id": "id-1",
+    "url": "https://example.test/docs.pdf",
+    "title": "Docs"
+  },
+  {
+    "type": "source",
+    "source_type": "url",
+    "id": "id-2",
+    "url": "https://example.test/image-source",
+    "title": "Diagram"
+  },
+  {
+    "type": "source",
+    "source_type": "url",
+    "id": "id-3",
+    "url": "https://maps.example.test/place/1",
+    "title": "HQ"
+  }
+]

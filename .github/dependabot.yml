@@ -1,0 +1,24 @@
+# Weekly dependency updates (docs/03-engineering/05-ci-and-quality-gates.md §6, PV-027).
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      rust-minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: cargo
+    directory: /verification
+    schedule:
+      interval: monthly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

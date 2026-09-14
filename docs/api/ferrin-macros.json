@@ -1,0 +1,12 @@
+{
+  "crate": "ferrin-macros",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_macros::tool",
+      "kind": "proc_macro",
+      "signature": "proc_macro attr"
+    }
+  ]
+}

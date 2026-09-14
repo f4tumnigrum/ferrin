@@ -1,0 +1,52 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/completion.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "cmpl_s",
+    "timestamp": "2025-09-13T00:08:20Z",
+    "model_id": "gpt-3.5-turbo-instruct"
+  },
+  {
+    "type": "text-start",
+    "id": "0"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "Hello "
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "streamed completion."
+  },
+  {
+    "type": "text-end",
+    "id": "0"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "stop"
+    },
+    "usage": {
+      "input": {
+        "total": 8
+      },
+      "output": {
+        "total": 5
+      }
+    },
+    "provider_metadata": {
+      "openai": {}
+    }
+  }
+]

@@ -1,0 +1,14 @@
+---
+source: crates/ferrin-mcp/tests/suite/client_modern.rs
+expression: request.params
+---
+{
+  "_meta": {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientCapabilities": {},
+    "io.modelcontextprotocol/clientInfo": {
+      "name": "ferrin-mcp-client",
+      "version": "0.1.0"
+    }
+  }
+}

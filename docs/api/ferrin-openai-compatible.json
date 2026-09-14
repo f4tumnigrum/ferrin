@@ -1,0 +1,1130 @@
+{
+  "crate": "ferrin-openai-compatible",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_openai_compatible::ConvertUsage",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&ChatUsage) -> Usage + Send + Sync>",
+      "source": "crate::config::ConvertUsage"
+    },
+    {
+      "path": "ferrin_openai_compatible::DefaultErrorStructure",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::error::DefaultErrorStructure",
+      "traits": [
+        "impl Clone for DefaultErrorStructure",
+        "impl Copy for DefaultErrorStructure",
+        "impl Debug for DefaultErrorStructure",
+        "impl Default for DefaultErrorStructure",
+        "impl ErrorStructure for DefaultErrorStructure"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::ErrorStructure",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + Debug",
+      "source": "crate::error::ErrorStructure",
+      "methods": [
+        "fn is_retryable(&self, status: StatusCode, body: Option<&JsonValue>) -> Option<bool>",
+        "fn message(&self, body: &JsonValue) -> Option<String>"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::MetadataExtractor",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + Debug",
+      "source": "crate::metadata::MetadataExtractor",
+      "methods": [
+        "fn extract_metadata(&self, body: &JsonValue) -> Option<ProviderMetadata>",
+        "fn stream_extractor(&self) -> Box<dyn StreamMetadataExtractor>"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleChatLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::chat::OpenAiCompatibleChatLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedChatRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleChatLanguageModel",
+        "impl Debug for OpenAiCompatibleChatLanguageModel",
+        "impl LanguageModel for OpenAiCompatibleChatLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleCompletionLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::completion::OpenAiCompatibleCompletionLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedCompletionRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleCompletionLanguageModel",
+        "impl Debug for OpenAiCompatibleCompletionLanguageModel",
+        "impl LanguageModel for OpenAiCompatibleCompletionLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::config::OpenAiCompatibleConfig",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "api_key_env: Option<String>",
+        "headers: Headers",
+        "query_params: Vec<(String, String)>",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>",
+        "include_usage: bool",
+        "supports_structured_outputs: bool",
+        "supported_urls: SupportedUrls",
+        "error_structure: SharedErrorStructure",
+        "metadata_extractor: Option<SharedMetadataExtractor>",
+        "transform_request_body: Option<TransformRequestBody>",
+        "convert_usage: Option<ConvertUsage>",
+        "max_embeddings_per_call: usize",
+        "supports_parallel_calls: bool"
+      ],
+      "methods": [
+        "fn api_key(&self) -> Option<SecretString>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError>",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn transform_request_body(&self, body: JsonObject) -> JsonObject",
+        "fn url(&self, path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for OpenAiCompatibleConfig"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleEmbeddingModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::embedding::OpenAiCompatibleEmbeddingModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleEmbeddingModel",
+        "impl Debug for OpenAiCompatibleEmbeddingModel",
+        "impl EmbeddingModel for OpenAiCompatibleEmbeddingModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleImageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::image::OpenAiCompatibleImageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleImageModel",
+        "impl Debug for OpenAiCompatibleImageModel",
+        "impl ImageModel for OpenAiCompatibleImageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleProvider",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn chat(&self, model_id: &str) -> OpenAiCompatibleChatLanguageModel",
+        "fn completion(&self, model_id: &str) -> OpenAiCompatibleCompletionLanguageModel",
+        "fn config(&self) -> &SharedConfig",
+        "fn embedding(&self, model_id: &str) -> OpenAiCompatibleEmbeddingModel",
+        "fn from_config(config: SharedConfig) -> Self",
+        "fn image(&self, model_id: &str) -> OpenAiCompatibleImageModel"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleProvider",
+        "impl Debug for OpenAiCompatibleProvider",
+        "impl Provider for OpenAiCompatibleProvider"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::OpenAiCompatibleSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "api_key_env: Option<String>",
+        "headers: Headers",
+        "query_params: Vec<(String, String)>",
+        "include_usage: bool",
+        "supports_structured_outputs: bool",
+        "supported_urls: Option<SupportedUrls>",
+        "transport: Option<SharedTransport>",
+        "id_generator: Option<Arc<dyn IdGenerator>>",
+        "error_structure: Option<SharedErrorStructure>",
+        "metadata_extractor: Option<SharedMetadataExtractor>",
+        "transform_request_body: Option<TransformRequestBody>",
+        "convert_usage: Option<ConvertUsage>",
+        "max_embeddings_per_call: Option<usize>",
+        "supports_parallel_calls: Option<bool>"
+      ],
+      "methods": [
+        "fn new(name: impl Into<String>, base_url: Url) -> Self"
+      ],
+      "traits": [
+        "impl Debug for OpenAiCompatibleSettings"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<OpenAiCompatibleConfig>",
+      "source": "crate::config::SharedConfig"
+    },
+    {
+      "path": "ferrin_openai_compatible::SharedErrorStructure",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn ErrorStructure>",
+      "source": "crate::error::SharedErrorStructure"
+    },
+    {
+      "path": "ferrin_openai_compatible::SharedMetadataExtractor",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn MetadataExtractor>",
+      "source": "crate::metadata::SharedMetadataExtractor"
+    },
+    {
+      "path": "ferrin_openai_compatible::StreamMetadataExtractor",
+      "kind": "trait",
+      "signature": "trait: Send + Debug",
+      "source": "crate::metadata::StreamMetadataExtractor",
+      "methods": [
+        "fn build_metadata(&mut self) -> Option<ProviderMetadata>",
+        "fn process_chunk(&mut self, chunk: &JsonValue)"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::TransformRequestBody",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(JsonObject) -> JsonObject + Send + Sync>",
+      "source": "crate::config::TransformRequestBody"
+    },
+    {
+      "path": "ferrin_openai_compatible::VERSION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::OpenAiCompatibleChatLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedChatRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleChatLanguageModel",
+        "impl Debug for OpenAiCompatibleChatLanguageModel",
+        "impl LanguageModel for OpenAiCompatibleChatLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::PreparedChatRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonObject",
+        "warnings: Vec<Warning>",
+        "metadata_key: String"
+      ],
+      "traits": [
+        "impl Clone for PreparedChatRequest",
+        "impl Debug for PreparedChatRequest"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatChoice",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "message: Option<ChatMessage>",
+        "delta: Option<ChatMessage>",
+        "finish_reason: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ChatChoice",
+        "impl Debug for ChatChoice",
+        "impl Default for ChatChoice",
+        "impl PartialEq for ChatChoice",
+        "impl StructuralPartialEq for ChatChoice",
+        "impl<'de> Deserialize<'de> for ChatChoice"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatContent",
+      "kind": "enum",
+      "signature": "enum",
+      "variants": [
+        "Text(String)",
+        "Parts(Vec<JsonObject>)"
+      ],
+      "traits": [
+        "impl Clone for ChatContent",
+        "impl Debug for ChatContent",
+        "impl PartialEq for ChatContent",
+        "impl StructuralPartialEq for ChatContent",
+        "impl<'de> Deserialize<'de> for ChatContent"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatFunction",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: Option<String>",
+        "arguments: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ChatFunction",
+        "impl Debug for ChatFunction",
+        "impl Default for ChatFunction",
+        "impl Eq for ChatFunction",
+        "impl PartialEq for ChatFunction",
+        "impl StructuralPartialEq for ChatFunction",
+        "impl<'de> Deserialize<'de> for ChatFunction"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "content: Option<ChatContent>",
+        "reasoning_content: Option<String>",
+        "reasoning: Option<String>",
+        "tool_calls: Option<Vec<ChatToolCall>>"
+      ],
+      "methods": [
+        "fn reasoning_text(&self) -> Option<&str>"
+      ],
+      "traits": [
+        "impl Clone for ChatMessage",
+        "impl Debug for ChatMessage",
+        "impl Default for ChatMessage",
+        "impl PartialEq for ChatMessage",
+        "impl StructuralPartialEq for ChatMessage",
+        "impl<'de> Deserialize<'de> for ChatMessage"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "created: Option<f64>",
+        "model: Option<String>",
+        "choices: Option<Vec<ChatChoice>>",
+        "usage: Option<ChatUsage>",
+        "error: Option<JsonValue>"
+      ],
+      "methods": [
+        "fn has_output(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for ChatResponse",
+        "impl Debug for ChatResponse",
+        "impl Default for ChatResponse",
+        "impl PartialEq for ChatResponse",
+        "impl StructuralPartialEq for ChatResponse",
+        "impl<'de> Deserialize<'de> for ChatResponse"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatToolCall",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "index: Option<usize>",
+        "id: Option<String>",
+        "function: Option<ChatFunction>",
+        "extra_content: Option<JsonValue>"
+      ],
+      "methods": [
+        "fn thought_signature(&self) -> Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ChatToolCall",
+        "impl Debug for ChatToolCall",
+        "impl Default for ChatToolCall",
+        "impl PartialEq for ChatToolCall",
+        "impl StructuralPartialEq for ChatToolCall",
+        "impl<'de> Deserialize<'de> for ChatToolCall"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::ChatUsage",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prompt_tokens: Option<u64>",
+        "completion_tokens: Option<u64>",
+        "total_tokens: Option<u64>",
+        "prompt_tokens_details: Option<PromptTokensDetails>",
+        "completion_tokens_details: Option<CompletionTokensDetails>"
+      ],
+      "traits": [
+        "impl Clone for ChatUsage",
+        "impl Debug for ChatUsage",
+        "impl Default for ChatUsage",
+        "impl PartialEq for ChatUsage",
+        "impl StructuralPartialEq for ChatUsage",
+        "impl<'de> Deserialize<'de> for ChatUsage"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::CompletionTokensDetails",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "reasoning_tokens: Option<u64>",
+        "accepted_prediction_tokens: Option<u64>",
+        "rejected_prediction_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for CompletionTokensDetails",
+        "impl Debug for CompletionTokensDetails",
+        "impl Default for CompletionTokensDetails",
+        "impl Eq for CompletionTokensDetails",
+        "impl PartialEq for CompletionTokensDetails",
+        "impl StructuralPartialEq for CompletionTokensDetails",
+        "impl<'de> Deserialize<'de> for CompletionTokensDetails"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::api_types::PromptTokensDetails",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "cached_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for PromptTokensDetails",
+        "impl Debug for PromptTokensDetails",
+        "impl Default for PromptTokensDetails",
+        "impl Eq for PromptTokensDetails",
+        "impl PartialEq for PromptTokensDetails",
+        "impl StructuralPartialEq for PromptTokensDetails",
+        "impl<'de> Deserialize<'de> for PromptTokensDetails"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::convert_prompt",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::convert_prompt::ConvertedMessages",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "messages: Vec<JsonValue>",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for ConvertedMessages",
+        "impl Debug for ConvertedMessages",
+        "impl Default for ConvertedMessages"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::convert_prompt::EXECUTION_DENIED_MESSAGE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::convert_prompt::convert_prompt",
+      "kind": "function",
+      "signature": "fn convert_prompt(prompt: &[PromptMessage], metadata_key: &str) -> Result<ConvertedMessages, ProviderError>"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::options",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::options::ChatOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "user: Option<String>",
+        "reasoning_effort: Option<String>",
+        "text_verbosity: Option<String>",
+        "strict_json_schema: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for ChatOptions",
+        "impl Debug for ChatOptions",
+        "impl Default for ChatOptions",
+        "impl Eq for ChatOptions",
+        "impl PartialEq for ChatOptions",
+        "impl StructuralPartialEq for ChatOptions",
+        "impl<'de> Deserialize<'de> for ChatOptions"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::options::KNOWN_CHAT_OPTION_KEYS",
+      "kind": "constant",
+      "signature": "const: &[&str]"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::output",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::output::convert_content",
+      "kind": "function",
+      "signature": "fn convert_content(content: Option<&ChatContent>) -> Vec<Content>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::output::convert_usage",
+      "kind": "function",
+      "signature": "fn convert_usage(usage: &ChatUsage, raw: Option<JsonObject>) -> Usage",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::output::map_finish_reason",
+      "kind": "function",
+      "signature": "fn map_finish_reason(reason: &str) -> FinishReason",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::output::prediction_metadata",
+      "kind": "function",
+      "signature": "fn prediction_metadata(usage: &ChatUsage) -> JsonObject",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::prepare_tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::prepare_tools::PreparedTools",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "tools: Option<Vec<JsonValue>>",
+        "tool_choice: Option<JsonValue>",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for PreparedTools",
+        "impl Debug for PreparedTools",
+        "impl Default for PreparedTools"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::prepare_tools::prepare_tools",
+      "kind": "function",
+      "signature": "fn prepare_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>) -> Result<PreparedTools, ProviderError>"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::stream",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::chat::stream::ChatStreamState",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, metadata_key: String, extractor: Option<Box<dyn StreamMetadataExtractor>>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for ChatStreamState",
+        "impl StreamMachine for ChatStreamState"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::CompletionChoice",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "text: Option<String>",
+        "finish_reason: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for CompletionChoice",
+        "impl Debug for CompletionChoice",
+        "impl Default for CompletionChoice",
+        "impl PartialEq for CompletionChoice",
+        "impl StructuralPartialEq for CompletionChoice",
+        "impl<'de> Deserialize<'de> for CompletionChoice"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::CompletionOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "echo: Option<bool>",
+        "logit_bias: Option<BTreeMap<String, f64>>",
+        "suffix: Option<String>",
+        "user: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for CompletionOptions",
+        "impl Debug for CompletionOptions",
+        "impl Default for CompletionOptions",
+        "impl PartialEq for CompletionOptions",
+        "impl StructuralPartialEq for CompletionOptions",
+        "impl<'de> Deserialize<'de> for CompletionOptions"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::CompletionPrompt",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prompt: String",
+        "stop_sequences: Vec<String>"
+      ],
+      "traits": [
+        "impl Clone for CompletionPrompt",
+        "impl Debug for CompletionPrompt",
+        "impl Eq for CompletionPrompt",
+        "impl PartialEq for CompletionPrompt",
+        "impl StructuralPartialEq for CompletionPrompt"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::CompletionResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "created: Option<f64>",
+        "model: Option<String>",
+        "choices: Option<Vec<CompletionChoice>>",
+        "usage: Option<CompletionUsage>",
+        "error: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for CompletionResponse",
+        "impl Debug for CompletionResponse",
+        "impl Default for CompletionResponse",
+        "impl PartialEq for CompletionResponse",
+        "impl StructuralPartialEq for CompletionResponse",
+        "impl<'de> Deserialize<'de> for CompletionResponse"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::CompletionUsage",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prompt_tokens: Option<u64>",
+        "completion_tokens: Option<u64>",
+        "total_tokens: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for CompletionUsage",
+        "impl Debug for CompletionUsage",
+        "impl Default for CompletionUsage",
+        "impl Eq for CompletionUsage",
+        "impl PartialEq for CompletionUsage",
+        "impl StructuralPartialEq for CompletionUsage",
+        "impl<'de> Deserialize<'de> for CompletionUsage"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::KNOWN_COMPLETION_OPTION_KEYS",
+      "kind": "constant",
+      "signature": "const: &[&str]"
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::OpenAiCompatibleCompletionLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedCompletionRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleCompletionLanguageModel",
+        "impl Debug for OpenAiCompatibleCompletionLanguageModel",
+        "impl LanguageModel for OpenAiCompatibleCompletionLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::PreparedCompletionRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonObject",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for PreparedCompletionRequest",
+        "impl Debug for PreparedCompletionRequest"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::convert_completion_usage",
+      "kind": "function",
+      "signature": "fn convert_completion_usage(usage: &CompletionUsage, raw: Option<JsonObject>) -> Usage",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::completion::convert_prompt",
+      "kind": "function",
+      "signature": "fn convert_prompt(prompt: &[PromptMessage]) -> Result<CompletionPrompt, ProviderError>"
+    },
+    {
+      "path": "ferrin_openai_compatible::config",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::config::ConvertUsage",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&ChatUsage) -> Usage + Send + Sync>"
+    },
+    {
+      "path": "ferrin_openai_compatible::config::DEFAULT_MAX_EMBEDDINGS_PER_CALL",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_openai_compatible::config::OpenAiCompatibleConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "api_key_env: Option<String>",
+        "headers: Headers",
+        "query_params: Vec<(String, String)>",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>",
+        "include_usage: bool",
+        "supports_structured_outputs: bool",
+        "supported_urls: SupportedUrls",
+        "error_structure: SharedErrorStructure",
+        "metadata_extractor: Option<SharedMetadataExtractor>",
+        "transform_request_body: Option<TransformRequestBody>",
+        "convert_usage: Option<ConvertUsage>",
+        "max_embeddings_per_call: usize",
+        "supports_parallel_calls: bool"
+      ],
+      "methods": [
+        "fn api_key(&self) -> Option<SecretString>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError>",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn transform_request_body(&self, body: JsonObject) -> JsonObject",
+        "fn url(&self, path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for OpenAiCompatibleConfig"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::config::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<OpenAiCompatibleConfig>"
+    },
+    {
+      "path": "ferrin_openai_compatible::config::TransformRequestBody",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(JsonObject) -> JsonObject + Send + Sync>"
+    },
+    {
+      "path": "ferrin_openai_compatible::config::USER_AGENT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_openai_compatible::create_openai_compatible",
+      "kind": "function",
+      "signature": "fn create_openai_compatible(settings: OpenAiCompatibleSettings) -> Result<OpenAiCompatibleProvider, ProviderError>"
+    },
+    {
+      "path": "ferrin_openai_compatible::embedding",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::embedding::EmbeddingOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "dimensions: Option<u32>",
+        "user: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for EmbeddingOptions",
+        "impl Debug for EmbeddingOptions",
+        "impl Default for EmbeddingOptions",
+        "impl Eq for EmbeddingOptions",
+        "impl PartialEq for EmbeddingOptions",
+        "impl StructuralPartialEq for EmbeddingOptions",
+        "impl<'de> Deserialize<'de> for EmbeddingOptions"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::embedding::OpenAiCompatibleEmbeddingModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleEmbeddingModel",
+        "impl Debug for OpenAiCompatibleEmbeddingModel",
+        "impl EmbeddingModel for OpenAiCompatibleEmbeddingModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::error::DefaultErrorStructure",
+      "kind": "struct",
+      "signature": "struct",
+      "traits": [
+        "impl Clone for DefaultErrorStructure",
+        "impl Copy for DefaultErrorStructure",
+        "impl Debug for DefaultErrorStructure",
+        "impl Default for DefaultErrorStructure",
+        "impl ErrorStructure for DefaultErrorStructure"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::ErrorStructure",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + Debug",
+      "methods": [
+        "fn is_retryable(&self, status: StatusCode, body: Option<&JsonValue>) -> Option<bool>",
+        "fn message(&self, body: &JsonValue) -> Option<String>"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::FrameError",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "message: String",
+        "code: Option<String>",
+        "error_type: Option<String>"
+      ],
+      "methods": [
+        "fn is_retryable(&self) -> bool",
+        "fn status_code(&self) -> u16",
+        "fn to_api_call_error(&self, url: Url, frame: &JsonValue) -> ApiCallError",
+        "fn to_stream_error(&self, frame: &JsonValue) -> StreamError"
+      ],
+      "traits": [
+        "impl Clone for FrameError",
+        "impl Debug for FrameError",
+        "impl Eq for FrameError",
+        "impl PartialEq for FrameError",
+        "impl StructuralPartialEq for FrameError"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::OpenAiCompatibleErrorData",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "error: OpenAiCompatibleErrorDetail"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleErrorData",
+        "impl Debug for OpenAiCompatibleErrorData",
+        "impl PartialEq for OpenAiCompatibleErrorData",
+        "impl StructuralPartialEq for OpenAiCompatibleErrorData",
+        "impl<'de> Deserialize<'de> for OpenAiCompatibleErrorData"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::OpenAiCompatibleErrorDetail",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "message: String",
+        "error_type: Option<String>",
+        "param: Option<JsonValue>",
+        "code: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleErrorDetail",
+        "impl Debug for OpenAiCompatibleErrorDetail",
+        "impl PartialEq for OpenAiCompatibleErrorDetail",
+        "impl StructuralPartialEq for OpenAiCompatibleErrorDetail",
+        "impl<'de> Deserialize<'de> for OpenAiCompatibleErrorDetail"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::SharedErrorStructure",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn ErrorStructure>"
+    },
+    {
+      "path": "ferrin_openai_compatible::error::code_text",
+      "kind": "function",
+      "signature": "fn code_text(code: Option<&JsonValue>) -> Option<String>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::early_error",
+      "kind": "function",
+      "signature": "fn early_error(structure: &dyn ErrorStructure, url: Url, frame: &JsonValue) -> ApiCallError",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::failed_response_handler",
+      "kind": "function",
+      "signature": "fn failed_response_handler(structure: SharedErrorStructure) -> JsonErrorResponseHandler<JsonValue>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::parse_frame_error",
+      "kind": "function",
+      "signature": "fn parse_frame_error(structure: &dyn ErrorStructure, frame: &JsonValue) -> Option<FrameError>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::error::stream_error_for_frame",
+      "kind": "function",
+      "signature": "fn stream_error_for_frame(structure: &dyn ErrorStructure, frame: &JsonValue) -> StreamError",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::image",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::image::MAX_IMAGES_PER_CALL",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_openai_compatible::image::OpenAiCompatibleImageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for OpenAiCompatibleImageModel",
+        "impl Debug for OpenAiCompatibleImageModel",
+        "impl ImageModel for OpenAiCompatibleImageModel"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::MetadataExtractor",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + Debug",
+      "methods": [
+        "fn extract_metadata(&self, body: &JsonValue) -> Option<ProviderMetadata>",
+        "fn stream_extractor(&self) -> Box<dyn StreamMetadataExtractor>"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::SharedMetadataExtractor",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn MetadataExtractor>"
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::StreamMetadataExtractor",
+      "kind": "trait",
+      "signature": "trait: Send + Debug",
+      "methods": [
+        "fn build_metadata(&mut self) -> Option<ProviderMetadata>",
+        "fn process_chunk(&mut self, chunk: &JsonValue)"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::compact",
+      "kind": "function",
+      "signature": "fn compact(object: JsonObject) -> JsonObject",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::merge_metadata",
+      "kind": "function",
+      "signature": "fn merge_metadata(base: &mut ProviderMetadata, extra: ProviderMetadata)"
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::metadata_under",
+      "kind": "function",
+      "signature": "fn metadata_under(key: &str, value: JsonObject) -> ProviderMetadata",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::metadata::timestamp_from_seconds",
+      "kind": "function",
+      "signature": "fn timestamp_from_seconds(seconds: Option<f64>) -> Option<DateTime<Utc>>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::DEPRECATED_SHARED_OPTIONS_KEY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::SHARED_OPTIONS_KEY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::merged_options",
+      "kind": "function",
+      "signature": "fn merged_options(keys: &[String], provider_options: &ProviderOptions) -> Option<JsonObject>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::option_keys",
+      "kind": "function",
+      "signature": "fn option_keys(name: &str) -> Vec<String>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::passthrough_options",
+      "kind": "function",
+      "signature": "fn passthrough_options(name: &str, provider_options: &ProviderOptions, known: &[&str]) -> JsonObject",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::resolve_metadata_key",
+      "kind": "function",
+      "signature": "fn resolve_metadata_key(name: &str, provider_options: &ProviderOptions) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::shared_extra_fields",
+      "kind": "function",
+      "signature": "fn shared_extra_fields(provider_options: Option<&ProviderOptions>) -> JsonObject",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::to_camel_case",
+      "kind": "function",
+      "signature": "fn to_camel_case(name: &str) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_openai_compatible::options_key::warn_if_deprecated_key",
+      "kind": "function",
+      "signature": "fn warn_if_deprecated_key(name: &str, provider_options: &ProviderOptions, warnings: &mut Vec<Warning>)"
+    }
+  ]
+}

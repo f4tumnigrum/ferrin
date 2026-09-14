@@ -1,0 +1,12 @@
+[package]
+name = "pv001-dynosaur"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+dynosaur = { workspace = true }
+trait-variant = { workspace = true }
+tokio = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }

@@ -1,0 +1,36 @@
+{
+  "task": "transcribe",
+  "language": "english",
+  "duration": 2.5,
+  "text": "Hello world.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 1.2,
+      "text": "Hello",
+      "tokens": [
+        1
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1,
+      "compression_ratio": 1.0,
+      "no_speech_prob": 0.01
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 1.2,
+      "end": 2.5,
+      "text": " world.",
+      "tokens": [
+        2
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1,
+      "compression_ratio": 1.0,
+      "no_speech_prob": 0.01
+    }
+  ]
+}

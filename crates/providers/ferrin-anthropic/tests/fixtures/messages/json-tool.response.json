@@ -1,0 +1,12 @@
+{
+  "id": "msg_json_tool",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-3-haiku-20240307",
+  "content": [
+    {"type": "tool_use", "id": "toolu_json", "name": "json", "input": {"answer": "42"}}
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {"input_tokens": 12, "output_tokens": 8}
+}

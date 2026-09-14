@@ -1,0 +1,70 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/responses_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "resp_stream",
+    "timestamp": "2025-09-13T00:01:40Z",
+    "model_id": "gpt-5"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "call_s1",
+    "tool_name": "get_weather"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_s1",
+    "delta": "{\"city\":"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_s1",
+    "delta": "\"Paris\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "call_s1"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "call_s1",
+    "tool_name": "get_weather",
+    "input": "{\"city\":\"Paris\"}",
+    "provider_metadata": {
+      "openai": {
+        "itemId": "fc_s1"
+      }
+    }
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "tool-calls"
+    },
+    "usage": {
+      "input": {
+        "total": 30,
+        "no_cache": 30,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 8,
+        "text": 8,
+        "reasoning": 0
+      }
+    },
+    "provider_metadata": {
+      "openai": {
+        "responseId": "resp_stream",
+        "serviceTier": "default"
+      }
+    }
+  }
+]

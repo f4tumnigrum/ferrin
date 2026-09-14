@@ -1,0 +1,93 @@
+---
+source: crates/providers/ferrin-openai-compatible/tests/suite/chat_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "chatcmpl_ts",
+    "timestamp": "2025-09-13T00:05:02Z",
+    "model_id": "example-model-2026"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "call_cs1",
+    "tool_name": "get_weather"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_cs1",
+    "delta": "{\"city\":"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_cs1",
+    "delta": "\"Paris\"}"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "call_cs2",
+    "tool_name": "get_time",
+    "provider_metadata": {
+      "example": {
+        "thoughtSignature": "sig-456"
+      }
+    }
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_cs2",
+    "delta": "{\"zone\":\"CET\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "call_cs1"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "call_cs1",
+    "tool_name": "get_weather",
+    "input": "{\"city\":\"Paris\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "call_cs2"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "call_cs2",
+    "tool_name": "get_time",
+    "input": "{\"zone\":\"CET\"}",
+    "provider_metadata": {
+      "example": {
+        "thoughtSignature": "sig-456"
+      }
+    }
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "tool-calls",
+      "raw": "tool_calls"
+    },
+    "usage": {
+      "input": {
+        "total": 15,
+        "no_cache": 15,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 6,
+        "text": 6,
+        "reasoning": 0
+      }
+    },
+    "provider_metadata": {
+      "example": {}
+    }
+  }
+]

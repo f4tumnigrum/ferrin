@@ -1,0 +1,19 @@
+{
+  "id": "cmpl_1",
+  "object": "text_completion",
+  "created": 1757722000,
+  "model": "example-completion",
+  "choices": [
+    {
+      "text": "Hello from completion.",
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 8,
+    "completion_tokens": 5,
+    "total_tokens": 13
+  }
+}

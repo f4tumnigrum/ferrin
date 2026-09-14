@@ -1,0 +1,43 @@
+{
+  "id": "resp_reasoning",
+  "object": "response",
+  "created_at": 1757721602,
+  "model": "o4-mini",
+  "status": "completed",
+  "output": [
+    {
+      "type": "reasoning",
+      "id": "rs_1",
+      "encrypted_content": "enc_1",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "Thinking about the weather."
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "id": "msg_2",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "It is sunny.",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 42,
+    "input_tokens_details": {
+      "cached_tokens": 10
+    },
+    "output_tokens": 12,
+    "output_tokens_details": {
+      "reasoning_tokens": 4
+    }
+  }
+}

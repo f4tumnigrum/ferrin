@@ -1,0 +1,77 @@
+---
+source: crates/providers/ferrin-google/tests/suite/unit.rs
+expression: converted
+---
+{
+  "description": "Order",
+  "required": [
+    "id",
+    "count"
+  ],
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Id",
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ],
+      "nullable": true
+    },
+    "count": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed"
+      ]
+    },
+    "priority": {
+      "type": "integer",
+      "format": "enum",
+      "enum": [
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "format": "email",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "meta": {
+      "type": "object"
+    },
+    "flag": {
+      "type": "boolean",
+      "properties": {}
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "order"
+      ]
+    },
+    "either": {
+      "nullable": true,
+      "type": "string"
+    },
+    "any": {}
+  }
+}

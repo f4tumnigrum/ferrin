@@ -1,0 +1,52 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/realtime.rs
+expression: serialized
+---
+[
+  {
+    "type": "input_audio_buffer.append",
+    "audio": "AQI="
+  },
+  {
+    "type": "input_audio_buffer.commit"
+  },
+  {
+    "type": "conversation.item.create",
+    "item": {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Hello"
+        }
+      ]
+    }
+  },
+  {
+    "type": "conversation.item.create",
+    "item": {
+      "type": "function_call_output",
+      "call_id": "call_1",
+      "output": "{\"temp\":21}"
+    }
+  },
+  {
+    "type": "conversation.item.truncate",
+    "item_id": "item_1",
+    "content_index": 0,
+    "audio_end_ms": 1500
+  },
+  {
+    "type": "response.create",
+    "response": {
+      "output_modalities": [
+        "text"
+      ],
+      "instructions": "Short"
+    }
+  },
+  {
+    "type": "response.cancel"
+  }
+]

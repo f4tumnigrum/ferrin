@@ -1,0 +1,5 @@
+data: {"id": "chatcmpl_rs", "object": "chat.completion.chunk", "created": 1757721901, "model": "example-reasoner", "choices": [{"index": 0, "delta": {"role": "assistant", "reasoning_content": "Thinking "}, "finish_reason": null}]}
+data: {"id": "chatcmpl_rs", "object": "chat.completion.chunk", "created": 1757721901, "model": "example-reasoner", "choices": [{"index": 0, "delta": {"reasoning_content": "hard."}, "finish_reason": null}]}
+data: {"id": "chatcmpl_rs", "object": "chat.completion.chunk", "created": 1757721901, "model": "example-reasoner", "choices": [{"index": 0, "delta": {"content": "Answer."}, "finish_reason": null}]}
+data: {"id": "chatcmpl_rs", "object": "chat.completion.chunk", "created": 1757721901, "model": "example-reasoner", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 12, "completion_tokens": 9, "total_tokens": 21, "completion_tokens_details": {"reasoning_tokens": 4}}}
+data: [DONE]

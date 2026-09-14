@@ -1,0 +1,87 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/tools.rs
+expression: prepared.tools.unwrap()
+---
+[
+  {
+    "name": "get_weather",
+    "description": "Weather lookup",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
+        }
+      }
+    },
+    "cache_control": {
+      "type": "ephemeral"
+    },
+    "eager_input_streaming": true,
+    "strict": true,
+    "defer_loading": true,
+    "allowed_callers": [
+      "code_execution_20250825"
+    ],
+    "input_examples": [
+      {
+        "city": "Paris"
+      }
+    ]
+  },
+  {
+    "type": "bash_20250124",
+    "name": "bash"
+  },
+  {
+    "type": "computer_20250124",
+    "name": "computer",
+    "display_width_px": 1280,
+    "display_height_px": 800,
+    "display_number": 1
+  },
+  {
+    "type": "text_editor_20250728",
+    "name": "str_replace_based_edit_tool",
+    "max_characters": 10000
+  },
+  {
+    "type": "memory_20250818",
+    "name": "memory"
+  },
+  {
+    "type": "web_search_20250305",
+    "name": "web_search",
+    "max_uses": 3,
+    "allowed_domains": [
+      "example.test"
+    ]
+  },
+  {
+    "type": "web_fetch_20250910",
+    "name": "web_fetch",
+    "citations": {
+      "enabled": true
+    },
+    "max_content_tokens": 5000
+  },
+  {
+    "type": "code_execution_20250825",
+    "name": "code_execution"
+  },
+  {
+    "type": "tool_search_tool_bm25_20251119",
+    "name": "tool_search_tool_bm25"
+  },
+  {
+    "type": "advisor_20260301",
+    "name": "advisor",
+    "model": "claude-opus-4-6",
+    "max_uses": 1,
+    "max_tokens": 2048,
+    "caching": {
+      "type": "ephemeral",
+      "ttl": "5m"
+    }
+  }
+]

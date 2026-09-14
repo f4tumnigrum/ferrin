@@ -1,0 +1,40 @@
+---
+source: crates/providers/ferrin-google/tests/suite/generate.rs
+expression: result.content
+---
+[
+  {
+    "type": "tool-call",
+    "tool_call_id": "stc-1",
+    "tool_name": "server:google_search",
+    "input": "{\"query\":\"ferrin\"}",
+    "provider_executed": true,
+    "dynamic": true,
+    "provider_metadata": {
+      "google": {
+        "thoughtSignature": "sig-server-1",
+        "serverToolCallId": "stc-1",
+        "serverToolType": "google_search"
+      }
+    }
+  },
+  {
+    "type": "tool-result",
+    "tool_call_id": "stc-1",
+    "tool_name": "server:google_search",
+    "result": {
+      "toolType": "google_search",
+      "id": "stc-1",
+      "response": {
+        "results": [
+          "r1"
+        ]
+      }
+    },
+    "dynamic": true
+  },
+  {
+    "type": "text",
+    "text": "Found it."
+  }
+]

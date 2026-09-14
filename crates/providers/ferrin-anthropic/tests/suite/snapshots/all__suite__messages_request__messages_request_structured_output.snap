@@ -1,0 +1,22 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_request.rs
+expression: "prepared.body[\"output_config\"]"
+---
+{
+  "format": {
+    "type": "json_schema",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "answer"
+      ]
+    }
+  }
+}

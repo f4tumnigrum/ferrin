@@ -1,0 +1,69 @@
+---
+source: crates/providers/ferrin-google/tests/suite/stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "resp-image-stream"
+  },
+  {
+    "type": "text-start",
+    "id": "0"
+  },
+  {
+    "type": "text-delta",
+    "id": "0",
+    "delta": "Here it is."
+  },
+  {
+    "type": "text-end",
+    "id": "0"
+  },
+  {
+    "type": "file",
+    "data": {
+      "type": "data",
+      "data": "iVBORw0KGgo="
+    },
+    "media_type": "image/png"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "STOP"
+    },
+    "usage": {
+      "input": {
+        "total": 11,
+        "no_cache": 11,
+        "cache_read": 0
+      },
+      "output": {
+        "total": 1290,
+        "text": 1290,
+        "reasoning": 0
+      }
+    },
+    "provider_metadata": {
+      "google": {
+        "promptFeedback": null,
+        "groundingMetadata": null,
+        "urlContextMetadata": null,
+        "safetyRatings": null,
+        "usageMetadata": {
+          "promptTokenCount": 11,
+          "candidatesTokenCount": 1290,
+          "totalTokenCount": 1301
+        },
+        "finishMessage": null,
+        "serviceTier": null
+      }
+    }
+  }
+]

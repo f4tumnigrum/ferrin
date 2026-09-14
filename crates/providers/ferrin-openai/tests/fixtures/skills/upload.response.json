@@ -1,0 +1,10 @@
+{
+  "object": "skill",
+  "id": "skill_abc",
+  "name": "weather-helper",
+  "description": "Answers weather questions",
+  "default_version": "v1",
+  "latest_version": "v1",
+  "created_at": 1757722400,
+  "updated_at": 1757722400
+}

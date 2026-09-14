@@ -1,0 +1,2 @@
+data: {"id": "chatcmpl_nf", "object": "chat.completion.chunk", "created": 1757721903, "model": "example-model-2026", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Partial"}, "finish_reason": null}]}
+data: [DONE]

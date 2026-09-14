@@ -1,0 +1,8 @@
+{
+  "name": "batches/batch-123",
+  "metadata": {
+    "state": "BATCH_STATE_RUNNING",
+    "createTime": "2026-09-14T08:00:00.000000Z",
+    "batchStats": {"requestCount": "2", "pendingRequestCount": "1", "successfulRequestCount": "1", "failedRequestCount": "0"}
+  }
+}

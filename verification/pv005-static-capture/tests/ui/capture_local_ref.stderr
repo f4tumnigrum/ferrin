@@ -1,0 +1,20 @@
+error[E0597]: `prefix` does not live long enough
+ --> tests/ui/capture_local_ref.rs:5:28
+  |
+4 |       let prefix = String::from("pfx");
+  |           ------ binding `prefix` declared here
+5 |       let prefix_ref: &str = &prefix;
+  |                              ^^^^^^^ borrowed value does not live long enough
+6 |       let _tool = Tool::function(move |input: String| async move {
+  |  _________________-
+7 | |         format!("{prefix_ref}:{input}")
+8 | |     });
+  | |______- argument requires that `prefix` is borrowed for `'static`
+9 |   }
+  |   - `prefix` dropped here while still borrowed
+  |
+note: requirement that the value outlives `'static` introduced here
+ --> src/lib.rs
+  |
+  |         F: Fn(String) -> Fut + Send + Sync + 'static,
+  |                                              ^^^^^^^

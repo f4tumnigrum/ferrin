@@ -1,0 +1,20 @@
+[package]
+name = "example-structured-output"
+description = "Ferrin example: typed structured output (not published)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "example-structured-output"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin = { workspace = true, features = ["openai"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+anyhow = { workspace = true }

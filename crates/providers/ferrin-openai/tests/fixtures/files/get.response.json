@@ -1,0 +1,10 @@
+{
+  "object": "file",
+  "id": "file-abc123",
+  "purpose": "assistants",
+  "filename": "notes.txt",
+  "bytes": 11,
+  "created_at": 1757722300,
+  "expires_at": 1757808700,
+  "status": "processed"
+}

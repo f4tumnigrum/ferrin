@@ -1,0 +1,2020 @@
+{
+  "crate": "ferrin-google",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_google::GoogleBatch",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::batch::GoogleBatch",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self",
+        "fn prepare_request(&self, request: &BatchRequest) -> Result<PreparedBatchRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Batch for GoogleBatch",
+        "impl Clone for GoogleBatch",
+        "impl Debug for GoogleBatch"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::config::GoogleConfig",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "headers: Headers",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>"
+      ],
+      "methods": [
+        "fn api_key(&self) -> Result<SecretString, ProviderError>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError>",
+        "fn model_path(model_id: &str) -> String",
+        "fn model_url(&self, model_id: &str, action: &str) -> Url",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn options_key(&self) -> &str",
+        "fn origin_url(&self, path: &str) -> Url",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn unauthenticated_headers(&self, call_headers: &Headers) -> Headers",
+        "fn url(&self, path: &str) -> Url",
+        "fn websocket_url(&self, service_path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for GoogleConfig"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleEmbeddingModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::embedding::GoogleEmbeddingModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &EmbedOptions) -> Result<PreparedEmbeddingRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleEmbeddingModel",
+        "impl Debug for GoogleEmbeddingModel",
+        "impl EmbeddingModel for GoogleEmbeddingModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleFiles",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::files::GoogleFiles",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn fetch_file(&self, name: &str, headers: &Headers, cancellation: CancellationToken) -> Result<GoogleFile, ProviderError>",
+        "async fn upload_bytes(&self, request: UploadRequest) -> Result<GoogleFile, ProviderError>",
+        "fn new(config: SharedConfig) -> Self",
+        "fn to_result(&self, file: &GoogleFile) -> UploadFileResult"
+      ],
+      "traits": [
+        "impl Clone for GoogleFiles",
+        "impl Debug for GoogleFiles",
+        "impl Files for GoogleFiles"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleImageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::image::GoogleImageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_call(&self, options: &ImageOptions) -> Result<(CallOptions, Vec<Warning>), ProviderError>",
+        "fn with_max_images_per_call(self, max: usize) -> Self"
+      ],
+      "traits": [
+        "impl Clone for GoogleImageModel",
+        "impl Debug for GoogleImageModel",
+        "impl ImageModel for GoogleImageModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::language_model::GoogleLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn convert_response(&self, prepared: &PreparedRequest, body: &GenerateContentResponse, raw: Option<&JsonValue>) -> Result<GenerateResult, ProviderError>",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleLanguageModel",
+        "impl Debug for GoogleLanguageModel",
+        "impl LanguageModel for GoogleLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleProvider",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn batch(&self) -> GoogleBatch",
+        "fn chat(&self, model_id: &str) -> GoogleLanguageModel",
+        "fn config(&self) -> &SharedConfig",
+        "fn embedding(&self, model_id: &str) -> GoogleEmbeddingModel",
+        "fn files(&self) -> GoogleFiles",
+        "fn from_config(config: SharedConfig) -> Self",
+        "fn image(&self, model_id: &str) -> GoogleImageModel",
+        "fn language_model(&self, model_id: &str) -> GoogleLanguageModel",
+        "fn realtime(&self) -> GoogleRealtimeFactory",
+        "fn speech(&self, model_id: &str) -> GoogleSpeechModel",
+        "fn text_embedding(&self, model_id: &str) -> GoogleEmbeddingModel",
+        "fn tools(&self) -> &GoogleTools",
+        "fn transcription(&self, model_id: &str) -> GoogleTranscriptionModel",
+        "fn video(&self, model_id: &str) -> GoogleVideoModel"
+      ],
+      "traits": [
+        "impl Clone for GoogleProvider",
+        "impl Debug for GoogleProvider",
+        "impl Provider for GoogleProvider"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleRealtimeFactory",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::realtime::GoogleRealtimeFactory",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self",
+        "fn realtime_model(&self, model_id: &str) -> GoogleRealtimeModel"
+      ],
+      "traits": [
+        "impl Clone for GoogleRealtimeFactory",
+        "impl Debug for GoogleRealtimeFactory",
+        "impl RealtimeFactory for GoogleRealtimeFactory"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleRealtimeModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::realtime::GoogleRealtimeModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn session_url(&self) -> Url"
+      ],
+      "traits": [
+        "impl Debug for GoogleRealtimeModel",
+        "impl RealtimeModel for GoogleRealtimeModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "base_url: Option<Url>",
+        "api_key: Option<SecretString>",
+        "headers: Headers",
+        "name: Option<String>",
+        "transport: Option<SharedTransport>",
+        "id_generator: Option<Arc<dyn IdGenerator>>"
+      ],
+      "traits": [
+        "impl Debug for GoogleSettings",
+        "impl Default for GoogleSettings"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleSpeechModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::speech::GoogleSpeechModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &SpeechOptions) -> Result<PreparedSpeechRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechModel",
+        "impl Debug for GoogleSpeechModel",
+        "impl SpeechModel for GoogleSpeechModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleTools",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::tools::GoogleTools",
+      "methods": [
+        "fn code_execution(&self) -> Tool",
+        "fn enterprise_web_search(&self) -> Tool",
+        "fn file_search(&self, config: FileSearchArgs) -> Tool",
+        "fn google_maps(&self) -> Tool",
+        "fn google_search(&self, config: GoogleSearchArgs) -> Tool",
+        "fn new() -> Self",
+        "fn url_context(&self) -> Tool",
+        "fn vertex_rag_store(&self, config: VertexRagStoreArgs) -> Tool"
+      ],
+      "traits": [
+        "impl Clone for GoogleTools",
+        "impl Copy for GoogleTools",
+        "impl Debug for GoogleTools",
+        "impl Default for GoogleTools"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleTranscriptionModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::transcription::GoogleTranscriptionModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &TranscriptionOptions) -> Result<JsonValue, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleTranscriptionModel",
+        "impl Debug for GoogleTranscriptionModel",
+        "impl TranscriptionModel for GoogleTranscriptionModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleVideoModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::video::GoogleVideoModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &VideoOptions) -> PreparedVideoRequest"
+      ],
+      "traits": [
+        "impl Clone for GoogleVideoModel",
+        "impl Debug for GoogleVideoModel",
+        "impl VideoModel for GoogleVideoModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<GoogleConfig>",
+      "source": "crate::config::SharedConfig"
+    },
+    {
+      "path": "ferrin_google::VERSION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::api_types",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::api_types::Candidate",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "content: Option<CandidateContent>",
+        "finish_reason: Option<String>",
+        "finish_message: Option<String>",
+        "safety_ratings: Option<JsonValue>",
+        "grounding_metadata: Option<JsonValue>",
+        "url_context_metadata: Option<JsonValue>"
+      ],
+      "methods": [
+        "fn grounding_chunks(&self) -> Vec<GroundingChunk>",
+        "fn parts(&self) -> &[Part]"
+      ],
+      "traits": [
+        "impl Clone for Candidate",
+        "impl Debug for Candidate",
+        "impl Default for Candidate",
+        "impl<'de> Deserialize<'de> for Candidate"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::CandidateContent",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "parts: Option<Vec<Part>>",
+        "role: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for CandidateContent",
+        "impl Debug for CandidateContent",
+        "impl Default for CandidateContent",
+        "impl<'de> Deserialize<'de> for CandidateContent"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::CodeExecutionResult",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "outcome: Option<String>",
+        "output: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for CodeExecutionResult",
+        "impl Debug for CodeExecutionResult",
+        "impl Default for CodeExecutionResult",
+        "impl<'de> Deserialize<'de> for CodeExecutionResult"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::ExecutableCode",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "language: Option<String>",
+        "code: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ExecutableCode",
+        "impl Debug for ExecutableCode",
+        "impl Default for ExecutableCode",
+        "impl<'de> Deserialize<'de> for ExecutableCode"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::FunctionCall",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: Option<String>",
+        "name: Option<String>",
+        "args: Option<JsonValue>",
+        "partial_args: Option<Vec<PartialArg>>",
+        "will_continue: Option<bool>"
+      ],
+      "methods": [
+        "fn completes_stream(&self) -> bool",
+        "fn is_streaming_fragment(&self) -> bool",
+        "fn is_terminal(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for FunctionCall",
+        "impl Debug for FunctionCall",
+        "impl Default for FunctionCall",
+        "impl<'de> Deserialize<'de> for FunctionCall"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::GenerateContentResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "candidates: Option<Vec<Candidate>>",
+        "usage_metadata: Option<UsageMetadata>",
+        "prompt_feedback: Option<JsonValue>",
+        "response_id: Option<String>",
+        "model_version: Option<String>",
+        "create_time: Option<String>"
+      ],
+      "methods": [
+        "fn block_reason(&self) -> Option<&str>",
+        "fn candidate(&self) -> Option<&Candidate>"
+      ],
+      "traits": [
+        "impl Clone for GenerateContentResponse",
+        "impl Debug for GenerateContentResponse",
+        "impl Default for GenerateContentResponse",
+        "impl<'de> Deserialize<'de> for GenerateContentResponse"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::GroundingChunk",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "web: Option<WebChunk>",
+        "image: Option<ImageChunk>",
+        "retrieved_context: Option<RetrievedContextChunk>",
+        "maps: Option<WebChunk>"
+      ],
+      "traits": [
+        "impl Clone for GroundingChunk",
+        "impl Debug for GroundingChunk",
+        "impl Default for GroundingChunk",
+        "impl<'de> Deserialize<'de> for GroundingChunk"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::ImageChunk",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "source_uri: Option<String>",
+        "image_uri: Option<String>",
+        "title: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ImageChunk",
+        "impl Debug for ImageChunk",
+        "impl Default for ImageChunk",
+        "impl<'de> Deserialize<'de> for ImageChunk"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::InlineData",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "mime_type: String",
+        "data: String"
+      ],
+      "traits": [
+        "impl Clone for InlineData",
+        "impl Debug for InlineData",
+        "impl Default for InlineData",
+        "impl<'de> Deserialize<'de> for InlineData"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::Part",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "text: Option<String>",
+        "thought: Option<bool>",
+        "thought_signature: Option<String>",
+        "function_call: Option<FunctionCall>",
+        "inline_data: Option<InlineData>",
+        "executable_code: Option<ExecutableCode>",
+        "code_execution_result: Option<CodeExecutionResult>",
+        "tool_call: Option<ServerToolCall>",
+        "tool_response: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for Part",
+        "impl Debug for Part",
+        "impl Default for Part",
+        "impl<'de> Deserialize<'de> for Part"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::RetrievedContextChunk",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "uri: Option<String>",
+        "title: Option<String>",
+        "text: Option<String>",
+        "file_search_store: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for RetrievedContextChunk",
+        "impl Debug for RetrievedContextChunk",
+        "impl Default for RetrievedContextChunk",
+        "impl<'de> Deserialize<'de> for RetrievedContextChunk"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::RpcStatus",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "code: Option<i64>",
+        "message: Option<String>",
+        "status: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for RpcStatus",
+        "impl Debug for RpcStatus",
+        "impl Default for RpcStatus",
+        "impl Eq for RpcStatus",
+        "impl PartialEq for RpcStatus",
+        "impl StructuralPartialEq for RpcStatus",
+        "impl<'de> Deserialize<'de> for RpcStatus"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::ServerToolCall",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "tool_type: Option<String>",
+        "args: Option<JsonValue>",
+        "id: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ServerToolCall",
+        "impl Debug for ServerToolCall",
+        "impl Default for ServerToolCall",
+        "impl<'de> Deserialize<'de> for ServerToolCall"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::UsageMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prompt_token_count: Option<u64>",
+        "candidates_token_count: Option<u64>",
+        "cached_content_token_count: Option<u64>",
+        "thoughts_token_count: Option<u64>",
+        "total_token_count: Option<u64>",
+        "service_tier: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for UsageMetadata",
+        "impl Debug for UsageMetadata",
+        "impl Default for UsageMetadata",
+        "impl<'de> Deserialize<'de> for UsageMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::WebChunk",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "uri: Option<String>",
+        "title: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for WebChunk",
+        "impl Debug for WebChunk",
+        "impl Default for WebChunk",
+        "impl<'de> Deserialize<'de> for WebChunk"
+      ]
+    },
+    {
+      "path": "ferrin_google::api_types::deserialize_count",
+      "kind": "function",
+      "signature": "fn deserialize_count<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<u64>, <D as Deserializer>::Error>"
+    },
+    {
+      "path": "ferrin_google::batch",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::batch::BatchOperation",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "metadata: Option<BatchOperationMetadata>",
+        "done: Option<bool>",
+        "error: Option<RpcStatus>",
+        "response: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for BatchOperation",
+        "impl Debug for BatchOperation",
+        "impl Default for BatchOperation",
+        "impl PartialEq for BatchOperation",
+        "impl StructuralPartialEq for BatchOperation",
+        "impl<'de> Deserialize<'de> for BatchOperation"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::BatchOperationMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "state: Option<String>",
+        "create_time: Option<String>",
+        "batch_stats: Option<BatchStats>",
+        "output: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for BatchOperationMetadata",
+        "impl Debug for BatchOperationMetadata",
+        "impl Default for BatchOperationMetadata",
+        "impl PartialEq for BatchOperationMetadata",
+        "impl StructuralPartialEq for BatchOperationMetadata",
+        "impl<'de> Deserialize<'de> for BatchOperationMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::BatchResultLine",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "self::results::BatchResultLine",
+      "fields": [
+        "key: String",
+        "response: Option<JsonValue>",
+        "error: Option<RpcStatus>"
+      ],
+      "traits": [
+        "impl Clone for BatchResultLine",
+        "impl Debug for BatchResultLine",
+        "impl Default for BatchResultLine",
+        "impl PartialEq for BatchResultLine",
+        "impl StructuralPartialEq for BatchResultLine",
+        "impl<'de> Deserialize<'de> for BatchResultLine"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::BatchStats",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "request_count: Option<u64>",
+        "successful_request_count: Option<u64>",
+        "failed_request_count: Option<u64>",
+        "pending_request_count: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for BatchStats",
+        "impl Debug for BatchStats",
+        "impl Default for BatchStats",
+        "impl Eq for BatchStats",
+        "impl PartialEq for BatchStats",
+        "impl StructuralPartialEq for BatchStats",
+        "impl<'de> Deserialize<'de> for BatchStats"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::DISPLAY_NAME_PREFIX",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::batch::FAMILY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::batch::GoogleBatch",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self",
+        "fn prepare_request(&self, request: &BatchRequest) -> Result<PreparedBatchRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Batch for GoogleBatch",
+        "impl Clone for GoogleBatch",
+        "impl Debug for GoogleBatch"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::INLINE_MAX_BYTES",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_google::batch::INPUT_FILE_MAX_BYTES",
+      "kind": "constant",
+      "signature": "const: u64"
+    },
+    {
+      "path": "ferrin_google::batch::PreparedBatchRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "id: String",
+        "body: JsonObject",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for PreparedBatchRequest",
+        "impl Debug for PreparedBatchRequest",
+        "impl PartialEq for PreparedBatchRequest",
+        "impl StructuralPartialEq for PreparedBatchRequest"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::convert_line",
+      "kind": "function",
+      "signature": "fn convert_line(config: &SharedConfig, line: BatchResultLine) -> BatchItemResult",
+      "source": "self::results::convert_line",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::map_status",
+      "kind": "function",
+      "signature": "fn map_status(operation: &BatchOperation) -> BatchStatus",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::batch::rpc_error",
+      "kind": "function",
+      "signature": "fn rpc_error(status: &RpcStatus, fallback: &str) -> BatchError",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::capabilities",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::capabilities::GEMINI_2_5_MAX_OUTPUT_TOKENS",
+      "kind": "constant",
+      "signature": "const: u32"
+    },
+    {
+      "path": "ferrin_google::capabilities::ModelCapabilities",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "is_gemini: bool",
+        "is_gemini_2_5: bool",
+        "is_gemma: bool",
+        "supports_gemini2_tools: bool",
+        "supports_file_search: bool",
+        "uses_gemini3_features: bool"
+      ],
+      "traits": [
+        "impl Clone for ModelCapabilities",
+        "impl Copy for ModelCapabilities",
+        "impl Debug for ModelCapabilities",
+        "impl Eq for ModelCapabilities",
+        "impl PartialEq for ModelCapabilities",
+        "impl StructuralPartialEq for ModelCapabilities"
+      ]
+    },
+    {
+      "path": "ferrin_google::capabilities::capabilities",
+      "kind": "function",
+      "signature": "fn capabilities(model_id: &str) -> ModelCapabilities",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::capabilities::max_thinking_tokens_gemini_2_5",
+      "kind": "function",
+      "signature": "fn max_thinking_tokens_gemini_2_5(model_id: &str) -> u32",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::capabilities::minimum_thinking_level_gemini3",
+      "kind": "function",
+      "signature": "fn minimum_thinking_level_gemini3(model_id: &str) -> &'static str",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::config",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::config::API_KEY_ENV",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::API_KEY_HEADER",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::AUTH_TOKENS_PATH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::CANONICAL_OPTIONS_KEY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::DEFAULT_BASE_URL",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::DEFAULT_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::DOWNLOAD_PATH_PREFIX",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::GoogleConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "headers: Headers",
+        "transport: SharedTransport",
+        "id_generator: Arc<dyn IdGenerator>"
+      ],
+      "methods": [
+        "fn api_key(&self) -> Result<SecretString, ProviderError>",
+        "fn generate_id(&self) -> String",
+        "fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError>",
+        "fn model_path(model_id: &str) -> String",
+        "fn model_url(&self, model_id: &str, action: &str) -> Url",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn options_key(&self) -> &str",
+        "fn origin_url(&self, path: &str) -> Url",
+        "fn provider_id(&self, family: &str) -> ProviderId",
+        "fn unauthenticated_headers(&self, call_headers: &Headers) -> Headers",
+        "fn url(&self, path: &str) -> Url",
+        "fn websocket_url(&self, service_path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
+      ],
+      "traits": [
+        "impl Debug for GoogleConfig"
+      ]
+    },
+    {
+      "path": "ferrin_google::config::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<GoogleConfig>"
+    },
+    {
+      "path": "ferrin_google::config::UPLOAD_PATH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::config::USER_AGENT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::convert_prompt",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::convert_prompt::ConvertedPrompt",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "system_instruction: Option<JsonObject>",
+        "contents: Vec<JsonValue>",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for ConvertedPrompt",
+        "impl Debug for ConvertedPrompt",
+        "impl Default for ConvertedPrompt",
+        "impl PartialEq for ConvertedPrompt",
+        "impl StructuralPartialEq for ConvertedPrompt"
+      ]
+    },
+    {
+      "path": "ferrin_google::convert_prompt::SKIP_THOUGHT_SIGNATURE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::convert_prompt::convert_prompt",
+      "kind": "function",
+      "signature": "fn convert_prompt(config: &GoogleConfig, prompt: &[PromptMessage], capabilities: ModelCapabilities, mapping: &ToolNameMapping) -> Result<ConvertedPrompt, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::convert_prompt::resolve_reference",
+      "kind": "function",
+      "signature": "fn resolve_reference<'a>(config: &GoogleConfig, reference: &'a ProviderReference) -> Result<&'a str, NoSuchProviderReferenceError>"
+    },
+    {
+      "path": "ferrin_google::create_google",
+      "kind": "function",
+      "signature": "fn create_google(settings: GoogleSettings) -> Result<GoogleProvider, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::embedding",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::embedding::GoogleEmbeddingModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &EmbedOptions) -> Result<PreparedEmbeddingRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleEmbeddingModel",
+        "impl Debug for GoogleEmbeddingModel",
+        "impl EmbeddingModel for GoogleEmbeddingModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::embedding::GoogleEmbeddingOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "output_dimensionality: Option<u32>",
+        "task_type: Option<String>",
+        "content: Option<Vec<Option<Vec<JsonValue>>>>"
+      ],
+      "traits": [
+        "impl Clone for GoogleEmbeddingOptions",
+        "impl Debug for GoogleEmbeddingOptions",
+        "impl Default for GoogleEmbeddingOptions",
+        "impl PartialEq for GoogleEmbeddingOptions",
+        "impl StructuralPartialEq for GoogleEmbeddingOptions",
+        "impl<'de> Deserialize<'de> for GoogleEmbeddingOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::embedding::MAX_EMBEDDINGS_PER_CALL",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_google::embedding::PreparedEmbeddingRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "action: &'static str",
+        "body: JsonValue"
+      ],
+      "traits": [
+        "impl Clone for PreparedEmbeddingRequest",
+        "impl Debug for PreparedEmbeddingRequest",
+        "impl PartialEq for PreparedEmbeddingRequest",
+        "impl StructuralPartialEq for PreparedEmbeddingRequest"
+      ]
+    },
+    {
+      "path": "ferrin_google::error",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::error::GoogleErrorData",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "error: GoogleErrorDetail"
+      ],
+      "traits": [
+        "impl Clone for GoogleErrorData",
+        "impl Debug for GoogleErrorData",
+        "impl<'de> Deserialize<'de> for GoogleErrorData"
+      ]
+    },
+    {
+      "path": "ferrin_google::error::GoogleErrorDetail",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "code: Option<i64>",
+        "message: Option<String>",
+        "status: Option<String>",
+        "details: Option<Vec<JsonValue>>"
+      ],
+      "traits": [
+        "impl Clone for GoogleErrorDetail",
+        "impl Debug for GoogleErrorDetail",
+        "impl<'de> Deserialize<'de> for GoogleErrorDetail"
+      ]
+    },
+    {
+      "path": "ferrin_google::error::error_message",
+      "kind": "function",
+      "signature": "fn error_message(data: &GoogleErrorData) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::error::failed_response_handler",
+      "kind": "function",
+      "signature": "fn failed_response_handler() -> JsonErrorResponseHandler<GoogleErrorData>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::files",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::files::DEFAULT_POLL_INTERVAL_MS",
+      "kind": "constant",
+      "signature": "const: u64"
+    },
+    {
+      "path": "ferrin_google::files::DEFAULT_POLL_TIMEOUT_MS",
+      "kind": "constant",
+      "signature": "const: u64"
+    },
+    {
+      "path": "ferrin_google::files::GoogleFile",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: String",
+        "display_name: Option<String>",
+        "mime_type: Option<String>",
+        "size_bytes: Option<u64>",
+        "create_time: Option<String>",
+        "update_time: Option<String>",
+        "expiration_time: Option<String>",
+        "sha256_hash: Option<String>",
+        "uri: Option<String>",
+        "state: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for GoogleFile",
+        "impl Debug for GoogleFile",
+        "impl Default for GoogleFile",
+        "impl Eq for GoogleFile",
+        "impl PartialEq for GoogleFile",
+        "impl StructuralPartialEq for GoogleFile",
+        "impl<'de> Deserialize<'de> for GoogleFile"
+      ]
+    },
+    {
+      "path": "ferrin_google::files::GoogleFiles",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn fetch_file(&self, name: &str, headers: &Headers, cancellation: CancellationToken) -> Result<GoogleFile, ProviderError>",
+        "async fn upload_bytes(&self, request: UploadRequest) -> Result<GoogleFile, ProviderError>",
+        "fn new(config: SharedConfig) -> Self",
+        "fn to_result(&self, file: &GoogleFile) -> UploadFileResult"
+      ],
+      "traits": [
+        "impl Clone for GoogleFiles",
+        "impl Debug for GoogleFiles",
+        "impl Files for GoogleFiles"
+      ]
+    },
+    {
+      "path": "ferrin_google::files::GoogleFilesOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "display_name: Option<String>",
+        "poll_interval_ms: Option<u64>",
+        "poll_timeout_ms: Option<u64>"
+      ],
+      "traits": [
+        "impl Clone for GoogleFilesOptions",
+        "impl Debug for GoogleFilesOptions",
+        "impl Default for GoogleFilesOptions",
+        "impl Eq for GoogleFilesOptions",
+        "impl PartialEq for GoogleFilesOptions",
+        "impl StructuralPartialEq for GoogleFilesOptions",
+        "impl<'de> Deserialize<'de> for GoogleFilesOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::files::UploadRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "data: Bytes",
+        "media_type: String",
+        "display_name: Option<String>",
+        "poll_interval: Duration",
+        "poll_timeout: Duration",
+        "headers: Headers",
+        "cancellation: CancellationToken"
+      ],
+      "methods": [
+        "fn new(data: Bytes, media_type: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for UploadRequest",
+        "impl Debug for UploadRequest"
+      ]
+    },
+    {
+      "path": "ferrin_google::image",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::image::DEFAULT_MAX_IMAGES_PER_CALL",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_google::image::GoogleImageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_call(&self, options: &ImageOptions) -> Result<(CallOptions, Vec<Warning>), ProviderError>",
+        "fn with_max_images_per_call(self, max: usize) -> Self"
+      ],
+      "traits": [
+        "impl Clone for GoogleImageModel",
+        "impl Debug for GoogleImageModel",
+        "impl ImageModel for GoogleImageModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::image::image_result",
+      "kind": "function",
+      "signature": "fn image_result(config: &GoogleConfig, model_id: ModelId, result: GenerateResult, warnings: Vec<Warning>) -> ImageResult",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::json_accumulator",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::json_accumulator::JsonAccumulator",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn current(&self) -> &JsonObject",
+        "fn finalize(self) -> (String, String)",
+        "fn new() -> Self",
+        "fn process(&mut self, partial_args: &[PartialArg]) -> String"
+      ],
+      "traits": [
+        "impl Debug for JsonAccumulator",
+        "impl Default for JsonAccumulator"
+      ]
+    },
+    {
+      "path": "ferrin_google::json_accumulator::PartialArg",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "json_path: String",
+        "string_value: Option<String>",
+        "number_value: Option<Number>",
+        "bool_value: Option<bool>",
+        "null_value: bool",
+        "will_continue: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for PartialArg",
+        "impl Debug for PartialArg",
+        "impl PartialEq for PartialArg",
+        "impl StructuralPartialEq for PartialArg",
+        "impl<'de> Deserialize<'de> for PartialArg"
+      ]
+    },
+    {
+      "path": "ferrin_google::json_schema",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::json_schema::RECURSIVE_REFERENCE_PREFIX",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::json_schema::convert_json_schema_to_openapi_schema",
+      "kind": "function",
+      "signature": "fn convert_json_schema_to_openapi_schema(schema: &JsonValue) -> Result<Option<JsonValue>, UnsupportedFunctionalityError>"
+    },
+    {
+      "path": "ferrin_google::json_schema::is_recursive_reference_error",
+      "kind": "function",
+      "signature": "fn is_recursive_reference_error(error: &UnsupportedFunctionalityError) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::language_model",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::language_model::EXTERNAL_URL_MEDIA_TYPES",
+      "kind": "constant",
+      "signature": "const: [&str; 22]"
+    },
+    {
+      "path": "ferrin_google::language_model::FAMILY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::language_model::GoogleLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn convert_response(&self, prepared: &PreparedRequest, body: &GenerateContentResponse, raw: Option<&JsonValue>) -> Result<GenerateResult, ProviderError>",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<PreparedRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleLanguageModel",
+        "impl Debug for GoogleLanguageModel",
+        "impl LanguageModel for GoogleLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::language_model::base_supported_urls",
+      "kind": "function",
+      "signature": "fn base_supported_urls(base_url: &Url) -> SupportedUrls",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::language_model::convert_generate_content_response",
+      "kind": "function",
+      "signature": "fn convert_generate_content_response(config: &SharedConfig, mapping: ToolNameMapping, warnings: Vec<Warning>, body: &GenerateContentResponse, raw: Option<&JsonValue>) -> Result<GenerateResult, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::language_model::is_gemini_model",
+      "kind": "function",
+      "signature": "fn is_gemini_model(model_id: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::language_model::supported_urls",
+      "kind": "function",
+      "signature": "fn supported_urls(base_url: &Url, model_id: &str) -> SupportedUrls",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::options",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::options::GoogleLanguageModelOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "response_modalities: Option<Vec<String>>",
+        "thinking_config: Option<ThinkingConfig>",
+        "cached_content: Option<String>",
+        "structured_outputs: Option<bool>",
+        "safety_settings: Option<Vec<SafetySetting>>",
+        "threshold: Option<String>",
+        "audio_timestamp: Option<bool>",
+        "labels: Option<BTreeMap<String, String>>",
+        "media_resolution: Option<String>",
+        "image_config: Option<ImageConfig>",
+        "retrieval_config: Option<JsonObject>",
+        "stream_function_call_arguments: Option<bool>",
+        "service_tier: Option<String>",
+        "shared_request_type: Option<String>",
+        "request_type: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for GoogleLanguageModelOptions",
+        "impl Debug for GoogleLanguageModelOptions",
+        "impl Default for GoogleLanguageModelOptions",
+        "impl PartialEq for GoogleLanguageModelOptions",
+        "impl StructuralPartialEq for GoogleLanguageModelOptions",
+        "impl<'de> Deserialize<'de> for GoogleLanguageModelOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::ImageConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "aspect_ratio: Option<String>",
+        "image_size: Option<String>",
+        "person_generation: Option<String>",
+        "prominent_people: Option<String>",
+        "image_output_options: Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for ImageConfig",
+        "impl Debug for ImageConfig",
+        "impl Default for ImageConfig",
+        "impl PartialEq for ImageConfig",
+        "impl Serialize for ImageConfig",
+        "impl StructuralPartialEq for ImageConfig",
+        "impl<'de> Deserialize<'de> for ImageConfig"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::PartOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "thought_signature: Option<String>",
+        "thought: Option<bool>",
+        "server_tool_call_id: Option<String>",
+        "server_tool_type: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for PartOptions",
+        "impl Debug for PartOptions",
+        "impl Default for PartOptions",
+        "impl Eq for PartOptions",
+        "impl PartialEq for PartOptions",
+        "impl StructuralPartialEq for PartOptions",
+        "impl<'de> Deserialize<'de> for PartOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::SafetySetting",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "category: String",
+        "threshold: String"
+      ],
+      "traits": [
+        "impl Clone for SafetySetting",
+        "impl Debug for SafetySetting",
+        "impl Eq for SafetySetting",
+        "impl PartialEq for SafetySetting",
+        "impl Serialize for SafetySetting",
+        "impl StructuralPartialEq for SafetySetting",
+        "impl<'de> Deserialize<'de> for SafetySetting"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::ThinkingConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "thinking_budget: Option<i64>",
+        "include_thoughts: Option<bool>",
+        "thinking_level: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for ThinkingConfig",
+        "impl Debug for ThinkingConfig",
+        "impl Default for ThinkingConfig",
+        "impl Eq for ThinkingConfig",
+        "impl PartialEq for ThinkingConfig",
+        "impl Serialize for ThinkingConfig",
+        "impl StructuralPartialEq for ThinkingConfig",
+        "impl<'de> Deserialize<'de> for ThinkingConfig"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::parse_merged",
+      "kind": "function",
+      "signature": "fn parse_merged<T: DeserializeOwned + Default>(config: &GoogleConfig, provider_options: &ProviderOptions, merge: impl FnOnce(T, T) -> T) -> Result<T, InvalidArgumentError>"
+    },
+    {
+      "path": "ferrin_google::options::parse_options",
+      "kind": "function",
+      "signature": "fn parse_options(config: &GoogleConfig, provider_options: &ProviderOptions) -> Result<GoogleLanguageModelOptions, InvalidArgumentError>"
+    },
+    {
+      "path": "ferrin_google::options::part_options",
+      "kind": "function",
+      "signature": "fn part_options<'a>(config: &GoogleConfig, provider_options: Option<&'a ProviderOptions>) -> Option<&'a JsonObject>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::read_options",
+      "kind": "function",
+      "signature": "fn read_options<T: DeserializeOwned>(object: Option<&JsonObject>) -> Option<T>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::options::read_part_options",
+      "kind": "function",
+      "signature": "fn read_part_options(config: &GoogleConfig, provider_options: Option<&ProviderOptions>) -> PartOptions",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::output",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::output::OutputMapper",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn code_execution_call(&mut self, language: Option<&str>, code: Option<&str>) -> ToolCall",
+        "fn code_execution_name(&self) -> String",
+        "fn code_execution_result(&mut self, outcome: Option<&str>, output: Option<&str>) -> ProviderToolResult",
+        "fn custom_tool_name(&self, provider_name: &str) -> String",
+        "fn function_call(&self, id: Option<&str>, name: &str, args: Option<&JsonValue>, signature: Option<&str>) -> ToolCall",
+        "fn generate_id(&self) -> String",
+        "fn inline_file(&self, mime_type: &str, data: &str, thought: bool, signature: Option<&str>) -> Result<Content, ProviderError>",
+        "fn map_parts(&mut self, parts: &[Part]) -> Result<Vec<Content>, ProviderError>",
+        "fn metadata(&self, object: JsonObject) -> ProviderMetadata",
+        "fn metadata_opt(&self, object: JsonObject) -> Option<ProviderMetadata>",
+        "fn new(config: SharedConfig, mapping: ToolNameMapping) -> Self",
+        "fn response_metadata(&self, response: &GenerateContentResponse, candidate: Option<&Candidate>, raw_usage: Option<&JsonValue>) -> ProviderMetadata",
+        "fn server_tool_call(&mut self, tool_type: Option<&str>, args: Option<&JsonValue>, id: Option<&str>, signature: Option<&str>) -> ToolCall",
+        "fn server_tool_response(&mut self, response: &JsonValue) -> ProviderToolResult",
+        "fn signature_metadata(&self, signature: Option<&str>) -> Option<ProviderMetadata>",
+        "fn sources(&self, chunks: &[GroundingChunk]) -> Vec<Source>"
+      ],
+      "traits": [
+        "impl Clone for OutputMapper",
+        "impl Debug for OutputMapper"
+      ]
+    },
+    {
+      "path": "ferrin_google::output::convert_usage",
+      "kind": "function",
+      "signature": "fn convert_usage(usage: Option<&UsageMetadata>, raw: Option<JsonObject>) -> Usage",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::output::document_media_type",
+      "kind": "function",
+      "signature": "fn document_media_type(uri: &str) -> &'static str",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::output::has_client_tool_calls",
+      "kind": "function",
+      "signature": "fn has_client_tool_calls(content: &[Content]) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::output::map_finish_reason",
+      "kind": "function",
+      "signature": "fn map_finish_reason(reason: Option<&str>, has_tool_calls: bool) -> FinishReason",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::output::raw_usage",
+      "kind": "function",
+      "signature": "fn raw_usage(raw: Option<&JsonValue>) -> Option<JsonObject>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::prepare_tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::CODE_EXECUTION_TOOL_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::PreparedTools",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "tools: Option<Vec<JsonValue>>",
+        "tool_config: Option<JsonObject>",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for PreparedTools",
+        "impl Debug for PreparedTools",
+        "impl Default for PreparedTools",
+        "impl PartialEq for PreparedTools",
+        "impl StructuralPartialEq for PreparedTools"
+      ]
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::CODE_EXECUTION",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::ENTERPRISE_WEB_SEARCH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::FILE_SEARCH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::GOOGLE_MAPS",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::GOOGLE_SEARCH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::URL_CONTEXT",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::ids::VERTEX_RAG_STORE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::prepare_tools::prepare_tools",
+      "kind": "function",
+      "signature": "fn prepare_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, capabilities: ModelCapabilities, mapping: &ToolNameMapping, retrieval_config: Option<&JsonObject>) -> Result<PreparedTools, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::realtime",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::realtime::DEFAULT_EXPIRES_AFTER_SECONDS",
+      "kind": "constant",
+      "signature": "const: u64"
+    },
+    {
+      "path": "ferrin_google::realtime::DEFAULT_INPUT_AUDIO_RATE",
+      "kind": "constant",
+      "signature": "const: u32"
+    },
+    {
+      "path": "ferrin_google::realtime::FAMILY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::realtime::GoogleRealtimeFactory",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig) -> Self",
+        "fn realtime_model(&self, model_id: &str) -> GoogleRealtimeModel"
+      ],
+      "traits": [
+        "impl Clone for GoogleRealtimeFactory",
+        "impl Debug for GoogleRealtimeFactory",
+        "impl RealtimeFactory for GoogleRealtimeFactory"
+      ]
+    },
+    {
+      "path": "ferrin_google::realtime::GoogleRealtimeModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn session_url(&self) -> Url"
+      ],
+      "traits": [
+        "impl Debug for GoogleRealtimeModel",
+        "impl RealtimeModel for GoogleRealtimeModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::realtime::WEBSOCKET_SERVICE_PATH",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::realtime::build_session_config",
+      "kind": "function",
+      "signature": "fn build_session_config(config: Option<&RealtimeSessionConfig>, model_id: &str) -> Result<JsonValue, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::realtime::token_request_headers",
+      "kind": "function",
+      "signature": "fn token_request_headers(config: &GoogleConfig) -> Headers",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::request",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::request::CONFIGURABLE_HARM_CATEGORIES",
+      "kind": "constant",
+      "signature": "const: [&str; 4]"
+    },
+    {
+      "path": "ferrin_google::request::PreparedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonObject",
+        "warnings: Vec<Warning>",
+        "tool_name_mapping: ToolNameMapping",
+        "capabilities: ModelCapabilities"
+      ],
+      "traits": [
+        "impl Clone for PreparedRequest",
+        "impl Debug for PreparedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_google::request::prepare_request",
+      "kind": "function",
+      "signature": "fn prepare_request(config: &GoogleConfig, model_id: &str, options: &CallOptions) -> Result<PreparedRequest, ProviderError>"
+    },
+    {
+      "path": "ferrin_google::request::tool_name_mapping",
+      "kind": "function",
+      "signature": "fn tool_name_mapping(tools: &[ToolDefinition]) -> ToolNameMapping",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::speech::DEFAULT_SAMPLE_RATE",
+      "kind": "constant",
+      "signature": "const: u32"
+    },
+    {
+      "path": "ferrin_google::speech::DEFAULT_VOICE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::speech::FAMILY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::speech::GoogleSpeechModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &SpeechOptions) -> Result<PreparedSpeechRequest, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechModel",
+        "impl Debug for GoogleSpeechModel",
+        "impl SpeechModel for GoogleSpeechModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech::GoogleSpeechOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "multi_speaker_voice_config: Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechOptions",
+        "impl Debug for GoogleSpeechOptions",
+        "impl Default for GoogleSpeechOptions",
+        "impl PartialEq for GoogleSpeechOptions",
+        "impl StructuralPartialEq for GoogleSpeechOptions",
+        "impl<'de> Deserialize<'de> for GoogleSpeechOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech::PreparedSpeechRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonValue",
+        "warnings: Vec<Warning>",
+        "raw_pcm: bool"
+      ],
+      "traits": [
+        "impl Clone for PreparedSpeechRequest",
+        "impl Debug for PreparedSpeechRequest"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech::add_wav_header",
+      "kind": "function",
+      "signature": "fn add_wav_header(pcm: &[u8], sample_rate: u32) -> Bytes",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech::parse_sample_rate",
+      "kind": "function",
+      "signature": "fn parse_sample_rate(media_type: &str) -> Option<u32>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::stream",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::stream::GoogleStreamState",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(mapper: OutputMapper) -> Self"
+      ],
+      "traits": [
+        "impl Debug for GoogleStreamState",
+        "impl StreamMachine for GoogleStreamState"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::tools::FileSearchArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "file_search_store_names: Vec<String>",
+        "top_k: Option<u32>",
+        "metadata_filter: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for FileSearchArgs",
+        "impl Debug for FileSearchArgs",
+        "impl Default for FileSearchArgs",
+        "impl Eq for FileSearchArgs",
+        "impl PartialEq for FileSearchArgs",
+        "impl Serialize for FileSearchArgs",
+        "impl StructuralPartialEq for FileSearchArgs"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools::GoogleSearchArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "search_types: Option<SearchTypes>",
+        "time_range_filter: Option<TimeRangeFilter>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSearchArgs",
+        "impl Debug for GoogleSearchArgs",
+        "impl Default for GoogleSearchArgs",
+        "impl Eq for GoogleSearchArgs",
+        "impl PartialEq for GoogleSearchArgs",
+        "impl Serialize for GoogleSearchArgs",
+        "impl StructuralPartialEq for GoogleSearchArgs"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools::GoogleTools",
+      "kind": "struct",
+      "signature": "struct",
+      "methods": [
+        "fn code_execution(&self) -> Tool",
+        "fn enterprise_web_search(&self) -> Tool",
+        "fn file_search(&self, config: FileSearchArgs) -> Tool",
+        "fn google_maps(&self) -> Tool",
+        "fn google_search(&self, config: GoogleSearchArgs) -> Tool",
+        "fn new() -> Self",
+        "fn url_context(&self) -> Tool",
+        "fn vertex_rag_store(&self, config: VertexRagStoreArgs) -> Tool"
+      ],
+      "traits": [
+        "impl Clone for GoogleTools",
+        "impl Copy for GoogleTools",
+        "impl Debug for GoogleTools",
+        "impl Default for GoogleTools"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools::SearchTypes",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "web_search: Option<JsonObject>",
+        "image_search: Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for SearchTypes",
+        "impl Debug for SearchTypes",
+        "impl Default for SearchTypes",
+        "impl Eq for SearchTypes",
+        "impl PartialEq for SearchTypes",
+        "impl Serialize for SearchTypes",
+        "impl StructuralPartialEq for SearchTypes"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools::TimeRangeFilter",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "start_time: String",
+        "end_time: String"
+      ],
+      "traits": [
+        "impl Clone for TimeRangeFilter",
+        "impl Debug for TimeRangeFilter",
+        "impl Default for TimeRangeFilter",
+        "impl Eq for TimeRangeFilter",
+        "impl PartialEq for TimeRangeFilter",
+        "impl Serialize for TimeRangeFilter",
+        "impl StructuralPartialEq for TimeRangeFilter"
+      ]
+    },
+    {
+      "path": "ferrin_google::tools::VertexRagStoreArgs",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "rag_corpus: String",
+        "top_k: Option<u32>"
+      ],
+      "traits": [
+        "impl Clone for VertexRagStoreArgs",
+        "impl Debug for VertexRagStoreArgs",
+        "impl Default for VertexRagStoreArgs",
+        "impl Eq for VertexRagStoreArgs",
+        "impl PartialEq for VertexRagStoreArgs",
+        "impl Serialize for VertexRagStoreArgs",
+        "impl StructuralPartialEq for VertexRagStoreArgs"
+      ]
+    },
+    {
+      "path": "ferrin_google::transcription",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::transcription::FAMILY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_google::transcription::GoogleTranscriptionModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &TranscriptionOptions) -> Result<JsonValue, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleTranscriptionModel",
+        "impl Debug for GoogleTranscriptionModel",
+        "impl TranscriptionModel for GoogleTranscriptionModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::transcription::GoogleTranscriptionOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "language_codes: Option<Vec<String>>",
+        "custom_vocabulary: Option<Vec<String>>",
+        "word_timestamp: Option<bool>",
+        "diarization: Option<bool>",
+        "mode: Option<String>"
+      ],
+      "methods": [
+        "fn transcription_config(&self) -> Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for GoogleTranscriptionOptions",
+        "impl Debug for GoogleTranscriptionOptions",
+        "impl Default for GoogleTranscriptionOptions",
+        "impl Eq for GoogleTranscriptionOptions",
+        "impl PartialEq for GoogleTranscriptionOptions",
+        "impl StructuralPartialEq for GoogleTranscriptionOptions",
+        "impl<'de> Deserialize<'de> for GoogleTranscriptionOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::transcription::is_live_model",
+      "kind": "function",
+      "signature": "fn is_live_model(model_id: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::video",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::video::GoogleVideoModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &VideoOptions) -> PreparedVideoRequest"
+      ],
+      "traits": [
+        "impl Clone for GoogleVideoModel",
+        "impl Debug for GoogleVideoModel",
+        "impl VideoModel for GoogleVideoModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::video::MAX_VIDEOS_PER_CALL",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_google::video::Operation",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "name: Option<String>",
+        "done: Option<bool>",
+        "error: Option<RpcStatus>",
+        "response: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for Operation",
+        "impl Debug for Operation",
+        "impl Default for Operation",
+        "impl<'de> Deserialize<'de> for Operation"
+      ]
+    },
+    {
+      "path": "ferrin_google::video::PreparedVideoRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "body: JsonValue",
+        "warnings: Vec<Warning>"
+      ],
+      "traits": [
+        "impl Clone for PreparedVideoRequest",
+        "impl Debug for PreparedVideoRequest",
+        "impl PartialEq for PreparedVideoRequest",
+        "impl StructuralPartialEq for PreparedVideoRequest"
+      ]
+    }
+  ]
+}

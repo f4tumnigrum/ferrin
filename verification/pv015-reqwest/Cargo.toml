@@ -1,0 +1,12 @@
+[package]
+name = "pv015-reqwest"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+reqwest = { workspace = true, features = ["rustls", "http2", "stream", "json", "multipart", "charset"] }
+tokio = { workspace = true }
+url = { workspace = true }
+http = { workspace = true }
+

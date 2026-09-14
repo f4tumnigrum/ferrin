@@ -1,0 +1,48 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/realtime.rs
+expression: "request[\"session\"]"
+---
+{
+  "type": "realtime",
+  "model": "gpt-realtime",
+  "instructions": "Be helpful.",
+  "output_modalities": [
+    "audio"
+  ],
+  "audio": {
+    "input": {
+      "format": {
+        "type": "audio/pcm",
+        "rate": 24000
+      },
+      "turn_detection": {
+        "type": "semantic_vad",
+        "threshold": 0.6,
+        "silence_duration_ms": 400
+      },
+      "transcription": {
+        "model": "gpt-realtime-whisper",
+        "language": "en"
+      }
+    },
+    "output": {
+      "format": {
+        "type": "audio/pcm"
+      },
+      "voice": "marin"
+    }
+  },
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_weather",
+      "description": "Weather",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "max_output_tokens": 200
+}

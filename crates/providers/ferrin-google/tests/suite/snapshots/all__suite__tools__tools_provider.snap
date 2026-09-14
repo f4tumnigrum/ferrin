@@ -1,0 +1,44 @@
+---
+source: crates/providers/ferrin-google/tests/suite/tools.rs
+expression: prepared.tools
+---
+[
+  {
+    "googleSearch": {
+      "timeRangeFilter": {
+        "startTime": "2026-01-01T00:00:00Z",
+        "endTime": "2026-09-01T00:00:00Z"
+      }
+    }
+  },
+  {
+    "enterpriseWebSearch": {}
+  },
+  {
+    "urlContext": {}
+  },
+  {
+    "codeExecution": {}
+  },
+  {
+    "fileSearch": {
+      "fileSearchStoreNames": [
+        "fileSearchStores/store-1"
+      ],
+      "topK": 5
+    }
+  },
+  {
+    "retrieval": {
+      "vertex_rag_store": {
+        "rag_resources": {
+          "rag_corpus": "projects/p/locations/us/ragCorpora/c"
+        },
+        "similarity_top_k": 3
+      }
+    }
+  },
+  {
+    "googleMaps": {}
+  }
+]

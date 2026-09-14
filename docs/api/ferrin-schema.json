@@ -1,0 +1,529 @@
+{
+  "crate": "ferrin-schema",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_schema::JsonParseError",
+      "kind": "use",
+      "source": "ferrin_spec::error::JsonParseError"
+    },
+    {
+      "path": "ferrin_schema::JsonSchema",
+      "kind": "use",
+      "source": "schemars::JsonSchema"
+    },
+    {
+      "path": "ferrin_schema::ParseLimits",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json::ParseLimits",
+      "fields": [
+        "max_depth: usize",
+        "max_bytes: usize"
+      ],
+      "traits": [
+        "impl Clone for ParseLimits",
+        "impl Copy for ParseLimits",
+        "impl Debug for ParseLimits",
+        "impl Default for ParseLimits",
+        "impl Eq for ParseLimits",
+        "impl PartialEq for ParseLimits",
+        "impl StructuralPartialEq for ParseLimits"
+      ]
+    },
+    {
+      "path": "ferrin_schema::PartialParse",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "partial_json::PartialParse",
+      "fields": [
+        "value: Option<Value>",
+        "state: PartialParseState"
+      ],
+      "traits": [
+        "impl Clone for PartialParse",
+        "impl Debug for PartialParse",
+        "impl Eq for PartialParse",
+        "impl PartialEq for PartialParse",
+        "impl StructuralPartialEq for PartialParse"
+      ]
+    },
+    {
+      "path": "ferrin_schema::PartialParseState",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "partial_json::PartialParseState",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "SuccessfulParse",
+        "RepairedParse",
+        "FailedParse"
+      ],
+      "traits": [
+        "impl Clone for PartialParseState",
+        "impl Copy for PartialParseState",
+        "impl Debug for PartialParseState",
+        "impl Eq for PartialParseState",
+        "impl Hash for PartialParseState",
+        "impl PartialEq for PartialParseState",
+        "impl StructuralPartialEq for PartialParseState"
+      ]
+    },
+    {
+      "path": "ferrin_schema::Schema",
+      "kind": "struct",
+      "signature": "struct<T>",
+      "source": "schema::Schema",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn any() -> Self",
+        "fn derived() -> Self",
+        "fn derived_with(dialect: SchemaDialect) -> Self",
+        "fn empty_object() -> Self",
+        "fn erased(&self) -> Schema<Value>",
+        "fn from_json_schema(schema: Value) -> Self",
+        "fn json_schema(&self) -> &Value",
+        "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
+        "fn transformed(&self, transform: SchemaTransform) -> Self",
+        "fn typed_from_json_schema(schema: Value) -> Self",
+        "fn validate(&self, value: Value) -> Result<T, TypeValidationError>",
+        "fn with_json_schema_and_validator(json_schema: Value, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
+        "fn with_validator(self, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl<T> Clone for Schema<T>",
+        "impl<T> Debug for Schema<T>"
+      ]
+    },
+    {
+      "path": "ferrin_schema::SchemaDialect",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "dialect::SchemaDialect",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Draft07",
+        "Draft2020_12"
+      ],
+      "methods": [
+        "fn generate<T: JsonSchema>(self) -> Value",
+        "fn meta_schema(self) -> &'static str",
+        "fn settings(self) -> SchemaSettings"
+      ],
+      "traits": [
+        "impl Clone for SchemaDialect",
+        "impl Copy for SchemaDialect",
+        "impl Debug for SchemaDialect",
+        "impl Default for SchemaDialect",
+        "impl Eq for SchemaDialect",
+        "impl Hash for SchemaDialect",
+        "impl PartialEq for SchemaDialect",
+        "impl StructuralPartialEq for SchemaDialect"
+      ]
+    },
+    {
+      "path": "ferrin_schema::SchemaError",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "error::SchemaError",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "JsonParse(JsonParseError)",
+        "TypeValidation(TypeValidationError)",
+        "InvalidSchema { message: String }"
+      ],
+      "traits": [
+        "impl Debug for SchemaError",
+        "impl Display for SchemaError",
+        "impl Error for SchemaError",
+        "impl From<JsonParseError> for SchemaError",
+        "impl From<SchemaError> for ProviderError",
+        "impl From<TypeValidationError> for SchemaError"
+      ]
+    },
+    {
+      "path": "ferrin_schema::SchemaTransform",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "transform::SchemaTransform",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "AdditionalPropertiesFalse",
+        "RemovePropertyNames",
+        "OpenAiStrict"
+      ],
+      "methods": [
+        "fn additional_properties_false() -> Self",
+        "fn applied(self, schema: Value) -> Value",
+        "fn apply(self, schema: &mut Value)",
+        "fn openai_strict() -> Self"
+      ],
+      "traits": [
+        "impl Clone for SchemaTransform",
+        "impl Copy for SchemaTransform",
+        "impl Debug for SchemaTransform",
+        "impl Eq for SchemaTransform",
+        "impl Hash for SchemaTransform",
+        "impl PartialEq for SchemaTransform",
+        "impl StructuralPartialEq for SchemaTransform"
+      ]
+    },
+    {
+      "path": "ferrin_schema::TypeValidationContext",
+      "kind": "use",
+      "source": "ferrin_spec::error::TypeValidationContext"
+    },
+    {
+      "path": "ferrin_schema::TypeValidationError",
+      "kind": "use",
+      "source": "ferrin_spec::error::TypeValidationError"
+    },
+    {
+      "path": "ferrin_schema::ValidationIssue",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "validation::ValidationIssue",
+      "fields": [
+        "path: String",
+        "message: String"
+      ],
+      "traits": [
+        "impl Clone for ValidationIssue",
+        "impl Debug for ValidationIssue",
+        "impl Eq for ValidationIssue",
+        "impl PartialEq for ValidationIssue",
+        "impl StructuralPartialEq for ValidationIssue"
+      ]
+    },
+    {
+      "path": "ferrin_schema::ValidationIssues",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "validation::ValidationIssues",
+      "fields": [
+        "issues: Vec<ValidationIssue>"
+      ],
+      "methods": [
+        "fn is_empty(&self) -> bool",
+        "fn message(message: impl Into<String>) -> Self",
+        "fn new(issues: Vec<ValidationIssue>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ValidationIssues",
+        "impl Debug for ValidationIssues",
+        "impl Default for ValidationIssues",
+        "impl Display for ValidationIssues",
+        "impl Eq for ValidationIssues",
+        "impl Error for ValidationIssues",
+        "impl PartialEq for ValidationIssues",
+        "impl StructuralPartialEq for ValidationIssues"
+      ]
+    },
+    {
+      "path": "ferrin_schema::dialect",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::dialect::SchemaDialect",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Draft07",
+        "Draft2020_12"
+      ],
+      "methods": [
+        "fn generate<T: JsonSchema>(self) -> Value",
+        "fn meta_schema(self) -> &'static str",
+        "fn settings(self) -> SchemaSettings"
+      ],
+      "traits": [
+        "impl Clone for SchemaDialect",
+        "impl Copy for SchemaDialect",
+        "impl Debug for SchemaDialect",
+        "impl Default for SchemaDialect",
+        "impl Eq for SchemaDialect",
+        "impl Hash for SchemaDialect",
+        "impl PartialEq for SchemaDialect",
+        "impl StructuralPartialEq for SchemaDialect"
+      ]
+    },
+    {
+      "path": "ferrin_schema::json",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::json::DEFAULT_MAX_BYTES",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_schema::json::DEFAULT_MAX_DEPTH",
+      "kind": "constant",
+      "signature": "const: usize"
+    },
+    {
+      "path": "ferrin_schema::json::ParseLimits",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "max_depth: usize",
+        "max_bytes: usize"
+      ],
+      "traits": [
+        "impl Clone for ParseLimits",
+        "impl Copy for ParseLimits",
+        "impl Debug for ParseLimits",
+        "impl Default for ParseLimits",
+        "impl Eq for ParseLimits",
+        "impl PartialEq for ParseLimits",
+        "impl StructuralPartialEq for ParseLimits"
+      ]
+    },
+    {
+      "path": "ferrin_schema::json::depth",
+      "kind": "function",
+      "signature": "fn depth(value: &Value) -> usize",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_schema::json::is_parsable",
+      "kind": "function",
+      "signature": "fn is_parsable(text: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_schema::json::parse",
+      "kind": "function",
+      "signature": "fn parse(text: &str) -> Result<Value, JsonParseError>"
+    },
+    {
+      "path": "ferrin_schema::json::parse_with",
+      "kind": "function",
+      "signature": "fn parse_with(text: &str, limits: ParseLimits) -> Result<Value, JsonParseError>"
+    },
+    {
+      "path": "ferrin_schema::json::parse_with_schema",
+      "kind": "function",
+      "signature": "fn parse_with_schema<T>(text: &str, schema: &Schema<T>) -> Result<T, SchemaError>"
+    },
+    {
+      "path": "ferrin_schema::partial_json",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::partial_json::PartialParse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "value: Option<Value>",
+        "state: PartialParseState"
+      ],
+      "traits": [
+        "impl Clone for PartialParse",
+        "impl Debug for PartialParse",
+        "impl Eq for PartialParse",
+        "impl PartialEq for PartialParse",
+        "impl StructuralPartialEq for PartialParse"
+      ]
+    },
+    {
+      "path": "ferrin_schema::partial_json::PartialParseState",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "SuccessfulParse",
+        "RepairedParse",
+        "FailedParse"
+      ],
+      "traits": [
+        "impl Clone for PartialParseState",
+        "impl Copy for PartialParseState",
+        "impl Debug for PartialParseState",
+        "impl Eq for PartialParseState",
+        "impl Hash for PartialParseState",
+        "impl PartialEq for PartialParseState",
+        "impl StructuralPartialEq for PartialParseState"
+      ]
+    },
+    {
+      "path": "ferrin_schema::partial_json::parse_partial",
+      "kind": "function",
+      "signature": "fn parse_partial(text: &str) -> PartialParse",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_schema::partial_json::repair",
+      "kind": "function",
+      "signature": "fn repair(input: &str) -> Cow<'_, str>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_schema::schema",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::schema::Schema",
+      "kind": "struct",
+      "signature": "struct<T>",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn any() -> Self",
+        "fn derived() -> Self",
+        "fn derived_with(dialect: SchemaDialect) -> Self",
+        "fn empty_object() -> Self",
+        "fn erased(&self) -> Schema<Value>",
+        "fn from_json_schema(schema: Value) -> Self",
+        "fn json_schema(&self) -> &Value",
+        "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
+        "fn transformed(&self, transform: SchemaTransform) -> Self",
+        "fn typed_from_json_schema(schema: Value) -> Self",
+        "fn validate(&self, value: Value) -> Result<T, TypeValidationError>",
+        "fn with_json_schema_and_validator(json_schema: Value, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
+        "fn with_validator(self, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl<T> Clone for Schema<T>",
+        "impl<T> Debug for Schema<T>"
+      ]
+    },
+    {
+      "path": "ferrin_schema::schemars",
+      "kind": "use",
+      "source": "schemars"
+    },
+    {
+      "path": "ferrin_schema::transform",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::transform::SchemaTransform",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "AdditionalPropertiesFalse",
+        "RemovePropertyNames",
+        "OpenAiStrict"
+      ],
+      "methods": [
+        "fn additional_properties_false() -> Self",
+        "fn applied(self, schema: Value) -> Value",
+        "fn apply(self, schema: &mut Value)",
+        "fn openai_strict() -> Self"
+      ],
+      "traits": [
+        "impl Clone for SchemaTransform",
+        "impl Copy for SchemaTransform",
+        "impl Debug for SchemaTransform",
+        "impl Eq for SchemaTransform",
+        "impl Hash for SchemaTransform",
+        "impl PartialEq for SchemaTransform",
+        "impl StructuralPartialEq for SchemaTransform"
+      ]
+    },
+    {
+      "path": "ferrin_schema::transform::add_additional_properties_false",
+      "kind": "function",
+      "signature": "fn add_additional_properties_false(schema: &mut Value)"
+    },
+    {
+      "path": "ferrin_schema::transform::remove_property_names",
+      "kind": "function",
+      "signature": "fn remove_property_names(schema: &mut Value)"
+    },
+    {
+      "path": "ferrin_schema::transform::to_openai_strict",
+      "kind": "function",
+      "signature": "fn to_openai_strict(schema: &mut Value)"
+    },
+    {
+      "path": "ferrin_schema::validation",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_schema::validation::ValidationIssue",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "path: String",
+        "message: String"
+      ],
+      "traits": [
+        "impl Clone for ValidationIssue",
+        "impl Debug for ValidationIssue",
+        "impl Eq for ValidationIssue",
+        "impl PartialEq for ValidationIssue",
+        "impl StructuralPartialEq for ValidationIssue"
+      ]
+    },
+    {
+      "path": "ferrin_schema::validation::ValidationIssues",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "issues: Vec<ValidationIssue>"
+      ],
+      "methods": [
+        "fn is_empty(&self) -> bool",
+        "fn message(message: impl Into<String>) -> Self",
+        "fn new(issues: Vec<ValidationIssue>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ValidationIssues",
+        "impl Debug for ValidationIssues",
+        "impl Default for ValidationIssues",
+        "impl Display for ValidationIssues",
+        "impl Eq for ValidationIssues",
+        "impl Error for ValidationIssues",
+        "impl PartialEq for ValidationIssues",
+        "impl StructuralPartialEq for ValidationIssues"
+      ]
+    },
+    {
+      "path": "ferrin_schema::validation::Validator",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn compile(schema: &Value) -> Result<Self, SchemaError>",
+        "fn is_valid(&self, value: &Value) -> bool",
+        "fn issues(&self, value: &Value) -> ValidationIssues",
+        "fn validate(&self, value: &Value) -> Result<(), ValidationIssues>"
+      ],
+      "traits": [
+        "impl Debug for Validator"
+      ]
+    }
+  ]
+}

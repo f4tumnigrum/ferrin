@@ -1,0 +1,12 @@
+[package]
+name = "pv013-error-size"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+url = { workspace = true }
+http = { workspace = true }
+serde_json = { workspace = true }
+static_assertions = { workspace = true }

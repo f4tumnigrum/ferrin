@@ -1,0 +1,48 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_request.rs
+expression: prepared.body
+---
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 100,
+  "temperature": 0.3,
+  "top_k": 5,
+  "stop_sequences": [
+    "END"
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "Be brief."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hi!  "
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "How are you?"
+        }
+      ]
+    }
+  ]
+}

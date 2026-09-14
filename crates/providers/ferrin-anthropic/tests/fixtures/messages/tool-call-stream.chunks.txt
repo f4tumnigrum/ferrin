@@ -1,0 +1,8 @@
+event: message_start\ndata: {"type": "message_start", "message": {"id": "msg_tool_stream", "type": "message", "role": "assistant", "model": "claude-sonnet-4-5", "content": [], "stop_reason": null, "stop_sequence": null, "usage": {"input_tokens": 30, "output_tokens": 1}}}
+event: content_block_start\ndata: {"type": "content_block_start", "index": 0, "content_block": {"type": "tool_use", "id": "toolu_s1", "name": "get_weather", "input": {}}}
+event: content_block_delta\ndata: {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": ""}}
+event: content_block_delta\ndata: {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\\"city\\":"}}
+event: content_block_delta\ndata: {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": " \\"Paris\\"}"}}
+event: content_block_stop\ndata: {"type": "content_block_stop", "index": 0}
+event: message_delta\ndata: {"type": "message_delta", "delta": {"stop_reason": "tool_use", "stop_sequence": null}, "usage": {"output_tokens": 20}}
+event: message_stop\ndata: {"type": "message_stop"}

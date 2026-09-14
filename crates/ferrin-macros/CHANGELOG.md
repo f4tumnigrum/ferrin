@@ -1,0 +1,14 @@
+# Changelog
+
+All notable changes to this crate are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+
+- `#[ferrin::tool]`: expands a function with one owned input parameter and an
+  optional `ToolContext` into `fn name() -> ferrin::tool::Tool`
+  (`Tool::function::<Input>()` with the doc comment as description); rejects
+  reference parameters, explicit lifetimes, generics, `self`, missing return
+  types and macro arguments with targeted compile errors.

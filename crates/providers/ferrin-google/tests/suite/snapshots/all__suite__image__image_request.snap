@@ -1,0 +1,37 @@
+---
+source: crates/providers/ferrin-google/tests/suite/image.rs
+expression: request
+---
+{
+  "generationConfig": {
+    "seed": 3,
+    "responseModalities": [
+      "IMAGE"
+    ],
+    "imageConfig": {
+      "aspectRatio": "16:9",
+      "imageSize": "2K"
+    }
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "A red square"
+        },
+        {
+          "inlineData": {
+            "mimeType": "image/png",
+            "data": "iVBORw=="
+          }
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "googleSearch": {}
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+---
+source: crates/providers/ferrin-google/tests/suite/prompt.rs
+expression: converted.warnings
+---
+[
+  {
+    "type": "other",
+    "message": "thought signatures are missing for tool call(s) get_weather, render_chart, deny_me, lookup; \"skip_thought_signature_validator\" was sent instead, which may reduce response quality"
+  }
+]

@@ -1,0 +1,5 @@
+error: tool parameters must be owned types (use String instead of &str)
+ --> tests/ui/fail/reference_parameter.rs:3:23
+  |
+3 | async fn upper(input: &str) -> Result<String, ferrin::tool::ToolError> {
+  |                       ^

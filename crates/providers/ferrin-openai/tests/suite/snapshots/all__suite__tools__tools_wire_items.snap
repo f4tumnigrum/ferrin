@@ -1,0 +1,64 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/tools.rs
+expression: converted.tools.unwrap()
+---
+[
+  {
+    "type": "web_search",
+    "search_context_size": "medium",
+    "user_location": {
+      "type": "approximate",
+      "country": "FR"
+    }
+  },
+  {
+    "type": "file_search",
+    "vector_store_ids": [
+      "vs_1"
+    ],
+    "max_num_results": 5,
+    "ranking_options": {
+      "ranker": "auto",
+      "score_threshold": 0.5
+    }
+  },
+  {
+    "type": "code_interpreter",
+    "container": {
+      "type": "auto",
+      "file_ids": [
+        "file-1"
+      ]
+    }
+  },
+  {
+    "type": "mcp",
+    "server_label": "docs",
+    "require_approval": "never",
+    "server_url": "https://mcp.example.test"
+  },
+  {
+    "type": "custom",
+    "name": "sql",
+    "description": "Run SQL",
+    "format": {
+      "type": "grammar",
+      "syntax": "lark",
+      "definition": "start: \"SELECT\""
+    }
+  },
+  {
+    "type": "function",
+    "name": "get_weather",
+    "description": "Weather",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
+        }
+      }
+    },
+    "strict": true
+  }
+]

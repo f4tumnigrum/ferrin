@@ -1,0 +1,62 @@
+[package]
+name = "ferrin-openai"
+description = "Ferrin provider for OpenAI (Responses, Chat Completions, embeddings, images, speech, transcription, files, skills, batch, realtime)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk", "openai"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_openai"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# WebSocket-backed streaming models: realtime transcription (`gpt-realtime-whisper`)
+# and speech translation. The realtime language model (client secrets and event
+# mapping) does not need this feature; the session loop lives in `ferrin-core`.
+realtime = [
+    "dep:tokio-tungstenite",
+    "tokio-tungstenite/connect",
+    "tokio-tungstenite/rustls-tls-native-roots",
+    "futures-util/sink",
+    "tokio/macros",
+    "tokio/net",
+]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+ferrin-tool = { workspace = true }
+tokio = { workspace = true, features = ["sync", "time"] }
+tokio-util = { workspace = true }
+futures-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+secrecy = { workspace = true }
+tokio-tungstenite = { workspace = true, optional = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net"] }
+tokio-tungstenite = { workspace = true, features = ["connect"] }
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

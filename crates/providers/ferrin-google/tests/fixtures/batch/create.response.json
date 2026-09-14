@@ -1,0 +1,11 @@
+{
+  "name": "batches/batch-123",
+  "metadata": {
+    "@type": "type.googleapis.com/google.ai.generativelanguage.v1beta.GenerateContentBatch",
+    "model": "models/gemini-2.5-flash",
+    "displayName": "ferrin-batch-id-0",
+    "state": "BATCH_STATE_PENDING",
+    "createTime": "2026-09-14T08:00:00.000000Z",
+    "batchStats": {"requestCount": "2", "pendingRequestCount": "2"}
+  }
+}

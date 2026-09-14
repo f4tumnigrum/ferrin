@@ -1,0 +1,5 @@
+data: {"type": "response.created", "sequence_number": 0, "response": {"id": "resp_stream", "object": "response", "created_at": 1757721700, "model": "gpt-5", "status": "in_progress", "output": []}}
+data: {"type": "response.in_progress", "sequence_number": 1, "response": {"id": "resp_stream", "object": "response", "created_at": 1757721700, "model": "gpt-5", "status": "in_progress", "output": []}}
+data: {"type": "response.output_item.added", "sequence_number": 2, "output_index": 0, "item": {"type": "message", "id": "msg_s1", "status": "in_progress", "role": "assistant", "content": []}}
+data: {"type": "response.output_text.delta", "sequence_number": 3, "item_id": "msg_s1", "output_index": 0, "content_index": 0, "delta": "Partial"}
+data: {"type": "response.failed", "sequence_number": 4, "response": {"id": "resp_stream", "object": "response", "created_at": 1757721700, "model": "gpt-5", "status": "failed", "error": {"code": "rate_limit_exceeded", "message": "Rate limit reached for requests"}, "output": []}}

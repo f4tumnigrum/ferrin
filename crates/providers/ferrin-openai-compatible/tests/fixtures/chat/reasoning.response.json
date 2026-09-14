@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl_r",
+  "object": "chat.completion",
+  "created": 1757721802,
+  "model": "example-reasoner",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "reasoning_content": "The user greets me.",
+        "content": "Hello back."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 9,
+    "total_tokens": 21,
+    "completion_tokens_details": {
+      "reasoning_tokens": 4
+    }
+  }
+}

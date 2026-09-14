@@ -1,0 +1,12 @@
+---
+source: crates/ferrin-mcp/tests/suite/client_legacy.rs
+expression: initialize.params
+---
+{
+  "protocolVersion": "2025-11-25",
+  "capabilities": {},
+  "clientInfo": {
+    "name": "ferrin-mcp-client",
+    "version": "0.1.0"
+  }
+}

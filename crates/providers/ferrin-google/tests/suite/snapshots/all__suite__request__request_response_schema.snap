@@ -1,0 +1,20 @@
+---
+source: crates/providers/ferrin-google/tests/suite/request.rs
+expression: "prepared.body[\"generationConfig\"][\"responseSchema\"]"
+---
+{
+  "required": [
+    "answer"
+  ],
+  "type": "object",
+  "properties": {
+    "answer": {
+      "anyOf": [
+        {
+          "type": "string"
+        }
+      ],
+      "nullable": true
+    }
+  }
+}

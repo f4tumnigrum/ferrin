@@ -1,0 +1,36 @@
+---
+source: crates/providers/ferrin-google/tests/suite/embedding.rs
+expression: request
+---
+{
+  "requests": [
+    {
+      "model": "models/gemini-embedding-001",
+      "content": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "a"
+          },
+          {
+            "inlineData": {
+              "mimeType": "image/png",
+              "data": "AAAA"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "models/gemini-embedding-001",
+      "content": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "b"
+          }
+        ]
+      }
+    }
+  ]
+}

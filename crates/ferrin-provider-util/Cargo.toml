@@ -1,0 +1,55 @@
+[package]
+name = "ferrin-provider-util"
+description = "Ferrin provider utilities: HTTP transport trait, reqwest transport, SSE decoding, secure URL policy, settings."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_provider_util"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = ["reqwest"]
+# reqwest 0.13 defaults to rustls with rustls-platform-verifier (system trust store).
+reqwest = ["dep:reqwest", "reqwest?/rustls"]
+# Explicit dependency on the verifier crate for configuring it (optional).
+platform-verifier = ["reqwest", "dep:rustls-platform-verifier"]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time", "net"] }
+tokio-util = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+reqwest = { workspace = true, optional = true, features = ["http2", "stream"] }
+rustls-platform-verifier = { workspace = true, optional = true }
+rand = { workspace = true }
+base64 = { workspace = true }
+secrecy = { workspace = true }
+chrono = { workspace = true }
+ipnet = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

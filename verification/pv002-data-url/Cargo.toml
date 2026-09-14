@@ -1,0 +1,9 @@
+[package]
+name = "pv002-data-url"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+data-url = { workspace = true }
+base64 = { workspace = true }

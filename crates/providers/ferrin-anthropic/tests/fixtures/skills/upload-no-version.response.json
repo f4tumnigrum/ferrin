@@ -1,0 +1,11 @@
+{
+  "id": "skill_pending",
+  "type": "skill",
+  "display_title": null,
+  "name": "weather-helper",
+  "description": "Weather lookups",
+  "latest_version": null,
+  "source": "custom",
+  "created_at": "2026-09-13T10:00:00Z",
+  "updated_at": "2026-09-13T10:00:00Z"
+}

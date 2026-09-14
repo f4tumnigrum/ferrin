@@ -1,0 +1,61 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/chat.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "chatcmpl_s",
+    "timestamp": "2025-09-13T00:05:00Z",
+    "model_id": "gpt-4o-2024-08-06"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "call_cs1",
+    "tool_name": "get_weather"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_cs1",
+    "delta": "{\"city\":"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "call_cs1",
+    "delta": "\"Paris\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "call_cs1"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "call_cs1",
+    "tool_name": "get_weather",
+    "input": "{\"city\":\"Paris\"}"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "tool-calls",
+      "raw": "tool_calls"
+    },
+    "usage": {
+      "input": {
+        "total": 15,
+        "no_cache": 15
+      },
+      "output": {
+        "total": 6,
+        "text": 6
+      }
+    },
+    "provider_metadata": {
+      "openai": {}
+    }
+  }
+]

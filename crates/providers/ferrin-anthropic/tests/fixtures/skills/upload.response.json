@@ -1,0 +1,11 @@
+{
+  "id": "skill_abc",
+  "type": "skill",
+  "display_title": "Weather",
+  "name": null,
+  "description": null,
+  "latest_version": "v1.0",
+  "source": "custom",
+  "created_at": "2026-09-13T10:00:00Z",
+  "updated_at": "2026-09-13T10:00:00Z"
+}

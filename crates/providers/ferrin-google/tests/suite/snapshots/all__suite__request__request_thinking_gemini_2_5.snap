@@ -1,0 +1,7 @@
+---
+source: crates/providers/ferrin-google/tests/suite/request.rs
+expression: "prepared.body[\"generationConfig\"][\"thinkingConfig\"]"
+---
+{
+  "thinkingBudget": 6554
+}

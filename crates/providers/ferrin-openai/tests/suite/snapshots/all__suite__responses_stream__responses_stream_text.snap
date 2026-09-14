@@ -1,0 +1,68 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/responses_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "resp_stream",
+    "timestamp": "2025-09-13T00:01:40Z",
+    "model_id": "gpt-5"
+  },
+  {
+    "type": "text-start",
+    "id": "msg_s1",
+    "provider_metadata": {
+      "openai": {
+        "itemId": "msg_s1"
+      }
+    }
+  },
+  {
+    "type": "text-delta",
+    "id": "msg_s1",
+    "delta": "Hello "
+  },
+  {
+    "type": "text-delta",
+    "id": "msg_s1",
+    "delta": "streamed world."
+  },
+  {
+    "type": "text-end",
+    "id": "msg_s1",
+    "provider_metadata": {
+      "openai": {
+        "itemId": "msg_s1"
+      }
+    }
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop"
+    },
+    "usage": {
+      "input": {
+        "total": 42,
+        "no_cache": 32,
+        "cache_read": 10
+      },
+      "output": {
+        "total": 12,
+        "text": 8,
+        "reasoning": 4
+      }
+    },
+    "provider_metadata": {
+      "openai": {
+        "responseId": "resp_stream",
+        "serviceTier": "default"
+      }
+    }
+  }
+]

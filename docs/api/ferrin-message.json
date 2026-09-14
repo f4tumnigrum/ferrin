@@ -1,0 +1,822 @@
+{
+  "crate": "ferrin-message",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_message::ApprovalId",
+      "kind": "use",
+      "source": "ferrin_spec::ApprovalId"
+    },
+    {
+      "path": "ferrin_message::AssistantContent",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "message::AssistantContent",
+      "variants": [
+        "Text(String)",
+        "Parts(Vec<AssistantPart>)"
+      ],
+      "methods": [
+        "fn as_parts(&self) -> Option<&[AssistantPart]>",
+        "fn as_text(&self) -> Option<&str>",
+        "fn into_parts(self) -> Vec<AssistantPart>",
+        "fn is_empty(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for AssistantContent",
+        "impl Debug for AssistantContent",
+        "impl From<&str> for AssistantContent",
+        "impl From<String> for AssistantContent",
+        "impl From<Vec<AssistantPart>> for AssistantContent",
+        "impl PartialEq for AssistantContent",
+        "impl Serialize for AssistantContent",
+        "impl StructuralPartialEq for AssistantContent",
+        "impl<'de> Deserialize<'de> for AssistantContent"
+      ]
+    },
+    {
+      "path": "ferrin_message::AssistantMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "message::AssistantMessage",
+      "fields": [
+        "content: AssistantContent",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "traits": [
+        "impl Clone for AssistantMessage",
+        "impl Debug for AssistantMessage",
+        "impl From<AssistantMessage> for Message",
+        "impl PartialEq for AssistantMessage",
+        "impl Serialize for AssistantMessage",
+        "impl StructuralPartialEq for AssistantMessage",
+        "impl<'de> Deserialize<'de> for AssistantMessage"
+      ]
+    },
+    {
+      "path": "ferrin_message::AssistantPart",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "part::AssistantPart",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Text(TextPart)",
+        "Custom(CustomPart)",
+        "File(FilePart)",
+        "Reasoning(ReasoningPart)",
+        "ReasoningFile(ReasoningFilePart)",
+        "ToolCall(ToolCallPart)",
+        "ToolResult(ToolResultPart)",
+        "ToolApprovalRequest(ToolApprovalRequest)"
+      ],
+      "methods": [
+        "fn as_text(&self) -> Option<&str>",
+        "fn as_tool_approval_request(&self) -> Option<&ToolApprovalRequest>",
+        "fn as_tool_call(&self) -> Option<&ToolCallPart>",
+        "fn reasoning(text: impl Into<String>) -> Self",
+        "fn text(text: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AssistantPart",
+        "impl Debug for AssistantPart",
+        "impl From<&str> for AssistantPart",
+        "impl From<CustomPart> for AssistantPart",
+        "impl From<FilePart> for AssistantPart",
+        "impl From<ReasoningFilePart> for AssistantPart",
+        "impl From<ReasoningPart> for AssistantPart",
+        "impl From<String> for AssistantPart",
+        "impl From<TextPart> for AssistantPart",
+        "impl From<ToolApprovalRequest> for AssistantPart",
+        "impl From<ToolCallPart> for AssistantPart",
+        "impl From<ToolResultPart> for AssistantPart",
+        "impl PartialEq for AssistantPart",
+        "impl Serialize for AssistantPart",
+        "impl StructuralPartialEq for AssistantPart",
+        "impl<'de> Deserialize<'de> for AssistantPart"
+      ]
+    },
+    {
+      "path": "ferrin_message::CustomPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::CustomPart"
+    },
+    {
+      "path": "ferrin_message::DataUrl",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "data_url::DataUrl",
+      "fields": [
+        "media_type: MediaType",
+        "data: Bytes",
+        "is_base64: bool"
+      ],
+      "traits": [
+        "impl Clone for DataUrl",
+        "impl Debug for DataUrl",
+        "impl Eq for DataUrl",
+        "impl PartialEq for DataUrl",
+        "impl StructuralPartialEq for DataUrl"
+      ]
+    },
+    {
+      "path": "ferrin_message::FileData",
+      "kind": "use",
+      "source": "ferrin_spec::FileData"
+    },
+    {
+      "path": "ferrin_message::FilePart",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "part::FilePart",
+      "fields": [
+        "data: FileSource",
+        "media_type: MediaType",
+        "filename: Option<String>",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "methods": [
+        "fn new(data: impl Into<FileSource>, media_type: impl Into<MediaType>) -> Self",
+        "fn with_filename(self, filename: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for FilePart",
+        "impl Debug for FilePart",
+        "impl From<FilePart> for AssistantPart",
+        "impl From<FilePart> for UserPart",
+        "impl PartialEq for FilePart",
+        "impl Serialize for FilePart",
+        "impl StructuralPartialEq for FilePart",
+        "impl<'de> Deserialize<'de> for FilePart"
+      ]
+    },
+    {
+      "path": "ferrin_message::FileSource",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "file_source::FileSource",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Bytes { data: Bytes }",
+        "Base64 { data: String }",
+        "Url { url: Url }",
+        "Reference { reference: ProviderReference }",
+        "Text { text: String }",
+        "Path { path: PathBuf }"
+      ],
+      "methods": [
+        "fn as_bytes(&self) -> Option<&Bytes>",
+        "fn as_reference(&self) -> Option<&ProviderReference>",
+        "fn as_url(&self) -> Option<&Url>",
+        "fn base64(data: impl Into<String>) -> Self",
+        "fn bytes(data: impl Into<Bytes>) -> Self",
+        "fn data_url(&self) -> Option<Result<DataUrl, InvalidDataContentError>>",
+        "fn decoded_bytes(&self) -> Result<Option<Bytes>, InvalidDataContentError>",
+        "fn is_data_url(&self) -> bool",
+        "fn parse_url(url: &str) -> Result<Self, ParseError>",
+        "fn path(path: impl Into<PathBuf>) -> Self",
+        "fn reference(provider: impl Into<String>, id: impl Into<String>) -> Self",
+        "fn text(text: impl Into<String>) -> Self",
+        "fn url(url: Url) -> Self"
+      ],
+      "traits": [
+        "impl Clone for FileSource",
+        "impl Debug for FileSource",
+        "impl Eq for FileSource",
+        "impl From<BTreeMap<String, String>> for FileSource",
+        "impl From<Bytes> for FileSource",
+        "impl From<FileData> for FileSource",
+        "impl From<PathBuf> for FileSource",
+        "impl From<Url> for FileSource",
+        "impl From<Vec<u8>> for FileSource",
+        "impl PartialEq for FileSource",
+        "impl Serialize for FileSource",
+        "impl StructuralPartialEq for FileSource",
+        "impl TryFrom<FileSource> for FileData",
+        "impl<'de> Deserialize<'de> for FileSource"
+      ]
+    },
+    {
+      "path": "ferrin_message::FileSourceError",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "error::FileSourceError",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "InvalidDataContent(InvalidDataContentError)",
+        "UnreadPath { path: PathBuf }"
+      ],
+      "traits": [
+        "impl Debug for FileSourceError",
+        "impl Display for FileSourceError",
+        "impl Error for FileSourceError",
+        "impl From<InvalidDataContentError> for FileSourceError"
+      ]
+    },
+    {
+      "path": "ferrin_message::ImagePart",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "part::ImagePart",
+      "fields": [
+        "image: FileSource",
+        "media_type: Option<MediaType>",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "methods": [
+        "fn new(image: impl Into<FileSource>) -> Self",
+        "fn with_media_type(self, media_type: impl Into<MediaType>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ImagePart",
+        "impl Debug for ImagePart",
+        "impl From<ImagePart> for UserPart",
+        "impl PartialEq for ImagePart",
+        "impl Serialize for ImagePart",
+        "impl StructuralPartialEq for ImagePart",
+        "impl<'de> Deserialize<'de> for ImagePart"
+      ]
+    },
+    {
+      "path": "ferrin_message::InvalidDataContentError",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "error::InvalidDataContentError",
+      "fields": [
+        "message: String",
+        "cause: Option<Box<dyn Error + Send + Sync>>"
+      ],
+      "methods": [
+        "fn new(message: impl Into<String>) -> Self",
+        "fn with_cause(self, cause: impl Error + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl Debug for InvalidDataContentError",
+        "impl Display for InvalidDataContentError",
+        "impl Error for InvalidDataContentError",
+        "impl From<InvalidDataContentError> for FileSourceError"
+      ]
+    },
+    {
+      "path": "ferrin_message::MediaType",
+      "kind": "use",
+      "source": "ferrin_spec::MediaType"
+    },
+    {
+      "path": "ferrin_message::Message",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "message::Message",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "System(SystemMessage)",
+        "User(UserMessage)",
+        "Assistant(AssistantMessage)",
+        "Tool(ToolMessage)"
+      ],
+      "methods": [
+        "fn as_assistant(&self) -> Option<&AssistantMessage>",
+        "fn as_system(&self) -> Option<&SystemMessage>",
+        "fn as_tool(&self) -> Option<&ToolMessage>",
+        "fn as_user(&self) -> Option<&UserMessage>",
+        "fn assistant(text: impl Into<String>) -> Self",
+        "fn assistant_parts(parts: impl IntoIterator<Item = impl Into<AssistantPart>>) -> Self",
+        "fn is_empty(&self) -> bool",
+        "fn provider_options(&self) -> Option<&ProviderOptions>",
+        "fn role(&self) -> Role",
+        "fn system(content: impl Into<String>) -> Self",
+        "fn tool(parts: impl IntoIterator<Item = impl Into<ToolPart>>) -> Self",
+        "fn user(text: impl Into<String>) -> Self",
+        "fn user_parts(parts: impl IntoIterator<Item = impl Into<UserPart>>) -> Self",
+        "fn with_provider_options(self, options: ProviderOptions) -> Self"
+      ],
+      "traits": [
+        "impl Clone for Message",
+        "impl Debug for Message",
+        "impl From<AssistantMessage> for Message",
+        "impl From<SystemMessage> for Message",
+        "impl From<ToolMessage> for Message",
+        "impl From<UserMessage> for Message",
+        "impl PartialEq for Message",
+        "impl Serialize for Message",
+        "impl StructuralPartialEq for Message",
+        "impl<'de> Deserialize<'de> for Message"
+      ]
+    },
+    {
+      "path": "ferrin_message::MessagesExt",
+      "kind": "trait",
+      "signature": "trait",
+      "source": "message::MessagesExt",
+      "methods": [
+        "fn pending_approval_requests(&self) -> Vec<&ToolApprovalRequest>",
+        "fn push_approval_response(&mut self, response: ToolApprovalResponse)"
+      ]
+    },
+    {
+      "path": "ferrin_message::ProviderOptions",
+      "kind": "use",
+      "source": "ferrin_spec::ProviderOptions"
+    },
+    {
+      "path": "ferrin_message::ProviderReference",
+      "kind": "use",
+      "source": "ferrin_spec::ProviderReference"
+    },
+    {
+      "path": "ferrin_message::PruneOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "prune::PruneOptions",
+      "fields": [
+        "reasoning: ReasoningPrune",
+        "tool_calls: Vec<ToolCallPrune>",
+        "empty_messages: EmptyMessages"
+      ],
+      "methods": [
+        "fn keep_empty_messages(self) -> Self",
+        "fn new() -> Self",
+        "fn reasoning(self, reasoning: ReasoningPrune) -> Self",
+        "fn tool_calls(self, scope: PruneScope) -> Self",
+        "fn tool_calls_for(self, scope: PruneScope, tools: impl IntoIterator<Item = impl Into<ToolName>>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for PruneOptions",
+        "impl Debug for PruneOptions",
+        "impl Default for PruneOptions",
+        "impl Eq for PruneOptions",
+        "impl PartialEq for PruneOptions",
+        "impl StructuralPartialEq for PruneOptions"
+      ]
+    },
+    {
+      "path": "ferrin_message::ReasoningFilePart",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "part::ReasoningFilePart",
+      "fields": [
+        "data: FileSource",
+        "media_type: MediaType",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "traits": [
+        "impl Clone for ReasoningFilePart",
+        "impl Debug for ReasoningFilePart",
+        "impl From<ReasoningFilePart> for AssistantPart",
+        "impl PartialEq for ReasoningFilePart",
+        "impl Serialize for ReasoningFilePart",
+        "impl StructuralPartialEq for ReasoningFilePart",
+        "impl<'de> Deserialize<'de> for ReasoningFilePart"
+      ]
+    },
+    {
+      "path": "ferrin_message::ReasoningPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::ReasoningPart"
+    },
+    {
+      "path": "ferrin_message::Role",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "message::Role",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "System",
+        "User",
+        "Assistant",
+        "Tool"
+      ],
+      "methods": [
+        "fn as_str(self) -> &'static str"
+      ],
+      "traits": [
+        "impl Clone for Role",
+        "impl Copy for Role",
+        "impl Debug for Role",
+        "impl Display for Role",
+        "impl Eq for Role",
+        "impl Hash for Role",
+        "impl PartialEq for Role",
+        "impl Serialize for Role",
+        "impl StructuralPartialEq for Role",
+        "impl<'de> Deserialize<'de> for Role"
+      ]
+    },
+    {
+      "path": "ferrin_message::SystemMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "message::SystemMessage",
+      "fields": [
+        "content: String",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "traits": [
+        "impl Clone for SystemMessage",
+        "impl Debug for SystemMessage",
+        "impl From<SystemMessage> for Message",
+        "impl PartialEq for SystemMessage",
+        "impl Serialize for SystemMessage",
+        "impl StructuralPartialEq for SystemMessage",
+        "impl<'de> Deserialize<'de> for SystemMessage"
+      ]
+    },
+    {
+      "path": "ferrin_message::TextPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::TextPart"
+    },
+    {
+      "path": "ferrin_message::ToolApprovalRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "part::ToolApprovalRequest",
+      "fields": [
+        "approval_id: ApprovalId",
+        "tool_call_id: ToolCallId",
+        "reason: Option<String>",
+        "is_automatic: bool",
+        "signature: Option<String>"
+      ],
+      "methods": [
+        "fn automatic(self) -> Self",
+        "fn new(approval_id: impl Into<ApprovalId>, tool_call_id: impl Into<ToolCallId>) -> Self",
+        "fn with_reason(self, reason: impl Into<String>) -> Self",
+        "fn with_signature(self, signature: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolApprovalRequest",
+        "impl Debug for ToolApprovalRequest",
+        "impl Eq for ToolApprovalRequest",
+        "impl From<ToolApprovalRequest> for AssistantPart",
+        "impl PartialEq for ToolApprovalRequest",
+        "impl Serialize for ToolApprovalRequest",
+        "impl StructuralPartialEq for ToolApprovalRequest",
+        "impl<'de> Deserialize<'de> for ToolApprovalRequest"
+      ]
+    },
+    {
+      "path": "ferrin_message::ToolApprovalResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "part::ToolApprovalResponse",
+      "fields": [
+        "approval_id: ApprovalId",
+        "approved: bool",
+        "reason: Option<String>",
+        "provider_executed: bool"
+      ],
+      "methods": [
+        "fn approved(approval_id: impl Into<ApprovalId>) -> Self",
+        "fn denied(approval_id: impl Into<ApprovalId>) -> Self",
+        "fn provider_executed(self) -> Self",
+        "fn with_reason(self, reason: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolApprovalResponse",
+        "impl Debug for ToolApprovalResponse",
+        "impl Eq for ToolApprovalResponse",
+        "impl From<ToolApprovalResponse> for ToolPart",
+        "impl PartialEq for ToolApprovalResponse",
+        "impl Serialize for ToolApprovalResponse",
+        "impl StructuralPartialEq for ToolApprovalResponse",
+        "impl<'de> Deserialize<'de> for ToolApprovalResponse"
+      ]
+    },
+    {
+      "path": "ferrin_message::ToolCallId",
+      "kind": "use",
+      "source": "ferrin_spec::ToolCallId"
+    },
+    {
+      "path": "ferrin_message::ToolCallPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::ToolCallPart"
+    },
+    {
+      "path": "ferrin_message::ToolMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "message::ToolMessage",
+      "fields": [
+        "content: Vec<ToolPart>",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "traits": [
+        "impl Clone for ToolMessage",
+        "impl Debug for ToolMessage",
+        "impl From<ToolMessage> for Message",
+        "impl PartialEq for ToolMessage",
+        "impl Serialize for ToolMessage",
+        "impl StructuralPartialEq for ToolMessage",
+        "impl<'de> Deserialize<'de> for ToolMessage"
+      ]
+    },
+    {
+      "path": "ferrin_message::ToolName",
+      "kind": "use",
+      "source": "ferrin_spec::ToolName"
+    },
+    {
+      "path": "ferrin_message::ToolPart",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "part::ToolPart",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "ToolResult(ToolResultPart)",
+        "ToolApprovalResponse(ToolApprovalResponse)"
+      ],
+      "methods": [
+        "fn as_tool_approval_response(&self) -> Option<&ToolApprovalResponse>",
+        "fn as_tool_result(&self) -> Option<&ToolResultPart>"
+      ],
+      "traits": [
+        "impl Clone for ToolPart",
+        "impl Debug for ToolPart",
+        "impl From<ToolApprovalResponse> for ToolPart",
+        "impl From<ToolResultPart> for ToolPart",
+        "impl PartialEq for ToolPart",
+        "impl Serialize for ToolPart",
+        "impl StructuralPartialEq for ToolPart",
+        "impl<'de> Deserialize<'de> for ToolPart"
+      ]
+    },
+    {
+      "path": "ferrin_message::ToolResultContentPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::ToolResultContentPart"
+    },
+    {
+      "path": "ferrin_message::ToolResultOutput",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::ToolResultOutput"
+    },
+    {
+      "path": "ferrin_message::ToolResultPart",
+      "kind": "use",
+      "source": "ferrin_spec::language_model::prompt::ToolResultPart"
+    },
+    {
+      "path": "ferrin_message::UserContent",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "message::UserContent",
+      "variants": [
+        "Text(String)",
+        "Parts(Vec<UserPart>)"
+      ],
+      "methods": [
+        "fn as_text(&self) -> Option<&str>",
+        "fn into_parts(self) -> Vec<UserPart>",
+        "fn is_empty(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for UserContent",
+        "impl Debug for UserContent",
+        "impl From<&str> for UserContent",
+        "impl From<String> for UserContent",
+        "impl From<Vec<UserPart>> for UserContent",
+        "impl PartialEq for UserContent",
+        "impl Serialize for UserContent",
+        "impl StructuralPartialEq for UserContent",
+        "impl<'de> Deserialize<'de> for UserContent"
+      ]
+    },
+    {
+      "path": "ferrin_message::UserMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "message::UserMessage",
+      "fields": [
+        "content: UserContent",
+        "provider_options: Option<ProviderOptions>"
+      ],
+      "traits": [
+        "impl Clone for UserMessage",
+        "impl Debug for UserMessage",
+        "impl From<UserMessage> for Message",
+        "impl PartialEq for UserMessage",
+        "impl Serialize for UserMessage",
+        "impl StructuralPartialEq for UserMessage",
+        "impl<'de> Deserialize<'de> for UserMessage"
+      ]
+    },
+    {
+      "path": "ferrin_message::UserPart",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "part::UserPart",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Text(TextPart)",
+        "Image(ImagePart)",
+        "File(FilePart)"
+      ],
+      "methods": [
+        "fn as_text(&self) -> Option<&str>",
+        "fn file(source: impl Into<FileSource>, media_type: impl Into<MediaType>) -> Self",
+        "fn file_bytes(data: impl Into<Bytes>, media_type: impl Into<MediaType>) -> Self",
+        "fn file_path(path: impl Into<PathBuf>, media_type: impl Into<MediaType>) -> Self",
+        "fn file_reference(reference: ProviderReference, media_type: impl Into<MediaType>) -> Self",
+        "fn file_text(text: impl Into<String>, media_type: impl Into<MediaType>) -> Self",
+        "fn file_url(url: Url, media_type: impl Into<MediaType>) -> Self",
+        "fn image(source: impl Into<FileSource>) -> Self",
+        "fn image_base64(data: impl Into<String>) -> Self",
+        "fn image_bytes(data: impl Into<Bytes>) -> Self",
+        "fn image_url(url: Url) -> Self",
+        "fn text(text: impl Into<String>) -> Self",
+        "fn with_filename(self, filename: impl Into<String>) -> Self",
+        "fn with_provider_options(self, options: ProviderOptions) -> Self"
+      ],
+      "traits": [
+        "impl Clone for UserPart",
+        "impl Debug for UserPart",
+        "impl From<&str> for UserPart",
+        "impl From<FilePart> for UserPart",
+        "impl From<ImagePart> for UserPart",
+        "impl From<String> for UserPart",
+        "impl From<TextPart> for UserPart",
+        "impl PartialEq for UserPart",
+        "impl Serialize for UserPart",
+        "impl StructuralPartialEq for UserPart",
+        "impl<'de> Deserialize<'de> for UserPart"
+      ]
+    },
+    {
+      "path": "ferrin_message::data_url",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_message::data_url::DEFAULT_MEDIA_TYPE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_message::data_url::DataUrl",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "media_type: MediaType",
+        "data: Bytes",
+        "is_base64: bool"
+      ],
+      "traits": [
+        "impl Clone for DataUrl",
+        "impl Debug for DataUrl",
+        "impl Eq for DataUrl",
+        "impl PartialEq for DataUrl",
+        "impl StructuralPartialEq for DataUrl"
+      ]
+    },
+    {
+      "path": "ferrin_message::data_url::is_data_url",
+      "kind": "function",
+      "signature": "fn is_data_url(input: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_message::data_url::parse",
+      "kind": "function",
+      "signature": "fn parse(input: &str) -> Result<DataUrl, InvalidDataContentError>"
+    },
+    {
+      "path": "ferrin_message::prune",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_message::prune::EmptyMessages",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Keep",
+        "Remove"
+      ],
+      "traits": [
+        "impl Clone for EmptyMessages",
+        "impl Copy for EmptyMessages",
+        "impl Debug for EmptyMessages",
+        "impl Default for EmptyMessages",
+        "impl Eq for EmptyMessages",
+        "impl Hash for EmptyMessages",
+        "impl PartialEq for EmptyMessages",
+        "impl StructuralPartialEq for EmptyMessages"
+      ]
+    },
+    {
+      "path": "ferrin_message::prune::PruneOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "reasoning: ReasoningPrune",
+        "tool_calls: Vec<ToolCallPrune>",
+        "empty_messages: EmptyMessages"
+      ],
+      "methods": [
+        "fn keep_empty_messages(self) -> Self",
+        "fn new() -> Self",
+        "fn reasoning(self, reasoning: ReasoningPrune) -> Self",
+        "fn tool_calls(self, scope: PruneScope) -> Self",
+        "fn tool_calls_for(self, scope: PruneScope, tools: impl IntoIterator<Item = impl Into<ToolName>>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for PruneOptions",
+        "impl Debug for PruneOptions",
+        "impl Default for PruneOptions",
+        "impl Eq for PruneOptions",
+        "impl PartialEq for PruneOptions",
+        "impl StructuralPartialEq for PruneOptions"
+      ]
+    },
+    {
+      "path": "ferrin_message::prune::PruneScope",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "All",
+        "BeforeLastMessages(usize)"
+      ],
+      "methods": [
+        "const fn before_last_message() -> Self"
+      ],
+      "traits": [
+        "impl Clone for PruneScope",
+        "impl Copy for PruneScope",
+        "impl Debug for PruneScope",
+        "impl Eq for PruneScope",
+        "impl Hash for PruneScope",
+        "impl PartialEq for PruneScope",
+        "impl StructuralPartialEq for PruneScope"
+      ]
+    },
+    {
+      "path": "ferrin_message::prune::ReasoningPrune",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "None",
+        "All",
+        "BeforeLastMessage"
+      ],
+      "traits": [
+        "impl Clone for ReasoningPrune",
+        "impl Copy for ReasoningPrune",
+        "impl Debug for ReasoningPrune",
+        "impl Default for ReasoningPrune",
+        "impl Eq for ReasoningPrune",
+        "impl Hash for ReasoningPrune",
+        "impl PartialEq for ReasoningPrune",
+        "impl StructuralPartialEq for ReasoningPrune"
+      ]
+    },
+    {
+      "path": "ferrin_message::prune::ToolCallPrune",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "scope: PruneScope",
+        "tools: Option<Vec<ToolName>>"
+      ],
+      "traits": [
+        "impl Clone for ToolCallPrune",
+        "impl Debug for ToolCallPrune",
+        "impl Eq for ToolCallPrune",
+        "impl PartialEq for ToolCallPrune",
+        "impl StructuralPartialEq for ToolCallPrune"
+      ]
+    },
+    {
+      "path": "ferrin_message::prune::prune",
+      "kind": "function",
+      "signature": "fn prune(messages: Vec<Message>, options: &PruneOptions) -> Vec<Message>",
+      "attrs": [
+        "must_use"
+      ]
+    }
+  ]
+}

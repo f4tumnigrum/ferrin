@@ -1,0 +1,51 @@
+# Prototype workspace for docs/05-appendix/02-pending-verification.md.
+# Independent from the product workspace (excluded in ../Cargo.toml); nothing
+# here is published or linted with the product lint set.
+[workspace]
+resolver = "3"
+members = ["pv*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+tokio-util = "0.7"
+futures-core = "0.3"
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+schemars = { version = "1.2", features = ["preserve_order"] }
+thiserror = "2.0"
+bytes = "1.12"
+http = "1.5"
+url = "2.5"
+reqwest = { version = "0.13", default-features = false }
+data-url = "0.3"
+hmac = "0.13"
+sha2 = "0.11"
+subtle = "2.6"
+secrecy = "0.10"
+base64 = "0.23"
+rand = "0.10"
+tokio-tungstenite = { version = "0.30", default-features = false }
+dynosaur = "0.3"
+trait-variant = "0.1"
+static_assertions = "1.1"
+opentelemetry = "0.32"
+opentelemetry_sdk = "0.32"
+opentelemetry-semantic-conventions = { version = "0.32", features = ["semconv_experimental"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tracing-opentelemetry = "0.33"
+wiremock = "0.6"
+hyper = { version = "1.11", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+trybuild = "1.0"
+ipnet = "2.12"
+
+[profile.release]
+debug = "line-tables-only"

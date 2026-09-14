@@ -1,0 +1,902 @@
+{
+  "crate": "ferrin-tool",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_tool::ApprovalFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(JsonValue, ToolContext) -> BoxFuture<'static, bool> + Send + Sync>",
+      "source": "tool::ApprovalFn"
+    },
+    {
+      "path": "ferrin_tool::Description",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "tool::Description",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Static(String)",
+        "Dynamic(DescriptionFn)"
+      ],
+      "methods": [
+        "async fn resolve(&self, ctx: DescriptionContext) -> String",
+        "fn as_static(&self) -> Option<&str>"
+      ],
+      "traits": [
+        "impl Clone for Description",
+        "impl Debug for Description"
+      ]
+    },
+    {
+      "path": "ferrin_tool::DescriptionContext",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tool::DescriptionContext",
+      "fields": [
+        "tool_context: Option<JsonValue>",
+        "sandbox: Option<Arc<dyn Sandbox>>"
+      ],
+      "methods": [
+        "fn with_tool_context(tool_context: JsonValue) -> Self"
+      ],
+      "traits": [
+        "impl Clone for DescriptionContext",
+        "impl Debug for DescriptionContext",
+        "impl Default for DescriptionContext"
+      ]
+    },
+    {
+      "path": "ferrin_tool::DescriptionFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(DescriptionContext) -> BoxFuture<'static, String> + Send + Sync>",
+      "source": "tool::DescriptionFn"
+    },
+    {
+      "path": "ferrin_tool::DuplicateToolError",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "error::DuplicateToolError",
+      "fields": [
+        "name: ToolName"
+      ],
+      "traits": [
+        "impl Clone for DuplicateToolError",
+        "impl Debug for DuplicateToolError",
+        "impl Display for DuplicateToolError",
+        "impl Eq for DuplicateToolError",
+        "impl Error for DuplicateToolError",
+        "impl PartialEq for DuplicateToolError",
+        "impl StructuralPartialEq for DuplicateToolError"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ErrorMode",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "model_output::ErrorMode",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "None",
+        "Text",
+        "Json"
+      ],
+      "traits": [
+        "impl Clone for ErrorMode",
+        "impl Copy for ErrorMode",
+        "impl Debug for ErrorMode",
+        "impl Default for ErrorMode",
+        "impl Eq for ErrorMode",
+        "impl PartialEq for ErrorMode",
+        "impl StructuralPartialEq for ErrorMode"
+      ]
+    },
+    {
+      "path": "ferrin_tool::InputAvailableHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(JsonValue, ToolContext) -> BoxFuture<'static, ()> + Send + Sync>",
+      "source": "tool::InputAvailableHook"
+    },
+    {
+      "path": "ferrin_tool::InputDeltaHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(String, ToolContext) -> BoxFuture<'static, ()> + Send + Sync>",
+      "source": "tool::InputDeltaHook"
+    },
+    {
+      "path": "ferrin_tool::InputStartHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(ToolContext) -> BoxFuture<'static, ()> + Send + Sync>",
+      "source": "tool::InputStartHook"
+    },
+    {
+      "path": "ferrin_tool::JsonSchema",
+      "kind": "use",
+      "source": "ferrin_schema::JsonSchema"
+    },
+    {
+      "path": "ferrin_tool::LocalProcessSandbox",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "sandbox::LocalProcessSandbox",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(root: impl Into<PathBuf>) -> Self",
+        "fn root(&self) -> &Path",
+        "fn with_description(self, description: impl Into<String>) -> Self",
+        "fn with_shell(self, program: impl Into<String>, args: impl IntoIterator<Item = String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for LocalProcessSandbox",
+        "impl Debug for LocalProcessSandbox",
+        "impl Sandbox for LocalProcessSandbox"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ModelOutputArgs",
+      "kind": "struct",
+      "signature": "struct<'a>",
+      "source": "tool::ModelOutputArgs",
+      "fields": [
+        "tool_call_id: &'a ToolCallId",
+        "input: &'a JsonValue",
+        "output: &'a JsonValue"
+      ],
+      "traits": [
+        "impl<'a> Clone for ModelOutputArgs<'a>",
+        "impl<'a> Copy for ModelOutputArgs<'a>",
+        "impl<'a> Debug for ModelOutputArgs<'a>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::NeedsApproval",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "tool::NeedsApproval",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Never",
+        "Always",
+        "Dynamic(ApprovalFn)"
+      ],
+      "methods": [
+        "async fn resolve(&self, input: JsonValue, ctx: ToolContext) -> bool",
+        "fn is_declared(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for NeedsApproval",
+        "impl Debug for NeedsApproval",
+        "impl Default for NeedsApproval"
+      ]
+    },
+    {
+      "path": "ferrin_tool::PreparedToolCallers",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "callers::PreparedToolCallers",
+      "fields": [
+        "execution_tools: ToolSet",
+        "model_tools: ToolSet"
+      ],
+      "traits": [
+        "impl Clone for PreparedToolCallers",
+        "impl Debug for PreparedToolCallers"
+      ]
+    },
+    {
+      "path": "ferrin_tool::Sandbox",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "source": "sandbox::Sandbox",
+      "methods": [
+        "fn description(&self) -> &str",
+        "fn read_binary_file(&self, options: ReadFileOptions) -> BoxFuture<'_, Result<Option<Bytes>>>",
+        "fn read_file(&self, options: ReadFileOptions) -> BoxFuture<'_, Result<Option<ByteStream>>>",
+        "fn read_text_file(&self, options: ReadTextFileOptions) -> BoxFuture<'_, Result<Option<String>>>",
+        "fn run(&self, options: ProcessOptions) -> BoxFuture<'_, Result<ProcessResult>>",
+        "fn spawn(&self, options: ProcessOptions) -> BoxFuture<'_, Result<Box<dyn SandboxProcess>>>",
+        "fn write_binary_file(&self, options: WriteFileOptions<Bytes>) -> BoxFuture<'_, Result<()>>",
+        "fn write_file(&self, options: WriteFileOptions<ByteStream>) -> BoxFuture<'_, Result<()>>",
+        "fn write_text_file(&self, options: WriteFileOptions<String>) -> BoxFuture<'_, Result<()>>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::SandboxProcess",
+      "kind": "trait",
+      "signature": "trait: Send",
+      "source": "sandbox::SandboxProcess",
+      "methods": [
+        "fn kill(&mut self) -> BoxFuture<'_, Result<()>>",
+        "fn pid(&self) -> Option<u32>",
+        "fn take_stderr(&mut self) -> Option<ByteStream>",
+        "fn take_stdout(&mut self) -> Option<ByteStream>",
+        "fn wait(&mut self) -> BoxFuture<'_, Result<i32>>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::Schema",
+      "kind": "use",
+      "source": "ferrin_schema::Schema"
+    },
+    {
+      "path": "ferrin_tool::ToModelOutputFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(ModelOutputArgs<'_>) -> ToolResultOutput + Send + Sync>",
+      "source": "tool::ToModelOutputFn"
+    },
+    {
+      "path": "ferrin_tool::Tool",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tool::Tool",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn resolve_description(&self, ctx: DescriptionContext) -> Option<String>",
+        "fn caller_definition(&self) -> Option<&ToolCallerDefinition>",
+        "fn context_schema(&self) -> Option<&Schema<JsonValue>>",
+        "fn definition(&self, name: ToolName, description: Option<String>) -> ToolDefinition",
+        "fn description(&self) -> Option<&Description>",
+        "fn dynamic(input_schema: Schema<JsonValue>) -> ToolBuilder<JsonValue>",
+        "fn execute(&self, input: JsonValue, ctx: ToolContext) -> Option<ToolOutputStream>",
+        "fn executor(&self) -> Option<&Arc<dyn ToolExecute>>",
+        "fn function<I: DeserializeOwned + JsonSchema + 'static>() -> ToolBuilder<I>",
+        "fn function_with_schema(input_schema: Schema<JsonValue>) -> ToolBuilder<JsonValue>",
+        "fn hooks(&self) -> &ToolHooks",
+        "fn input_examples(&self) -> &[JsonObject]",
+        "fn input_schema(&self) -> &Schema<JsonValue>",
+        "fn is_executable(&self) -> bool",
+        "fn kind(&self) -> &ToolKind",
+        "fn metadata(&self) -> Option<&JsonObject>",
+        "fn needs_approval(&self) -> &NeedsApproval",
+        "fn output_schema(&self) -> Option<&Schema<JsonValue>>",
+        "fn provider_defined(id: impl Into<String>, args: JsonObject) -> ToolBuilder<JsonValue>",
+        "fn provider_executed(id: impl Into<String>, args: JsonObject) -> ToolBuilder<JsonValue>",
+        "fn provider_options(&self) -> Option<&ProviderOptions>",
+        "fn strict(&self) -> Option<bool>",
+        "fn title(&self) -> Option<&str>",
+        "fn to_model_output(&self) -> Option<&ToModelOutputFn>",
+        "fn validate_context(&self, name: &ToolName, context: Option<JsonValue>) -> Result<Option<JsonValue>, TypeValidationError>",
+        "fn validate_input(&self, name: &ToolName, input: JsonValue) -> Result<JsonValue, TypeValidationError>",
+        "fn with_provider_options(self, provider_options: Option<ProviderOptions>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for Tool",
+        "impl Debug for Tool"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolBuilder",
+      "kind": "struct",
+      "signature": "struct<I>",
+      "source": "builder::ToolBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> Tool",
+        "fn caller(self, definition: ToolCallerDefinition) -> Self",
+        "fn context_schema(self, schema: Schema<JsonValue>) -> Self",
+        "fn description(self, description: impl Into<String>) -> Self",
+        "fn description_fn<F, Fut>(self, function: F) -> Self where F: Fn(DescriptionContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = String> + Send + 'static",
+        "fn execute<F, Fut, O>(self, function: F) -> Self where F: Fn(I, ToolContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<O, ToolError>> + Send + 'static, O: Serialize + 'static",
+        "fn execute_stream<F, S, O>(self, function: F) -> Self where F: Fn(I, ToolContext) -> S + Send + Sync + 'static, S: Stream<Item = Result<O, ToolError>> + Send + 'static, O: Serialize + 'static",
+        "fn execute_with(self, executor: Arc<dyn ToolExecute>) -> Self",
+        "fn input_example(self, example: JsonObject) -> Self",
+        "fn input_examples(self, examples: impl IntoIterator<Item = JsonObject>) -> Self",
+        "fn input_schema(self, schema: Schema<JsonValue>) -> Self",
+        "fn metadata(self, metadata: JsonObject) -> Self",
+        "fn needs_approval(self, needs_approval: NeedsApproval) -> Self",
+        "fn needs_approval_if<F, Fut>(self, function: F) -> Self where F: Fn(JsonValue, ToolContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = bool> + Send + 'static",
+        "fn on_input_available<F, Fut>(self, function: F) -> Self where F: Fn(JsonValue, ToolContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = ()> + Send + 'static",
+        "fn on_input_delta<F, Fut>(self, function: F) -> Self where F: Fn(String, ToolContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = ()> + Send + 'static",
+        "fn on_input_start<F, Fut>(self, function: F) -> Self where F: Fn(ToolContext) -> Fut + Send + Sync + 'static, Fut: Future<Output = ()> + Send + 'static",
+        "fn output_schema(self, schema: Schema<JsonValue>) -> Self",
+        "fn provider_options(self, options: ProviderOptions) -> Self",
+        "fn strict(self, strict: bool) -> Self",
+        "fn supports_deferred_results(self, supported: bool) -> Self",
+        "fn title(self, title: impl Into<String>) -> Self",
+        "fn to_model_output<F>(self, function: F) -> Self where F: Fn(ModelOutputArgs<'_>) -> ToolResultOutput + Send + Sync + 'static"
+      ],
+      "traits": [
+        "impl<I> Debug for ToolBuilder<I>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolCaller",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "callers::ToolCaller",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Direct",
+        "Tool(ToolName)"
+      ],
+      "traits": [
+        "impl Clone for ToolCaller",
+        "impl Debug for ToolCaller",
+        "impl Eq for ToolCaller",
+        "impl Hash for ToolCaller",
+        "impl PartialEq for ToolCaller",
+        "impl StructuralPartialEq for ToolCaller"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolCallerDefinition",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "callers::ToolCallerDefinition",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Local(LocalBindFn)",
+        "Provider(PrepareProviderOptionsFn)"
+      ],
+      "methods": [
+        "fn local(bind: impl Fn(ToolSet) -> Tool + Send + Sync + 'static) -> Self",
+        "fn provider(prepare: impl Fn(Option<ProviderOptions>) -> ProviderOptions + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolCallerDefinition",
+        "impl Debug for ToolCallerDefinition"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolCallers",
+      "kind": "type_alias",
+      "signature": "type = HashMap<ToolName, Vec<ToolCaller>>",
+      "source": "callers::ToolCallers"
+    },
+    {
+      "path": "ferrin_tool::ToolContext",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "execute::ToolContext",
+      "fields": [
+        "tool_call_id: ToolCallId",
+        "messages: Arc<[Message]>",
+        "cancellation: CancellationToken",
+        "tools_context: Option<JsonValue>",
+        "sandbox: Option<Arc<dyn Sandbox>>"
+      ],
+      "methods": [
+        "fn new(tool_call_id: impl Into<ToolCallId>) -> Self",
+        "fn with_cancellation(self, cancellation: CancellationToken) -> Self",
+        "fn with_messages(self, messages: impl Into<Arc<[Message]>>) -> Self",
+        "fn with_sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
+        "fn with_tools_context(self, tools_context: Option<JsonValue>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolContext",
+        "impl Debug for ToolContext"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolDrift",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "fingerprint::ToolDrift",
+      "fields": [
+        "added: Vec<ToolName>",
+        "removed: Vec<ToolName>",
+        "changed: Vec<ToolName>"
+      ],
+      "methods": [
+        "fn is_empty(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for ToolDrift",
+        "impl Debug for ToolDrift",
+        "impl Default for ToolDrift",
+        "impl Eq for ToolDrift",
+        "impl PartialEq for ToolDrift",
+        "impl StructuralPartialEq for ToolDrift"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolError",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "error::ToolError",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Message { message: String, cause: Option<Box<dyn Error + Send + Sync>> }",
+        "Json { value: JsonValue }",
+        "Timeout(Duration)",
+        "Cancelled"
+      ],
+      "methods": [
+        "fn from_error(error: impl Error + Send + Sync + 'static) -> Self",
+        "fn is_cancelled(&self) -> bool",
+        "fn json(value: JsonValue) -> Self",
+        "fn message(message: impl Into<String>) -> Self",
+        "fn with_cause(self, cause: impl Error + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl Debug for ToolError",
+        "impl Display for ToolError",
+        "impl Error for ToolError",
+        "impl From<Error> for ToolError"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolExecute",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "source": "execute::ToolExecute",
+      "methods": [
+        "fn execute(&self, input: JsonValue, ctx: ToolContext) -> ToolOutputStream"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolHooks",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tool::ToolHooks",
+      "fields": [
+        "on_input_start: Option<InputStartHook>",
+        "on_input_delta: Option<InputDeltaHook>",
+        "on_input_available: Option<InputAvailableHook>"
+      ],
+      "traits": [
+        "impl Clone for ToolHooks",
+        "impl Debug for ToolHooks",
+        "impl Default for ToolHooks"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolKind",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "tool::ToolKind",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Function",
+        "Dynamic",
+        "ProviderDefined { id: String, args: JsonObject }",
+        "ProviderExecuted { id: String, args: JsonObject, supports_deferred_results: bool }"
+      ],
+      "methods": [
+        "fn is_dynamic(&self) -> bool",
+        "fn is_provider(&self) -> bool",
+        "fn is_provider_executed(&self) -> bool",
+        "fn provider_id(&self) -> Option<&str>"
+      ],
+      "traits": [
+        "impl Clone for ToolKind",
+        "impl Debug for ToolKind",
+        "impl Eq for ToolKind",
+        "impl PartialEq for ToolKind",
+        "impl StructuralPartialEq for ToolKind"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolOutput",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "execute::ToolOutput",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Preliminary(JsonValue)",
+        "Final(JsonValue)"
+      ],
+      "methods": [
+        "fn into_value(self) -> JsonValue",
+        "fn is_final(&self) -> bool",
+        "fn value(&self) -> &JsonValue"
+      ],
+      "traits": [
+        "impl Clone for ToolOutput",
+        "impl Debug for ToolOutput",
+        "impl Eq for ToolOutput",
+        "impl PartialEq for ToolOutput",
+        "impl StructuralPartialEq for ToolOutput"
+      ]
+    },
+    {
+      "path": "ferrin_tool::ToolOutputStream",
+      "kind": "type_alias",
+      "signature": "type = BoxStream<'static, Result<ToolOutput, ToolError>>",
+      "source": "execute::ToolOutputStream"
+    },
+    {
+      "path": "ferrin_tool::ToolSet",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "set::ToolSet",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn contains(&self, name: &str) -> bool",
+        "fn filter_active(&self, active: &[ToolName]) -> Self",
+        "fn get(&self, name: &str) -> Option<&Arc<Tool>>",
+        "fn insert(self, name: impl Into<ToolName>, tool: Tool) -> Result<Self, DuplicateToolError>",
+        "fn is_empty(&self) -> bool",
+        "fn iter(&self) -> impl Iterator<Item = (&ToolName, &Arc<Tool>)> + '_",
+        "fn len(&self) -> usize",
+        "fn merge(self, other: Self) -> Result<Self, DuplicateToolError>",
+        "fn names(&self) -> impl Iterator<Item = &ToolName> + '_",
+        "fn new() -> Self",
+        "fn ordered(&self, order: &[ToolName]) -> Vec<(&ToolName, &Arc<Tool>)>",
+        "fn remove(&mut self, name: &str) -> Option<Arc<Tool>>",
+        "fn replace(&mut self, name: impl Into<ToolName>, tool: Arc<Tool>) -> Option<Arc<Tool>>",
+        "fn try_insert(&mut self, name: impl Into<ToolName>, tool: Tool) -> Result<(), DuplicateToolError>",
+        "fn try_insert_arc(&mut self, name: impl Into<ToolName>, tool: Arc<Tool>) -> Result<(), DuplicateToolError>"
+      ],
+      "traits": [
+        "impl Clone for ToolSet",
+        "impl Debug for ToolSet",
+        "impl Default for ToolSet",
+        "impl<'a> IntoIterator for &'a ToolSet"
+      ]
+    },
+    {
+      "path": "ferrin_tool::callers",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_tool::callers::LocalBindFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(ToolSet) -> Tool + Send + Sync>"
+    },
+    {
+      "path": "ferrin_tool::callers::PrepareProviderOptionsFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(Option<ProviderOptions>) -> ProviderOptions + Send + Sync>"
+    },
+    {
+      "path": "ferrin_tool::callers::PreparedToolCallers",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "execution_tools: ToolSet",
+        "model_tools: ToolSet"
+      ],
+      "traits": [
+        "impl Clone for PreparedToolCallers",
+        "impl Debug for PreparedToolCallers"
+      ]
+    },
+    {
+      "path": "ferrin_tool::callers::ToolCaller",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Direct",
+        "Tool(ToolName)"
+      ],
+      "traits": [
+        "impl Clone for ToolCaller",
+        "impl Debug for ToolCaller",
+        "impl Eq for ToolCaller",
+        "impl Hash for ToolCaller",
+        "impl PartialEq for ToolCaller",
+        "impl StructuralPartialEq for ToolCaller"
+      ]
+    },
+    {
+      "path": "ferrin_tool::callers::ToolCallerDefinition",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Local(LocalBindFn)",
+        "Provider(PrepareProviderOptionsFn)"
+      ],
+      "methods": [
+        "fn local(bind: impl Fn(ToolSet) -> Tool + Send + Sync + 'static) -> Self",
+        "fn provider(prepare: impl Fn(Option<ProviderOptions>) -> ProviderOptions + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolCallerDefinition",
+        "impl Debug for ToolCallerDefinition"
+      ]
+    },
+    {
+      "path": "ferrin_tool::callers::ToolCallers",
+      "kind": "type_alias",
+      "signature": "type = HashMap<ToolName, Vec<ToolCaller>>"
+    },
+    {
+      "path": "ferrin_tool::callers::prepare_tools_for_callers",
+      "kind": "function",
+      "signature": "fn prepare_tools_for_callers(tools: &ToolSet, callers: &ToolCallers) -> PreparedToolCallers",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::callers::validate_tool_callers",
+      "kind": "function",
+      "signature": "fn validate_tool_callers(tools: &ToolSet, callers: &ToolCallers) -> Result<(), InvalidArgumentError>"
+    },
+    {
+      "path": "ferrin_tool::execute_to_completion",
+      "kind": "function",
+      "signature": "async fn execute_to_completion(stream: ToolOutputStream, on_preliminary: impl FnMut(JsonValue)) -> Result<JsonValue, ToolError>",
+      "source": "execute::execute_to_completion"
+    },
+    {
+      "path": "ferrin_tool::fingerprint",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_tool::fingerprint::ToolDrift",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "added: Vec<ToolName>",
+        "removed: Vec<ToolName>",
+        "changed: Vec<ToolName>"
+      ],
+      "methods": [
+        "fn is_empty(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for ToolDrift",
+        "impl Debug for ToolDrift",
+        "impl Default for ToolDrift",
+        "impl Eq for ToolDrift",
+        "impl PartialEq for ToolDrift",
+        "impl StructuralPartialEq for ToolDrift"
+      ]
+    },
+    {
+      "path": "ferrin_tool::fingerprint::ToolFingerprints",
+      "kind": "type_alias",
+      "signature": "type = BTreeMap<ToolName, String>"
+    },
+    {
+      "path": "ferrin_tool::fingerprint::canonical_json",
+      "kind": "function",
+      "signature": "fn canonical_json(value: &JsonValue) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::fingerprint::detect_tool_drift",
+      "kind": "function",
+      "signature": "fn detect_tool_drift(current: &ToolFingerprints, baseline: &ToolFingerprints) -> ToolDrift",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::fingerprint::fingerprint_tools",
+      "kind": "function",
+      "signature": "fn fingerprint_tools(tools: &ToolSet) -> ToolFingerprints",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::fingerprint::hash_canonical",
+      "kind": "function",
+      "signature": "fn hash_canonical(value: &JsonValue) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::model_output",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_tool::model_output::ErrorMode",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "None",
+        "Text",
+        "Json"
+      ],
+      "traits": [
+        "impl Clone for ErrorMode",
+        "impl Copy for ErrorMode",
+        "impl Debug for ErrorMode",
+        "impl Default for ErrorMode",
+        "impl Eq for ErrorMode",
+        "impl PartialEq for ErrorMode",
+        "impl StructuralPartialEq for ErrorMode"
+      ]
+    },
+    {
+      "path": "ferrin_tool::model_output::create_tool_model_output",
+      "kind": "function",
+      "signature": "fn create_tool_model_output(tool: Option<&Tool>, tool_call_id: &ToolCallId, input: &JsonValue, output: &JsonValue, error_mode: ErrorMode) -> ToolResultOutput",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::model_output::error_message",
+      "kind": "function",
+      "signature": "fn error_message(value: &JsonValue) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::model_output::tool_error_output",
+      "kind": "function",
+      "signature": "fn tool_error_output(error: &ToolError) -> ToolResultOutput",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_tool::sandbox::ByteStream",
+      "kind": "type_alias",
+      "signature": "type = BoxStream<'static, Result<Bytes>>"
+    },
+    {
+      "path": "ferrin_tool::sandbox::LocalProcessSandbox",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "local::LocalProcessSandbox",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(root: impl Into<PathBuf>) -> Self",
+        "fn root(&self) -> &Path",
+        "fn with_description(self, description: impl Into<String>) -> Self",
+        "fn with_shell(self, program: impl Into<String>, args: impl IntoIterator<Item = String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for LocalProcessSandbox",
+        "impl Debug for LocalProcessSandbox",
+        "impl Sandbox for LocalProcessSandbox"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::ProcessOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "command: String",
+        "working_directory: Option<String>",
+        "env: BTreeMap<String, String>",
+        "cancellation: CancellationToken"
+      ],
+      "methods": [
+        "fn env(self, name: impl Into<String>, value: impl Into<String>) -> Self",
+        "fn in_directory(self, directory: impl Into<String>) -> Self",
+        "fn new(command: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ProcessOptions",
+        "impl Debug for ProcessOptions"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::ProcessResult",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "exit_code: i32",
+        "stdout: String",
+        "stderr: String"
+      ],
+      "traits": [
+        "impl Clone for ProcessResult",
+        "impl Debug for ProcessResult",
+        "impl Eq for ProcessResult",
+        "impl PartialEq for ProcessResult",
+        "impl StructuralPartialEq for ProcessResult"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::ReadFileOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "path: String",
+        "cancellation: CancellationToken"
+      ],
+      "methods": [
+        "fn new(path: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ReadFileOptions",
+        "impl Debug for ReadFileOptions"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::ReadTextFileOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "path: String",
+        "encoding: Option<String>",
+        "start_line: Option<usize>",
+        "end_line: Option<usize>",
+        "cancellation: CancellationToken"
+      ],
+      "methods": [
+        "fn lines(self, start_line: usize, end_line: usize) -> Self",
+        "fn new(path: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ReadTextFileOptions",
+        "impl Debug for ReadTextFileOptions"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::Sandbox",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "methods": [
+        "fn description(&self) -> &str",
+        "fn read_binary_file(&self, options: ReadFileOptions) -> BoxFuture<'_, Result<Option<Bytes>>>",
+        "fn read_file(&self, options: ReadFileOptions) -> BoxFuture<'_, Result<Option<ByteStream>>>",
+        "fn read_text_file(&self, options: ReadTextFileOptions) -> BoxFuture<'_, Result<Option<String>>>",
+        "fn run(&self, options: ProcessOptions) -> BoxFuture<'_, Result<ProcessResult>>",
+        "fn spawn(&self, options: ProcessOptions) -> BoxFuture<'_, Result<Box<dyn SandboxProcess>>>",
+        "fn write_binary_file(&self, options: WriteFileOptions<Bytes>) -> BoxFuture<'_, Result<()>>",
+        "fn write_file(&self, options: WriteFileOptions<ByteStream>) -> BoxFuture<'_, Result<()>>",
+        "fn write_text_file(&self, options: WriteFileOptions<String>) -> BoxFuture<'_, Result<()>>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::SandboxProcess",
+      "kind": "trait",
+      "signature": "trait: Send",
+      "methods": [
+        "fn kill(&mut self) -> BoxFuture<'_, Result<()>>",
+        "fn pid(&self) -> Option<u32>",
+        "fn take_stderr(&mut self) -> Option<ByteStream>",
+        "fn take_stdout(&mut self) -> Option<ByteStream>",
+        "fn wait(&mut self) -> BoxFuture<'_, Result<i32>>"
+      ]
+    },
+    {
+      "path": "ferrin_tool::sandbox::WriteFileOptions",
+      "kind": "struct",
+      "signature": "struct<C>",
+      "fields": [
+        "path: String",
+        "content: C",
+        "cancellation: CancellationToken"
+      ],
+      "methods": [
+        "fn new(path: impl Into<String>, content: C) -> Self"
+      ],
+      "traits": [
+        "impl<C: Debug> Debug for WriteFileOptions<C>"
+      ]
+    }
+  ]
+}

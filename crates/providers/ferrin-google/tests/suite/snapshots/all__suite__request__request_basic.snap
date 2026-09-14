@@ -1,0 +1,49 @@
+---
+source: crates/providers/ferrin-google/tests/suite/request.rs
+expression: prepared.body
+---
+{
+  "generationConfig": {
+    "maxOutputTokens": 100,
+    "temperature": 0.3,
+    "topK": 5,
+    "topP": 0.9,
+    "stopSequences": [
+      "END"
+    ],
+    "seed": 7
+  },
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Hello"
+        }
+      ]
+    },
+    {
+      "role": "model",
+      "parts": [
+        {
+          "text": "Hi!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "How are you?"
+        }
+      ]
+    }
+  ],
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "You are terse."
+      }
+    ]
+  }
+}

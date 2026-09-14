@@ -1,0 +1,13 @@
+{
+  "name": "models/veo-3.1-generate-preview/operations/op-123",
+  "done": true,
+  "response": {
+    "@type": "type.googleapis.com/google.ai.generativelanguage.v1beta.PredictLongRunningResponse",
+    "generateVideoResponse": {
+      "generatedSamples": [
+        {"video": {"uri": "https://generativelanguage.googleapis.com/v1beta/files/video-1:download?alt=media"}},
+        {"video": {"uri": "https://cdn.example.test/video-2.mp4"}}
+      ]
+    }
+  }
+}

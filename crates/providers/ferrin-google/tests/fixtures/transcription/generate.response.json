@@ -1,0 +1,21 @@
+{
+  "id": "interaction-1",
+  "model": "gemini-3.1-flash-preview",
+  "status": "completed",
+  "steps": [
+    {
+      "type": "model_step",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello world.",
+          "annotations": [
+            {"type": "word_info", "text": "Hello", "start_offset": "0.100s", "end_offset": "0.500s"},
+            {"type": "word_info", "text": "world.", "start_offset": "0.600s", "end_offset": "1.200s"}
+          ]
+        }
+      ]
+    }
+  ],
+  "usage": {"input_tokens": 120, "output_tokens": 4, "total_tokens": 124}
+}

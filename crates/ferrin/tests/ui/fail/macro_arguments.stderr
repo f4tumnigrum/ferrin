@@ -1,0 +1,5 @@
+error: #[ferrin::tool] takes no arguments
+ --> tests/ui/fail/macro_arguments.rs:2:16
+  |
+2 | #[ferrin::tool(name = "echo")]
+  |                ^^^^^^^^^^^^^

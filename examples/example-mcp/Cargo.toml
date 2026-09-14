@@ -1,0 +1,20 @@
+[package]
+name = "example-mcp"
+description = "Ferrin example: tools from an MCP server over stdio (not published)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "example-mcp"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin = { workspace = true, features = ["openai", "mcp"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+anyhow = { workspace = true }

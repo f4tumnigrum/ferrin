@@ -1,0 +1,70 @@
+---
+source: crates/providers/ferrin-anthropic/tests/suite/messages_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "msg_tool_stream",
+    "model_id": "claude-sonnet-4-5"
+  },
+  {
+    "type": "tool-input-start",
+    "id": "toolu_s1",
+    "tool_name": "get_weather"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "toolu_s1",
+    "delta": "{\"city\":"
+  },
+  {
+    "type": "tool-input-delta",
+    "id": "toolu_s1",
+    "delta": " \"Paris\"}"
+  },
+  {
+    "type": "tool-input-end",
+    "id": "toolu_s1"
+  },
+  {
+    "type": "tool-call",
+    "tool_call_id": "toolu_s1",
+    "tool_name": "get_weather",
+    "input": "{\"city\": \"Paris\"}"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "tool-calls",
+      "raw": "tool_use"
+    },
+    "usage": {
+      "input": {
+        "total": 30,
+        "no_cache": 30,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "output": {
+        "total": 20
+      }
+    },
+    "provider_metadata": {
+      "anthropic": {
+        "usage": {
+          "input_tokens": 30,
+          "output_tokens": 20
+        },
+        "stopSequence": null,
+        "iterations": null,
+        "container": null,
+        "contextManagement": null
+      }
+    }
+  }
+]

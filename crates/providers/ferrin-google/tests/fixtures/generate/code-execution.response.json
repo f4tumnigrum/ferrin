@@ -1,0 +1,23 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {"executableCode": {"language": "PYTHON", "code": "print(2 + 2)"}},
+          {"codeExecutionResult": {"outcome": "OUTCOME_OK", "output": "4\n"}},
+          {"text": "The result is 4."}
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 15,
+    "candidatesTokenCount": 30,
+    "totalTokenCount": 45
+  },
+  "modelVersion": "gemini-2.5-flash",
+  "responseId": "resp-code"
+}

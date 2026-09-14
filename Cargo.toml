@@ -1,0 +1,160 @@
+[workspace]
+resolver = "3"
+members = ["crates/ferrin", "crates/ferrin-*", "crates/providers/*", "xtask", "examples/*"]
+# `verification/` is a separate workspace holding prototypes for
+# docs/05-appendix/02-pending-verification.md; it is not part of the product.
+exclude = ["verification"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/f4tumnigrum/ferrin"
+authors = ["Ferrin contributors"]
+
+[workspace.dependencies]
+# ---- internal crates (path + version so members can be published) ----
+ferrin-spec = { path = "crates/ferrin-spec", version = "0.1.0" }
+ferrin-schema = { path = "crates/ferrin-schema", version = "0.1.0" }
+ferrin-message = { path = "crates/ferrin-message", version = "0.1.0" }
+ferrin-provider-util = { path = "crates/ferrin-provider-util", version = "0.1.0", default-features = false }
+ferrin-tool = { path = "crates/ferrin-tool", version = "0.1.0" }
+ferrin-core = { path = "crates/ferrin-core", version = "0.1.0", default-features = false }
+ferrin-mcp = { path = "crates/ferrin-mcp", version = "0.1.0" }
+ferrin-otel = { path = "crates/ferrin-otel", version = "0.1.0" }
+ferrin-testing = { path = "crates/ferrin-testing", version = "0.1.0" }
+ferrin-macros = { path = "crates/ferrin-macros", version = "0.1.0" }
+ferrin = { path = "crates/ferrin", version = "0.1.0" }
+ferrin-openai = { path = "crates/providers/ferrin-openai", version = "0.1.0" }
+ferrin-anthropic = { path = "crates/providers/ferrin-anthropic", version = "0.1.0" }
+ferrin-openai-compatible = { path = "crates/providers/ferrin-openai-compatible", version = "0.1.0" }
+ferrin-google = { path = "crates/providers/ferrin-google", version = "0.1.0" }
+
+# ---- external: versions verified 2026-09-13, see docs/03-engineering/01-toolchain-and-dependencies.md ----
+# async runtime and streams
+tokio = { version = "1.53", default-features = false }
+tokio-util = { version = "0.7", default-features = false }
+tokio-stream = { version = "0.1", default-features = false }
+futures-core = { version = "0.3", default-features = false }
+futures-util = { version = "0.3", default-features = false }
+pin-project-lite = "0.2"
+# serialization and schema
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order", "raw_value"] }
+schemars = { version = "1.2", features = ["preserve_order"] }
+jsonschema = { version = "0.56", default-features = false }
+# errors and basic types
+thiserror = "2.0"
+bytes = "1.12"
+http = "1.5"
+url = { version = "2.5", features = ["serde"] }
+indexmap = { version = "2.14", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+# HTTP / TLS / WebSocket
+reqwest = { version = "0.13", default-features = false }
+rustls-platform-verifier = "0.7"
+tokio-tungstenite = { version = "0.30", default-features = false }
+# encoding, ids, security
+rand = "0.10"
+base64 = "0.23"
+percent-encoding = "2.3"
+hmac = "0.13"
+sha2 = "0.11"
+secrecy = "0.10"
+ipnet = "2.12"
+# text
+regex = "1.13"
+unicode-segmentation = "1.13"
+# observability
+tracing = "0.1"
+opentelemetry = "0.32"
+opentelemetry_sdk = "0.32"
+tracing-opentelemetry = "0.33"
+# proc-macro
+syn = { version = "3.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+# dev / test (hyper stack is used by ferrin-testing for streaming fixtures, PV-026)
+wiremock = "0.6"
+hyper = { version = "1.11", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+http-body-util = "0.1"
+insta = { version = "1.48", features = ["json", "redactions"] }
+pretty_assertions = "1.4"
+proptest = "1.11"
+trybuild = "1.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+static_assertions = "1.1"
+# xtask / examples only (never in library crates)
+anyhow = "1.0"
+clap = { version = "4.6", features = ["derive"] }
+cargo_metadata = "0.23"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+missing_debug_implementations = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(docsrs)"] }
+
+[workspace.lints.clippy]
+# Base set, all deny (docs/03-engineering/03-coding-standards.md section 2)
+await_holding_invalid_type = "deny"
+await_holding_lock = "deny"
+disallowed_methods = "deny"
+expect_used = "deny"
+identity_op = "deny"
+manual_clamp = "deny"
+manual_filter = "deny"
+manual_find = "deny"
+manual_flatten = "deny"
+manual_map = "deny"
+manual_memcpy = "deny"
+manual_non_exhaustive = "deny"
+manual_ok_or = "deny"
+manual_range_contains = "deny"
+manual_retain = "deny"
+manual_strip = "deny"
+manual_try_fold = "deny"
+manual_unwrap_or = "deny"
+needless_borrow = "deny"
+needless_borrowed_reference = "deny"
+needless_collect = "deny"
+needless_late_init = "deny"
+needless_option_as_deref = "deny"
+needless_question_mark = "deny"
+needless_update = "deny"
+redundant_clone = "deny"
+redundant_closure = "deny"
+redundant_closure_for_method_calls = "deny"
+redundant_static_lifetimes = "deny"
+trivially_copy_pass_by_ref = "deny"
+uninlined_format_args = "deny"
+unnecessary_filter_map = "deny"
+unnecessary_lazy_evaluations = "deny"
+unnecessary_sort_by = "deny"
+unnecessary_to_owned = "deny"
+unwrap_used = "deny"
+# Ferrin additions (docs/03-engineering/03-coding-standards.md)
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+todo = "deny"
+unimplemented = "deny"
+large_futures = "warn"
+
+[profile.dev]
+debug = "limited"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+debug = "line-tables-only"
+
+[profile.ci-test]
+inherits = "test"
+opt-level = 0
+debug = "limited"

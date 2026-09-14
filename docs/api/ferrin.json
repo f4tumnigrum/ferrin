@@ -1,0 +1,835 @@
+{
+  "crate": "ferrin",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin::Agent",
+      "kind": "use",
+      "source": "ferrin_core::Agent"
+    },
+    {
+      "path": "ferrin::AgentCall",
+      "kind": "use",
+      "source": "ferrin_core::AgentCall"
+    },
+    {
+      "path": "ferrin::CallSettings",
+      "kind": "use",
+      "source": "ferrin_core::CallSettings"
+    },
+    {
+      "path": "ferrin::Clock",
+      "kind": "use",
+      "source": "ferrin_core::Clock"
+    },
+    {
+      "path": "ferrin::Error",
+      "kind": "use",
+      "source": "ferrin_core::Error"
+    },
+    {
+      "path": "ferrin::ErrorKind",
+      "kind": "use",
+      "source": "ferrin_core::ErrorKind"
+    },
+    {
+      "path": "ferrin::GenerateText",
+      "kind": "use",
+      "source": "ferrin_core::GenerateText"
+    },
+    {
+      "path": "ferrin::GenerateTextResult",
+      "kind": "use",
+      "source": "ferrin_core::GenerateTextResult"
+    },
+    {
+      "path": "ferrin::HookFn",
+      "kind": "use",
+      "source": "ferrin_core::HookFn"
+    },
+    {
+      "path": "ferrin::Hooks",
+      "kind": "use",
+      "source": "ferrin_core::Hooks"
+    },
+    {
+      "path": "ferrin::Instructions",
+      "kind": "use",
+      "source": "ferrin_core::Instructions"
+    },
+    {
+      "path": "ferrin::LanguageModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::LanguageModelMiddleware"
+    },
+    {
+      "path": "ferrin::Output",
+      "kind": "use",
+      "source": "ferrin_core::Output"
+    },
+    {
+      "path": "ferrin::ProviderRegistry",
+      "kind": "use",
+      "source": "ferrin_core::ProviderRegistry"
+    },
+    {
+      "path": "ferrin::RealtimeSession",
+      "kind": "use",
+      "source": "ferrin_core::RealtimeSession"
+    },
+    {
+      "path": "ferrin::RetryPolicy",
+      "kind": "use",
+      "source": "ferrin_core::RetryPolicy"
+    },
+    {
+      "path": "ferrin::SPEC_VERSION",
+      "kind": "use",
+      "source": "ferrin_spec::SPEC_VERSION"
+    },
+    {
+      "path": "ferrin::StepContent",
+      "kind": "use",
+      "source": "ferrin_core::StepContent"
+    },
+    {
+      "path": "ferrin::StepResult",
+      "kind": "use",
+      "source": "ferrin_core::StepResult"
+    },
+    {
+      "path": "ferrin::StreamEvent",
+      "kind": "use",
+      "source": "ferrin_core::StreamEvent"
+    },
+    {
+      "path": "ferrin::StreamText",
+      "kind": "use",
+      "source": "ferrin_core::StreamText"
+    },
+    {
+      "path": "ferrin::StreamTextResult",
+      "kind": "use",
+      "source": "ferrin_core::StreamTextResult"
+    },
+    {
+      "path": "ferrin::Telemetry",
+      "kind": "use",
+      "source": "ferrin_core::Telemetry"
+    },
+    {
+      "path": "ferrin::TelemetryOptions",
+      "kind": "use",
+      "source": "ferrin_core::TelemetryOptions"
+    },
+    {
+      "path": "ferrin::Timeout",
+      "kind": "use",
+      "source": "ferrin_core::Timeout"
+    },
+    {
+      "path": "ferrin::ToolLoopAgent",
+      "kind": "use",
+      "source": "ferrin_core::ToolLoopAgent"
+    },
+    {
+      "path": "ferrin::agent",
+      "kind": "use",
+      "source": "ferrin_core::agent"
+    },
+    {
+      "path": "ferrin::anthropic",
+      "kind": "use",
+      "source": "ferrin_anthropic"
+    },
+    {
+      "path": "ferrin::batch",
+      "kind": "use",
+      "source": "ferrin_core::batch"
+    },
+    {
+      "path": "ferrin::cancel_batch",
+      "kind": "use",
+      "source": "ferrin_core::cancel_batch"
+    },
+    {
+      "path": "ferrin::clock",
+      "kind": "use",
+      "source": "ferrin_core::clock"
+    },
+    {
+      "path": "ferrin::cosine_similarity",
+      "kind": "use",
+      "source": "ferrin_core::cosine_similarity"
+    },
+    {
+      "path": "ferrin::create_provider_registry",
+      "kind": "use",
+      "source": "ferrin_core::create_provider_registry"
+    },
+    {
+      "path": "ferrin::custom_provider",
+      "kind": "use",
+      "source": "ferrin_core::custom_provider"
+    },
+    {
+      "path": "ferrin::embed",
+      "kind": "use",
+      "source": "ferrin_core::embed"
+    },
+    {
+      "path": "ferrin::embed_many",
+      "kind": "use",
+      "source": "ferrin_core::embed_many"
+    },
+    {
+      "path": "ferrin::error",
+      "kind": "use",
+      "source": "ferrin_core::error"
+    },
+    {
+      "path": "ferrin::files",
+      "kind": "use",
+      "source": "ferrin_core::files"
+    },
+    {
+      "path": "ferrin::generate_image",
+      "kind": "use",
+      "source": "ferrin_core::generate_image"
+    },
+    {
+      "path": "ferrin::generate_speech",
+      "kind": "use",
+      "source": "ferrin_core::generate_speech"
+    },
+    {
+      "path": "ferrin::generate_text",
+      "kind": "use",
+      "source": "ferrin_core::generate_text"
+    },
+    {
+      "path": "ferrin::generate_video",
+      "kind": "use",
+      "source": "ferrin_core::generate_video"
+    },
+    {
+      "path": "ferrin::get_batch_results",
+      "kind": "use",
+      "source": "ferrin_core::get_batch_results"
+    },
+    {
+      "path": "ferrin::get_batch_status",
+      "kind": "use",
+      "source": "ferrin_core::get_batch_status"
+    },
+    {
+      "path": "ferrin::google",
+      "kind": "use",
+      "source": "ferrin_google"
+    },
+    {
+      "path": "ferrin::has_tool_call",
+      "kind": "use",
+      "source": "ferrin_core::has_tool_call"
+    },
+    {
+      "path": "ferrin::hooks",
+      "kind": "use",
+      "source": "ferrin_core::hooks"
+    },
+    {
+      "path": "ferrin::ids",
+      "kind": "use",
+      "source": "ferrin_core::ids"
+    },
+    {
+      "path": "ferrin::image",
+      "kind": "use",
+      "source": "ferrin_core::image"
+    },
+    {
+      "path": "ferrin::list_batches",
+      "kind": "use",
+      "source": "ferrin_core::list_batches"
+    },
+    {
+      "path": "ferrin::mcp",
+      "kind": "use",
+      "source": "ferrin_mcp"
+    },
+    {
+      "path": "ferrin::message",
+      "kind": "use",
+      "source": "ferrin_message"
+    },
+    {
+      "path": "ferrin::middleware",
+      "kind": "use",
+      "source": "ferrin_core::middleware"
+    },
+    {
+      "path": "ferrin::openai",
+      "kind": "use",
+      "source": "ferrin_openai"
+    },
+    {
+      "path": "ferrin::openai_compatible",
+      "kind": "use",
+      "source": "ferrin_openai_compatible"
+    },
+    {
+      "path": "ferrin::otel",
+      "kind": "use",
+      "source": "ferrin_otel"
+    },
+    {
+      "path": "ferrin::output",
+      "kind": "use",
+      "source": "ferrin_core::output"
+    },
+    {
+      "path": "ferrin::prelude",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin::prelude::Agent",
+      "kind": "use",
+      "source": "ferrin_core::Agent"
+    },
+    {
+      "path": "ferrin::prelude::AgentCall",
+      "kind": "use",
+      "source": "ferrin_core::AgentCall"
+    },
+    {
+      "path": "ferrin::prelude::AssistantPart",
+      "kind": "use",
+      "source": "ferrin_message::AssistantPart"
+    },
+    {
+      "path": "ferrin::prelude::CallSettings",
+      "kind": "use",
+      "source": "ferrin_core::CallSettings"
+    },
+    {
+      "path": "ferrin::prelude::Content",
+      "kind": "use",
+      "source": "ferrin_spec::Content"
+    },
+    {
+      "path": "ferrin::prelude::Deserialize",
+      "kind": "use",
+      "source": "serde::Deserialize"
+    },
+    {
+      "path": "ferrin::prelude::EmbeddingModel",
+      "kind": "use",
+      "source": "ferrin_spec::EmbeddingModel"
+    },
+    {
+      "path": "ferrin::prelude::Error",
+      "kind": "use",
+      "source": "ferrin_core::Error"
+    },
+    {
+      "path": "ferrin::prelude::ErrorKind",
+      "kind": "use",
+      "source": "ferrin_core::ErrorKind"
+    },
+    {
+      "path": "ferrin::prelude::FinishReason",
+      "kind": "use",
+      "source": "ferrin_spec::FinishReason"
+    },
+    {
+      "path": "ferrin::prelude::FinishReasonKind",
+      "kind": "use",
+      "source": "ferrin_spec::FinishReasonKind"
+    },
+    {
+      "path": "ferrin::prelude::GenerateResult",
+      "kind": "use",
+      "source": "ferrin_spec::GenerateResult"
+    },
+    {
+      "path": "ferrin::prelude::GenerateText",
+      "kind": "use",
+      "source": "ferrin_core::GenerateText"
+    },
+    {
+      "path": "ferrin::prelude::GenerateTextResult",
+      "kind": "use",
+      "source": "ferrin_core::GenerateTextResult"
+    },
+    {
+      "path": "ferrin::prelude::Headers",
+      "kind": "use",
+      "source": "ferrin_spec::Headers"
+    },
+    {
+      "path": "ferrin::prelude::ImageModel",
+      "kind": "use",
+      "source": "ferrin_spec::ImageModel"
+    },
+    {
+      "path": "ferrin::prelude::ImageSize",
+      "kind": "use",
+      "source": "ferrin_spec::ImageSize"
+    },
+    {
+      "path": "ferrin::prelude::Instructions",
+      "kind": "use",
+      "source": "ferrin_core::Instructions"
+    },
+    {
+      "path": "ferrin::prelude::JsonObject",
+      "kind": "use",
+      "source": "ferrin_spec::JsonObject"
+    },
+    {
+      "path": "ferrin::prelude::JsonSchema",
+      "kind": "use",
+      "source": "ferrin_tool::JsonSchema"
+    },
+    {
+      "path": "ferrin::prelude::JsonValue",
+      "kind": "use",
+      "source": "ferrin_spec::JsonValue"
+    },
+    {
+      "path": "ferrin::prelude::LanguageModel",
+      "kind": "use",
+      "source": "ferrin_spec::LanguageModel"
+    },
+    {
+      "path": "ferrin::prelude::LanguageModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::LanguageModelMiddleware"
+    },
+    {
+      "path": "ferrin::prelude::LanguageModelRef",
+      "kind": "use",
+      "source": "ferrin_spec::LanguageModelRef"
+    },
+    {
+      "path": "ferrin::prelude::Message",
+      "kind": "use",
+      "source": "ferrin_message::Message"
+    },
+    {
+      "path": "ferrin::prelude::MessagesExt",
+      "kind": "use",
+      "source": "ferrin_message::MessagesExt"
+    },
+    {
+      "path": "ferrin::prelude::NeedsApproval",
+      "kind": "use",
+      "source": "ferrin_tool::NeedsApproval"
+    },
+    {
+      "path": "ferrin::prelude::Output",
+      "kind": "use",
+      "source": "ferrin_core::Output"
+    },
+    {
+      "path": "ferrin::prelude::ProviderError",
+      "kind": "use",
+      "source": "ferrin_spec::ProviderError"
+    },
+    {
+      "path": "ferrin::prelude::ProviderOptions",
+      "kind": "use",
+      "source": "ferrin_spec::ProviderOptions"
+    },
+    {
+      "path": "ferrin::prelude::ProviderRegistry",
+      "kind": "use",
+      "source": "ferrin_core::ProviderRegistry"
+    },
+    {
+      "path": "ferrin::prelude::RealtimeSession",
+      "kind": "use",
+      "source": "ferrin_core::RealtimeSession"
+    },
+    {
+      "path": "ferrin::prelude::ReasoningEffort",
+      "kind": "use",
+      "source": "ferrin_spec::ReasoningEffort"
+    },
+    {
+      "path": "ferrin::prelude::RetryPolicy",
+      "kind": "use",
+      "source": "ferrin_core::RetryPolicy"
+    },
+    {
+      "path": "ferrin::prelude::Role",
+      "kind": "use",
+      "source": "ferrin_message::Role"
+    },
+    {
+      "path": "ferrin::prelude::Schema",
+      "kind": "use",
+      "source": "ferrin_tool::Schema"
+    },
+    {
+      "path": "ferrin::prelude::Serialize",
+      "kind": "use",
+      "source": "serde::Serialize"
+    },
+    {
+      "path": "ferrin::prelude::StepContent",
+      "kind": "use",
+      "source": "ferrin_core::StepContent"
+    },
+    {
+      "path": "ferrin::prelude::StepResult",
+      "kind": "use",
+      "source": "ferrin_core::StepResult"
+    },
+    {
+      "path": "ferrin::prelude::StreamEvent",
+      "kind": "use",
+      "source": "ferrin_core::StreamEvent"
+    },
+    {
+      "path": "ferrin::prelude::StreamExt",
+      "kind": "use",
+      "source": "futures_util::StreamExt"
+    },
+    {
+      "path": "ferrin::prelude::StreamPart",
+      "kind": "use",
+      "source": "ferrin_spec::StreamPart"
+    },
+    {
+      "path": "ferrin::prelude::StreamText",
+      "kind": "use",
+      "source": "ferrin_core::StreamText"
+    },
+    {
+      "path": "ferrin::prelude::StreamTextResult",
+      "kind": "use",
+      "source": "ferrin_core::StreamTextResult"
+    },
+    {
+      "path": "ferrin::prelude::Telemetry",
+      "kind": "use",
+      "source": "ferrin_core::Telemetry"
+    },
+    {
+      "path": "ferrin::prelude::TelemetryOptions",
+      "kind": "use",
+      "source": "ferrin_core::TelemetryOptions"
+    },
+    {
+      "path": "ferrin::prelude::Timeout",
+      "kind": "use",
+      "source": "ferrin_core::Timeout"
+    },
+    {
+      "path": "ferrin::prelude::Tool",
+      "kind": "use",
+      "source": "ferrin_tool::Tool"
+    },
+    {
+      "path": "ferrin::prelude::ToolApprovalResponse",
+      "kind": "use",
+      "source": "ferrin_message::ToolApprovalResponse"
+    },
+    {
+      "path": "ferrin::prelude::ToolChoice",
+      "kind": "use",
+      "source": "ferrin_spec::ToolChoice"
+    },
+    {
+      "path": "ferrin::prelude::ToolContext",
+      "kind": "use",
+      "source": "ferrin_tool::ToolContext"
+    },
+    {
+      "path": "ferrin::prelude::ToolError",
+      "kind": "use",
+      "source": "ferrin_tool::ToolError"
+    },
+    {
+      "path": "ferrin::prelude::ToolLoopAgent",
+      "kind": "use",
+      "source": "ferrin_core::ToolLoopAgent"
+    },
+    {
+      "path": "ferrin::prelude::ToolSet",
+      "kind": "use",
+      "source": "ferrin_tool::ToolSet"
+    },
+    {
+      "path": "ferrin::prelude::Usage",
+      "kind": "use",
+      "source": "ferrin_spec::Usage"
+    },
+    {
+      "path": "ferrin::prelude::UserPart",
+      "kind": "use",
+      "source": "ferrin_message::UserPart"
+    },
+    {
+      "path": "ferrin::prelude::cosine_similarity",
+      "kind": "use",
+      "source": "ferrin_core::cosine_similarity"
+    },
+    {
+      "path": "ferrin::prelude::create_provider_registry",
+      "kind": "use",
+      "source": "ferrin_core::create_provider_registry"
+    },
+    {
+      "path": "ferrin::prelude::embed",
+      "kind": "use",
+      "source": "ferrin_core::embed"
+    },
+    {
+      "path": "ferrin::prelude::embed_many",
+      "kind": "use",
+      "source": "ferrin_core::embed_many"
+    },
+    {
+      "path": "ferrin::prelude::generate_image",
+      "kind": "use",
+      "source": "ferrin_core::generate_image"
+    },
+    {
+      "path": "ferrin::prelude::generate_speech",
+      "kind": "use",
+      "source": "ferrin_core::generate_speech"
+    },
+    {
+      "path": "ferrin::prelude::generate_text",
+      "kind": "use",
+      "source": "ferrin_core::generate_text"
+    },
+    {
+      "path": "ferrin::prelude::has_tool_call",
+      "kind": "use",
+      "source": "ferrin_core::has_tool_call"
+    },
+    {
+      "path": "ferrin::prelude::json",
+      "kind": "use",
+      "source": "serde_json::json"
+    },
+    {
+      "path": "ferrin::prelude::realtime_session",
+      "kind": "use",
+      "source": "ferrin_core::realtime_session"
+    },
+    {
+      "path": "ferrin::prelude::rerank",
+      "kind": "use",
+      "source": "ferrin_core::rerank"
+    },
+    {
+      "path": "ferrin::prelude::step_count",
+      "kind": "use",
+      "source": "ferrin_core::step_count"
+    },
+    {
+      "path": "ferrin::prelude::stream_text",
+      "kind": "use",
+      "source": "ferrin_core::stream_text"
+    },
+    {
+      "path": "ferrin::prelude::tool",
+      "kind": "use",
+      "source": "ferrin_macros::tool"
+    },
+    {
+      "path": "ferrin::prelude::transcribe",
+      "kind": "use",
+      "source": "ferrin_core::transcribe"
+    },
+    {
+      "path": "ferrin::prelude::upload_file",
+      "kind": "use",
+      "source": "ferrin_core::upload_file"
+    },
+    {
+      "path": "ferrin::prelude::wrap_language_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_language_model"
+    },
+    {
+      "path": "ferrin::prompt",
+      "kind": "use",
+      "source": "ferrin_core::prompt"
+    },
+    {
+      "path": "ferrin::provider_util",
+      "kind": "use",
+      "source": "ferrin_provider_util"
+    },
+    {
+      "path": "ferrin::providers",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin::providers::anthropic",
+      "kind": "use",
+      "source": "ferrin_anthropic"
+    },
+    {
+      "path": "ferrin::providers::google",
+      "kind": "use",
+      "source": "ferrin_google"
+    },
+    {
+      "path": "ferrin::providers::openai",
+      "kind": "use",
+      "source": "ferrin_openai"
+    },
+    {
+      "path": "ferrin::providers::openai_compatible",
+      "kind": "use",
+      "source": "ferrin_openai_compatible"
+    },
+    {
+      "path": "ferrin::realtime",
+      "kind": "use",
+      "source": "ferrin_core::realtime"
+    },
+    {
+      "path": "ferrin::realtime_session",
+      "kind": "use",
+      "source": "ferrin_core::realtime_session"
+    },
+    {
+      "path": "ferrin::registry",
+      "kind": "use",
+      "source": "ferrin_core::registry"
+    },
+    {
+      "path": "ferrin::rerank",
+      "kind": "use",
+      "source": "ferrin_core::rerank"
+    },
+    {
+      "path": "ferrin::retry",
+      "kind": "use",
+      "source": "ferrin_core::retry"
+    },
+    {
+      "path": "ferrin::schema",
+      "kind": "use",
+      "source": "ferrin_schema"
+    },
+    {
+      "path": "ferrin::schemars",
+      "kind": "use",
+      "source": "ferrin_schema::schemars"
+    },
+    {
+      "path": "ferrin::serde",
+      "kind": "use",
+      "source": "serde"
+    },
+    {
+      "path": "ferrin::serde_json",
+      "kind": "use",
+      "source": "serde_json"
+    },
+    {
+      "path": "ferrin::skills",
+      "kind": "use",
+      "source": "ferrin_core::skills"
+    },
+    {
+      "path": "ferrin::spec",
+      "kind": "use",
+      "source": "ferrin_spec"
+    },
+    {
+      "path": "ferrin::speech",
+      "kind": "use",
+      "source": "ferrin_core::speech"
+    },
+    {
+      "path": "ferrin::speech_translation",
+      "kind": "use",
+      "source": "ferrin_core::speech_translation"
+    },
+    {
+      "path": "ferrin::start_batch",
+      "kind": "use",
+      "source": "ferrin_core::start_batch"
+    },
+    {
+      "path": "ferrin::step_count",
+      "kind": "use",
+      "source": "ferrin_core::step_count"
+    },
+    {
+      "path": "ferrin::stream_speech_translation",
+      "kind": "use",
+      "source": "ferrin_core::stream_speech_translation"
+    },
+    {
+      "path": "ferrin::stream_text",
+      "kind": "use",
+      "source": "ferrin_core::stream_text"
+    },
+    {
+      "path": "ferrin::stream_transcribe",
+      "kind": "use",
+      "source": "ferrin_core::stream_transcribe"
+    },
+    {
+      "path": "ferrin::telemetry",
+      "kind": "use",
+      "source": "ferrin_core::telemetry"
+    },
+    {
+      "path": "ferrin::timeout",
+      "kind": "use",
+      "source": "ferrin_core::timeout"
+    },
+    {
+      "path": "ferrin::tool",
+      "kind": "use",
+      "source": "ferrin_macros::tool"
+    },
+    {
+      "path": "ferrin::tool",
+      "kind": "use",
+      "source": "ferrin_tool"
+    },
+    {
+      "path": "ferrin::transcribe",
+      "kind": "use",
+      "source": "ferrin_core::transcribe"
+    },
+    {
+      "path": "ferrin::transcription",
+      "kind": "use",
+      "source": "ferrin_core::transcription"
+    },
+    {
+      "path": "ferrin::upload_file",
+      "kind": "use",
+      "source": "ferrin_core::upload_file"
+    },
+    {
+      "path": "ferrin::upload_skill",
+      "kind": "use",
+      "source": "ferrin_core::upload_skill"
+    },
+    {
+      "path": "ferrin::video",
+      "kind": "use",
+      "source": "ferrin_core::video"
+    },
+    {
+      "path": "ferrin::wrap_language_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_language_model"
+    }
+  ]
+}

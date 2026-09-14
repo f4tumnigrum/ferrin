@@ -1,0 +1,2524 @@
+{
+  "crate": "ferrin-mcp",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_mcp::BoxError",
+      "kind": "type_alias",
+      "signature": "type = Box<dyn Error + Send + Sync + 'static>",
+      "source": "error::BoxError"
+    },
+    {
+      "path": "ferrin_mcp::ElicitationHandler",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "source": "client::ElicitationHandler",
+      "methods": [
+        "fn handle(&self, request: ElicitationRequest) -> BoxFuture<'_, Result<ElicitResult, McpError>>"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::McpClient",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "client::McpClient",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn call_tool(&self, name: &str, arguments: Option<JsonObject>, options: RequestOptions) -> Result<CallToolResult, McpError>",
+        "async fn close(&self) -> Result<(), McpError>",
+        "async fn complete(&self, params: CompleteParams, options: RequestOptions) -> Result<CompleteResult, McpError>",
+        "async fn connect(config: McpClientConfig) -> Result<Self, McpError>",
+        "async fn get_prompt(&self, name: &str, arguments: Option<BTreeMap<String, String>>, options: RequestOptions) -> Result<GetPromptResult, McpError>",
+        "async fn list_all_tools(&self, options: RequestOptions) -> Result<Vec<McpTool>, McpError>",
+        "async fn list_prompts(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListPromptsResult, McpError>",
+        "async fn list_resource_templates(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListResourceTemplatesResult, McpError>",
+        "async fn list_resources(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListResourcesResult, McpError>",
+        "async fn list_tools(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListToolsResult, McpError>",
+        "async fn notify(&self, method: &str, params: Option<JsonObject>) -> Result<(), McpError>",
+        "async fn ping(&self, options: RequestOptions) -> Result<(), McpError>",
+        "async fn read_resource(&self, uri: &str, options: RequestOptions) -> Result<ReadResourceResult, McpError>",
+        "async fn request(&self, method: &str, params: Option<JsonObject>, options: RequestOptions) -> Result<JsonObject, McpError>",
+        "async fn set_logging_level(&self, level: &str, options: RequestOptions) -> Result<(), McpError>",
+        "async fn tools(&self, options: ToolsOptions) -> Result<ToolSet, McpError>",
+        "fn instructions(&self) -> Option<String>",
+        "fn is_closed(&self) -> bool",
+        "fn on_elicitation(&self, handler: Arc<dyn ElicitationHandler>)",
+        "fn protocol_era(&self) -> ProtocolEra",
+        "fn protocol_version(&self) -> Option<String>",
+        "fn server_capabilities(&self) -> Option<ServerCapabilities>",
+        "fn server_info(&self) -> Option<Implementation>",
+        "fn tools_from_definitions(&self, definitions: Vec<McpTool>, options: &ToolsOptions) -> Result<ToolSet, McpError>"
+      ],
+      "traits": [
+        "impl Clone for McpClient",
+        "impl Debug for McpClient"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::McpClientConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "client::McpClientConfig",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "transport: TransportConfig",
+        "name: String",
+        "version: String",
+        "title: Option<String>",
+        "capabilities: ClientCapabilities",
+        "max_tool_call_retries: u32",
+        "default_request_timeout: Option<Duration>",
+        "protocol_discovery: bool",
+        "discovery_timeout: Duration",
+        "initialization_timeout: Option<Duration>",
+        "max_input_rounds: u32",
+        "on_uncaught_error: Option<UncaughtErrorHook>",
+        "on_notification: Option<NotificationHook>",
+        "elicitation_handler: Option<Arc<dyn ElicitationHandler>>"
+      ],
+      "methods": [
+        "fn capabilities(self, capabilities: ClientCapabilities) -> Self",
+        "fn default_request_timeout(self, timeout: Duration) -> Self",
+        "fn discovery_timeout(self, timeout: Duration) -> Self",
+        "fn elicitation_handler(self, handler: Arc<dyn ElicitationHandler>) -> Self",
+        "fn initialization_timeout(self, timeout: Duration) -> Self",
+        "fn max_tool_call_retries(self, retries: u32) -> Self",
+        "fn name(self, name: impl Into<String>) -> Self",
+        "fn new(transport: TransportConfig) -> Self",
+        "fn on_notification(self, hook: NotificationHook) -> Self",
+        "fn on_uncaught_error(self, hook: UncaughtErrorHook) -> Self",
+        "fn protocol_discovery(self, enabled: bool) -> Self",
+        "fn title(self, title: impl Into<String>) -> Self",
+        "fn version(self, version: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for McpClientConfig",
+        "impl Debug for McpClientConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::McpError",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "error::McpError",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Transport(Box<TransportFailure>)",
+        "Protocol { message: String }",
+        "JsonRpc { code: i64, message: String, data: Option<JsonValue> }",
+        "Timeout(Duration)",
+        "Cancelled",
+        "Closed",
+        "Unauthorized",
+        "UnsupportedCapability(String)",
+        "InvalidArgument { message: String }",
+        "Url(Box<UrlValidationError>)",
+        "OAuth { message: String, error_code: Option<String> }",
+        "Io(Error)",
+        "Elicitation { message: String }"
+      ],
+      "methods": [
+        "fn code(&self) -> Option<i64>",
+        "fn elicitation(message: impl Into<String>) -> Self",
+        "fn from_transport(error: TransportError, url: &Url) -> Self",
+        "fn http_status(message: impl Into<String>, status: StatusCode, url: &Url, response_body: Option<String>) -> Self",
+        "fn invalid_argument(message: impl Into<String>) -> Self",
+        "fn is_retryable_tool_call(&self) -> bool",
+        "fn oauth(message: impl Into<String>) -> Self",
+        "fn protocol(message: impl Into<String>) -> Self",
+        "fn status_code(&self) -> Option<u16>",
+        "fn transport(message: impl Into<String>) -> Self",
+        "fn transport_failure(&self) -> Option<&TransportFailure>"
+      ],
+      "traits": [
+        "impl Debug for McpError",
+        "impl Display for McpError",
+        "impl Error for McpError",
+        "impl From<Error> for McpError",
+        "impl From<UrlValidationError> for McpError"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::McpToolExecutor",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tools::McpToolExecutor",
+      "fields": [
+        "/* private fields */"
+      ],
+      "traits": [
+        "impl Clone for McpToolExecutor",
+        "impl Debug for McpToolExecutor",
+        "impl ToolExecute for McpToolExecutor"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::NotificationHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&JsonRpcNotification) + Send + Sync>",
+      "source": "client::NotificationHook"
+    },
+    {
+      "path": "ferrin_mcp::RequestOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "client::RequestOptions",
+      "fields": [
+        "timeout: Option<Duration>",
+        "max_total_timeout: Option<Duration>",
+        "cancellation: Option<CancellationToken>",
+        "headers: Headers"
+      ],
+      "methods": [
+        "fn cancellation(self, cancellation: CancellationToken) -> Self",
+        "fn with_timeout(timeout: Duration) -> Self"
+      ],
+      "traits": [
+        "impl Clone for RequestOptions",
+        "impl Debug for RequestOptions",
+        "impl Default for RequestOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::ToolSchemaPair",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tools::ToolSchemaPair",
+      "fields": [
+        "input: Schema<JsonValue>",
+        "output: Option<Schema<JsonValue>>"
+      ],
+      "methods": [
+        "fn input(input: Schema<JsonValue>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolSchemaPair",
+        "impl Debug for ToolSchemaPair"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::ToolSchemas",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "tools::ToolSchemas",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Automatic",
+        "Explicit(HashMap<String, ToolSchemaPair>)"
+      ],
+      "traits": [
+        "impl Clone for ToolSchemas",
+        "impl Debug for ToolSchemas",
+        "impl Default for ToolSchemas"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::ToolsOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "tools::ToolsOptions",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "schemas: ToolSchemas",
+        "request_timeout: Option<Duration>",
+        "name_prefix: Option<String>"
+      ],
+      "methods": [
+        "fn explicit(schemas: HashMap<String, ToolSchemaPair>) -> Self",
+        "fn name_prefix(self, prefix: impl Into<String>) -> Self",
+        "fn request_timeout(self, timeout: Duration) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolsOptions",
+        "impl Debug for ToolsOptions",
+        "impl Default for ToolsOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::TransportFailure",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "error::TransportFailure",
+      "fields": [
+        "message: String",
+        "status_code: Option<u16>",
+        "url: Option<Url>",
+        "response_body: Option<String>",
+        "cause: Option<BoxError>"
+      ],
+      "traits": [
+        "impl Debug for TransportFailure",
+        "impl Display for TransportFailure",
+        "impl Error for TransportFailure"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::UncaughtErrorHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(McpError) + Send + Sync>",
+      "source": "client::UncaughtErrorHook"
+    },
+    {
+      "path": "ferrin_mcp::apps",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::apps::MCP_APP_EXTENSION_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_mcp::apps::MCP_APP_LEGACY_RESOURCE_URI_META_KEY",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_mcp::apps::MCP_APP_MIME_TYPE",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_mcp::apps::MCP_APP_URI_SCHEME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_mcp::apps::McpAppResource",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "uri: String",
+        "mime_type: String",
+        "html: String",
+        "meta: Option<McpAppResourceMeta>"
+      ],
+      "traits": [
+        "impl Clone for McpAppResource",
+        "impl Debug for McpAppResource",
+        "impl PartialEq for McpAppResource",
+        "impl StructuralPartialEq for McpAppResource"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::McpAppResourceCsp",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "connect_domains: Option<Vec<String>>",
+        "resource_domains: Option<Vec<String>>",
+        "frame_domains: Option<Vec<String>>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for McpAppResourceCsp",
+        "impl Debug for McpAppResourceCsp",
+        "impl Default for McpAppResourceCsp",
+        "impl Eq for McpAppResourceCsp",
+        "impl PartialEq for McpAppResourceCsp",
+        "impl Serialize for McpAppResourceCsp",
+        "impl StructuralPartialEq for McpAppResourceCsp",
+        "impl<'de> Deserialize<'de> for McpAppResourceCsp"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::McpAppResourceMeta",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "prefers_border: Option<bool>",
+        "csp: Option<McpAppResourceCsp>",
+        "permissions: Option<JsonValue>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for McpAppResourceMeta",
+        "impl Debug for McpAppResourceMeta",
+        "impl Default for McpAppResourceMeta",
+        "impl PartialEq for McpAppResourceMeta",
+        "impl Serialize for McpAppResourceMeta",
+        "impl StructuralPartialEq for McpAppResourceMeta",
+        "impl<'de> Deserialize<'de> for McpAppResourceMeta"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::McpAppToolMeta",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "resource_uri: String",
+        "visibility: Option<Vec<String>>",
+        "extra: JsonObject"
+      ],
+      "methods": [
+        "fn is_app_visible(&self) -> bool",
+        "fn is_model_visible(&self) -> bool"
+      ],
+      "traits": [
+        "impl Clone for McpAppToolMeta",
+        "impl Debug for McpAppToolMeta",
+        "impl Eq for McpAppToolMeta",
+        "impl PartialEq for McpAppToolMeta",
+        "impl Serialize for McpAppToolMeta",
+        "impl StructuralPartialEq for McpAppToolMeta",
+        "impl<'de> Deserialize<'de> for McpAppToolMeta"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::SplitAppTools",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "model_tools: Vec<McpTool>",
+        "app_tools: Vec<McpTool>"
+      ],
+      "traits": [
+        "impl Clone for SplitAppTools",
+        "impl Debug for SplitAppTools",
+        "impl Default for SplitAppTools",
+        "impl PartialEq for SplitAppTools",
+        "impl StructuralPartialEq for SplitAppTools"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::app_resource_from_read_result",
+      "kind": "function",
+      "signature": "fn app_resource_from_read_result(uri: &str, result: &ReadResourceResult) -> Result<McpAppResource, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::apps::app_resource_uri",
+      "kind": "function",
+      "signature": "fn app_resource_uri(tool: &McpTool) -> Result<Option<String>, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::apps::app_resource_uris",
+      "kind": "function",
+      "signature": "fn app_resource_uris(tools: &[McpTool]) -> Result<Vec<String>, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::apps::app_tool_meta",
+      "kind": "function",
+      "signature": "fn app_tool_meta(tool: &McpTool) -> Result<Option<McpAppToolMeta>, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::apps::detect_app_resource_drift",
+      "kind": "function",
+      "signature": "fn detect_app_resource_drift(current: &McpAppResource, baseline: &McpAppResource) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::fingerprint_app_resource",
+      "kind": "function",
+      "signature": "fn fingerprint_app_resource(resource: &McpAppResource) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::is_app_tool",
+      "kind": "function",
+      "signature": "fn is_app_tool(tool: &McpTool) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::mcp_app_client_capabilities",
+      "kind": "function",
+      "signature": "fn mcp_app_client_capabilities() -> ClientCapabilities",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::apps::read_app_resource",
+      "kind": "function",
+      "signature": "async fn read_app_resource(client: &McpClient, uri: &str, options: RequestOptions) -> Result<McpAppResource, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::apps::split_app_tools",
+      "kind": "function",
+      "signature": "fn split_app_tools(tools: Vec<McpTool>) -> Result<SplitAppTools, McpError>"
+    },
+    {
+      "path": "ferrin_mcp::client",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::client::DEFAULT_CLIENT_NAME",
+      "kind": "constant",
+      "signature": "const: &str"
+    },
+    {
+      "path": "ferrin_mcp::client::DEFAULT_DISCOVERY_TIMEOUT",
+      "kind": "constant",
+      "signature": "const: Duration"
+    },
+    {
+      "path": "ferrin_mcp::client::DEFAULT_MAX_INPUT_ROUNDS",
+      "kind": "constant",
+      "signature": "const: u32"
+    },
+    {
+      "path": "ferrin_mcp::client::ElicitationHandler",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "methods": [
+        "fn handle(&self, request: ElicitationRequest) -> BoxFuture<'_, Result<ElicitResult, McpError>>"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::client::McpClient",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn call_tool(&self, name: &str, arguments: Option<JsonObject>, options: RequestOptions) -> Result<CallToolResult, McpError>",
+        "async fn close(&self) -> Result<(), McpError>",
+        "async fn complete(&self, params: CompleteParams, options: RequestOptions) -> Result<CompleteResult, McpError>",
+        "async fn connect(config: McpClientConfig) -> Result<Self, McpError>",
+        "async fn get_prompt(&self, name: &str, arguments: Option<BTreeMap<String, String>>, options: RequestOptions) -> Result<GetPromptResult, McpError>",
+        "async fn list_all_tools(&self, options: RequestOptions) -> Result<Vec<McpTool>, McpError>",
+        "async fn list_prompts(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListPromptsResult, McpError>",
+        "async fn list_resource_templates(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListResourceTemplatesResult, McpError>",
+        "async fn list_resources(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListResourcesResult, McpError>",
+        "async fn list_tools(&self, cursor: Option<&str>, options: RequestOptions) -> Result<ListToolsResult, McpError>",
+        "async fn notify(&self, method: &str, params: Option<JsonObject>) -> Result<(), McpError>",
+        "async fn ping(&self, options: RequestOptions) -> Result<(), McpError>",
+        "async fn read_resource(&self, uri: &str, options: RequestOptions) -> Result<ReadResourceResult, McpError>",
+        "async fn request(&self, method: &str, params: Option<JsonObject>, options: RequestOptions) -> Result<JsonObject, McpError>",
+        "async fn set_logging_level(&self, level: &str, options: RequestOptions) -> Result<(), McpError>",
+        "async fn tools(&self, options: ToolsOptions) -> Result<ToolSet, McpError>",
+        "fn instructions(&self) -> Option<String>",
+        "fn is_closed(&self) -> bool",
+        "fn on_elicitation(&self, handler: Arc<dyn ElicitationHandler>)",
+        "fn protocol_era(&self) -> ProtocolEra",
+        "fn protocol_version(&self) -> Option<String>",
+        "fn server_capabilities(&self) -> Option<ServerCapabilities>",
+        "fn server_info(&self) -> Option<Implementation>",
+        "fn tools_from_definitions(&self, definitions: Vec<McpTool>, options: &ToolsOptions) -> Result<ToolSet, McpError>"
+      ],
+      "traits": [
+        "impl Clone for McpClient",
+        "impl Debug for McpClient"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::client::McpClientConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "transport: TransportConfig",
+        "name: String",
+        "version: String",
+        "title: Option<String>",
+        "capabilities: ClientCapabilities",
+        "max_tool_call_retries: u32",
+        "default_request_timeout: Option<Duration>",
+        "protocol_discovery: bool",
+        "discovery_timeout: Duration",
+        "initialization_timeout: Option<Duration>",
+        "max_input_rounds: u32",
+        "on_uncaught_error: Option<UncaughtErrorHook>",
+        "on_notification: Option<NotificationHook>",
+        "elicitation_handler: Option<Arc<dyn ElicitationHandler>>"
+      ],
+      "methods": [
+        "fn capabilities(self, capabilities: ClientCapabilities) -> Self",
+        "fn default_request_timeout(self, timeout: Duration) -> Self",
+        "fn discovery_timeout(self, timeout: Duration) -> Self",
+        "fn elicitation_handler(self, handler: Arc<dyn ElicitationHandler>) -> Self",
+        "fn initialization_timeout(self, timeout: Duration) -> Self",
+        "fn max_tool_call_retries(self, retries: u32) -> Self",
+        "fn name(self, name: impl Into<String>) -> Self",
+        "fn new(transport: TransportConfig) -> Self",
+        "fn on_notification(self, hook: NotificationHook) -> Self",
+        "fn on_uncaught_error(self, hook: UncaughtErrorHook) -> Self",
+        "fn protocol_discovery(self, enabled: bool) -> Self",
+        "fn title(self, title: impl Into<String>) -> Self",
+        "fn version(self, version: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for McpClientConfig",
+        "impl Debug for McpClientConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::client::NotificationHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&JsonRpcNotification) + Send + Sync>"
+    },
+    {
+      "path": "ferrin_mcp::client::RequestOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "request::RequestOptions",
+      "fields": [
+        "timeout: Option<Duration>",
+        "max_total_timeout: Option<Duration>",
+        "cancellation: Option<CancellationToken>",
+        "headers: Headers"
+      ],
+      "methods": [
+        "fn cancellation(self, cancellation: CancellationToken) -> Self",
+        "fn with_timeout(timeout: Duration) -> Self"
+      ],
+      "traits": [
+        "impl Clone for RequestOptions",
+        "impl Debug for RequestOptions",
+        "impl Default for RequestOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::client::UncaughtErrorHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(McpError) + Send + Sync>"
+    },
+    {
+      "path": "ferrin_mcp::client::elicitation_handler",
+      "kind": "function",
+      "signature": "fn elicitation_handler<F, Fut>(function: F) -> Arc<dyn ElicitationHandler> where F: Fn(ElicitationRequest) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<ElicitResult, McpError>> + Send + 'static"
+    },
+    {
+      "path": "ferrin_mcp::elicitation_handler",
+      "kind": "function",
+      "signature": "fn elicitation_handler<F, Fut>(function: F) -> Arc<dyn ElicitationHandler> where F: Fn(ElicitationRequest) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<ElicitResult, McpError>> + Send + 'static",
+      "source": "client::elicitation_handler"
+    },
+    {
+      "path": "ferrin_mcp::error",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::error::BoxError",
+      "kind": "type_alias",
+      "signature": "type = Box<dyn Error + Send + Sync + 'static>"
+    },
+    {
+      "path": "ferrin_mcp::error::McpError",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Transport(Box<TransportFailure>)",
+        "Protocol { message: String }",
+        "JsonRpc { code: i64, message: String, data: Option<JsonValue> }",
+        "Timeout(Duration)",
+        "Cancelled",
+        "Closed",
+        "Unauthorized",
+        "UnsupportedCapability(String)",
+        "InvalidArgument { message: String }",
+        "Url(Box<UrlValidationError>)",
+        "OAuth { message: String, error_code: Option<String> }",
+        "Io(Error)",
+        "Elicitation { message: String }"
+      ],
+      "methods": [
+        "fn code(&self) -> Option<i64>",
+        "fn elicitation(message: impl Into<String>) -> Self",
+        "fn from_transport(error: TransportError, url: &Url) -> Self",
+        "fn http_status(message: impl Into<String>, status: StatusCode, url: &Url, response_body: Option<String>) -> Self",
+        "fn invalid_argument(message: impl Into<String>) -> Self",
+        "fn is_retryable_tool_call(&self) -> bool",
+        "fn oauth(message: impl Into<String>) -> Self",
+        "fn protocol(message: impl Into<String>) -> Self",
+        "fn status_code(&self) -> Option<u16>",
+        "fn transport(message: impl Into<String>) -> Self",
+        "fn transport_failure(&self) -> Option<&TransportFailure>"
+      ],
+      "traits": [
+        "impl Debug for McpError",
+        "impl Display for McpError",
+        "impl Error for McpError",
+        "impl From<Error> for McpError",
+        "impl From<UrlValidationError> for McpError"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::error::TransportFailure",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "message: String",
+        "status_code: Option<u16>",
+        "url: Option<Url>",
+        "response_body: Option<String>",
+        "cause: Option<BoxError>"
+      ],
+      "traits": [
+        "impl Debug for TransportFailure",
+        "impl Display for TransportFailure",
+        "impl Error for TransportFailure"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::mcp_to_model_output",
+      "kind": "function",
+      "signature": "fn mcp_to_model_output(args: ModelOutputArgs<'_>) -> ToolResultOutput",
+      "source": "tools::mcp_to_model_output",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::oauth::AuthOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "flow::AuthOptions",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "server_url: Url",
+        "authorization_code: Option<String>",
+        "scope: Option<String>",
+        "resource_metadata_url: Option<Url>",
+        "url_policy: UrlPolicy"
+      ],
+      "methods": [
+        "fn authorization_code(self, code: impl Into<String>) -> Self",
+        "fn new(server_url: Url) -> Self",
+        "fn resource_metadata_url(self, url: Option<Url>) -> Self",
+        "fn scope(self, scope: Option<String>) -> Self",
+        "fn url_policy(self, policy: UrlPolicy) -> Self"
+      ],
+      "traits": [
+        "impl Clone for AuthOptions",
+        "impl Debug for AuthOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::AuthResult",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "types::AuthResult",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Authorized",
+        "Redirect"
+      ],
+      "traits": [
+        "impl Clone for AuthResult",
+        "impl Copy for AuthResult",
+        "impl Debug for AuthResult",
+        "impl Eq for AuthResult",
+        "impl PartialEq for AuthResult",
+        "impl StructuralPartialEq for AuthResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::AuthorizationCodeGrant",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "flow::AuthorizationCodeGrant",
+      "fields": [
+        "code: String",
+        "code_verifier: String",
+        "redirect_url: Url",
+        "resource: Url"
+      ],
+      "traits": [
+        "impl Clone for AuthorizationCodeGrant",
+        "impl Debug for AuthorizationCodeGrant"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::AuthorizationServerMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::AuthorizationServerMetadata",
+      "fields": [
+        "issuer: String",
+        "authorization_endpoint: Option<Url>",
+        "token_endpoint: Url",
+        "registration_endpoint: Option<Url>",
+        "scopes_supported: Option<Vec<String>>",
+        "response_types_supported: Option<Vec<String>>",
+        "grant_types_supported: Option<Vec<String>>",
+        "token_endpoint_auth_methods_supported: Option<Vec<String>>",
+        "code_challenge_methods_supported: Option<Vec<String>>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for AuthorizationServerMetadata",
+        "impl Debug for AuthorizationServerMetadata",
+        "impl Eq for AuthorizationServerMetadata",
+        "impl PartialEq for AuthorizationServerMetadata",
+        "impl Serialize for AuthorizationServerMetadata",
+        "impl StructuralPartialEq for AuthorizationServerMetadata",
+        "impl<'de> Deserialize<'de> for AuthorizationServerMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::InvalidateScope",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "types::InvalidateScope",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "All",
+        "Client",
+        "Tokens",
+        "Verifier"
+      ],
+      "traits": [
+        "impl Clone for InvalidateScope",
+        "impl Copy for InvalidateScope",
+        "impl Debug for InvalidateScope",
+        "impl Eq for InvalidateScope",
+        "impl PartialEq for InvalidateScope",
+        "impl StructuralPartialEq for InvalidateScope"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::MetadataUrl",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "discovery::MetadataUrl",
+      "fields": [
+        "url: Url",
+        "openid: bool"
+      ],
+      "traits": [
+        "impl Clone for MetadataUrl",
+        "impl Debug for MetadataUrl",
+        "impl Eq for MetadataUrl",
+        "impl PartialEq for MetadataUrl",
+        "impl StructuralPartialEq for MetadataUrl"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::OAuthClientInformation",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::OAuthClientInformation",
+      "fields": [
+        "client_id: String",
+        "client_secret: Option<SecretString>",
+        "client_id_issued_at: Option<u64>",
+        "client_secret_expires_at: Option<u64>"
+      ],
+      "methods": [
+        "fn expose_to_json(&self) -> JsonValue",
+        "fn from_json(value: JsonValue) -> Result<Self, Error>",
+        "fn public(client_id: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for OAuthClientInformation",
+        "impl Debug for OAuthClientInformation"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::OAuthClientMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::OAuthClientMetadata",
+      "fields": [
+        "redirect_uris: Vec<Url>",
+        "token_endpoint_auth_method: Option<String>",
+        "grant_types: Option<Vec<String>>",
+        "response_types: Option<Vec<String>>",
+        "client_name: Option<String>",
+        "client_uri: Option<Url>",
+        "scope: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for OAuthClientMetadata",
+        "impl Debug for OAuthClientMetadata",
+        "impl Default for OAuthClientMetadata",
+        "impl Eq for OAuthClientMetadata",
+        "impl PartialEq for OAuthClientMetadata",
+        "impl Serialize for OAuthClientMetadata",
+        "impl StructuralPartialEq for OAuthClientMetadata",
+        "impl<'de> Deserialize<'de> for OAuthClientMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::OAuthClientProvider",
+      "kind": "trait",
+      "signature": "trait: Send + Sync",
+      "source": "provider::OAuthClientProvider",
+      "methods": [
+        "fn client_information(&self) -> BoxFuture<'_, Result<Option<OAuthClientInformation>, McpError>>",
+        "fn client_metadata(&self) -> OAuthClientMetadata",
+        "fn code_verifier(&self) -> BoxFuture<'_, Result<Option<String>, McpError>>",
+        "fn invalidate_credentials(&self, scope: InvalidateScope) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn redirect_to_authorization(&self, authorization_url: Url) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn redirect_url(&self) -> Option<Url>",
+        "fn save_client_information(&self, information: OAuthClientInformation) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn save_code_verifier(&self, code_verifier: String) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn save_tokens(&self, tokens: OAuthTokens) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn state(&self) -> BoxFuture<'_, Result<Option<String>, McpError>>",
+        "fn tokens(&self) -> BoxFuture<'_, Result<Option<OAuthTokens>, McpError>>"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::OAuthTokens",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::OAuthTokens",
+      "fields": [
+        "access_token: SecretString",
+        "token_type: String",
+        "expires_in: Option<u64>",
+        "scope: Option<String>",
+        "refresh_token: Option<SecretString>"
+      ],
+      "methods": [
+        "fn bearer(access_token: impl Into<String>) -> Self",
+        "fn expose_to_json(&self) -> JsonValue",
+        "fn from_json(value: JsonValue) -> Result<Self, Error>"
+      ],
+      "traits": [
+        "impl Clone for OAuthTokens",
+        "impl Debug for OAuthTokens"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::Pkce",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "flow::Pkce",
+      "fields": [
+        "verifier: String",
+        "challenge: String"
+      ],
+      "traits": [
+        "impl Clone for Pkce",
+        "impl Debug for Pkce",
+        "impl Eq for Pkce",
+        "impl PartialEq for Pkce",
+        "impl StructuralPartialEq for Pkce"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::ProtectedResourceMetadata",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ProtectedResourceMetadata",
+      "fields": [
+        "resource: Url",
+        "authorization_servers: Option<Vec<Url>>",
+        "scopes_supported: Option<Vec<String>>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ProtectedResourceMetadata",
+        "impl Debug for ProtectedResourceMetadata",
+        "impl Eq for ProtectedResourceMetadata",
+        "impl PartialEq for ProtectedResourceMetadata",
+        "impl Serialize for ProtectedResourceMetadata",
+        "impl StructuralPartialEq for ProtectedResourceMetadata",
+        "impl<'de> Deserialize<'de> for ProtectedResourceMetadata"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::WwwAuthenticateParams",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::WwwAuthenticateParams",
+      "fields": [
+        "resource_metadata_url: Option<Url>",
+        "scope: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for WwwAuthenticateParams",
+        "impl Debug for WwwAuthenticateParams",
+        "impl Default for WwwAuthenticateParams",
+        "impl Eq for WwwAuthenticateParams",
+        "impl PartialEq for WwwAuthenticateParams",
+        "impl StructuralPartialEq for WwwAuthenticateParams"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::auth",
+      "kind": "function",
+      "signature": "async fn auth(provider: &dyn OAuthClientProvider, http: &dyn HttpTransport, options: AuthOptions) -> Result<AuthResult, McpError>",
+      "source": "flow::auth"
+    },
+    {
+      "path": "ferrin_mcp::oauth::authorization_server_metadata_urls",
+      "kind": "function",
+      "signature": "fn authorization_server_metadata_urls(authorization_server_url: &Url) -> Vec<MetadataUrl>",
+      "source": "discovery::authorization_server_metadata_urls",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::default_authorization_server_metadata",
+      "kind": "function",
+      "signature": "fn default_authorization_server_metadata(authorization_server_url: &Url) -> Result<AuthorizationServerMetadata, McpError>",
+      "source": "discovery::default_authorization_server_metadata"
+    },
+    {
+      "path": "ferrin_mcp::oauth::discover_authorization_server_metadata",
+      "kind": "function",
+      "signature": "async fn discover_authorization_server_metadata(http: &dyn HttpTransport, authorization_server_url: &Url, policy: &UrlPolicy) -> Result<Option<AuthorizationServerMetadata>, McpError>",
+      "source": "discovery::discover_authorization_server_metadata"
+    },
+    {
+      "path": "ferrin_mcp::oauth::discover_protected_resource_metadata",
+      "kind": "function",
+      "signature": "async fn discover_protected_resource_metadata(http: &dyn HttpTransport, server_url: &Url, explicit_url: Option<Url>, policy: &UrlPolicy) -> Result<Option<ProtectedResourceMetadata>, McpError>",
+      "source": "discovery::discover_protected_resource_metadata"
+    },
+    {
+      "path": "ferrin_mcp::oauth::exchange_authorization",
+      "kind": "function",
+      "signature": "async fn exchange_authorization(http: &dyn HttpTransport, metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, grant: &AuthorizationCodeGrant, policy: &UrlPolicy) -> Result<OAuthTokens, McpError>",
+      "source": "flow::exchange_authorization"
+    },
+    {
+      "path": "ferrin_mcp::oauth::extract_www_authenticate_params",
+      "kind": "function",
+      "signature": "fn extract_www_authenticate_params(headers: &Headers) -> WwwAuthenticateParams",
+      "source": "types::extract_www_authenticate_params",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::generate_pkce",
+      "kind": "function",
+      "signature": "fn generate_pkce() -> Pkce",
+      "source": "flow::generate_pkce",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::pkce_challenge",
+      "kind": "function",
+      "signature": "fn pkce_challenge(verifier: &str) -> String",
+      "source": "flow::pkce_challenge",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::protected_resource_metadata_urls",
+      "kind": "function",
+      "signature": "fn protected_resource_metadata_urls(server_url: &Url) -> Vec<Url>",
+      "source": "discovery::protected_resource_metadata_urls",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::oauth::refresh_authorization",
+      "kind": "function",
+      "signature": "async fn refresh_authorization(http: &dyn HttpTransport, metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, refresh_token: &SecretString, resource: &Url, policy: &UrlPolicy) -> Result<OAuthTokens, McpError>",
+      "source": "flow::refresh_authorization"
+    },
+    {
+      "path": "ferrin_mcp::oauth::register_client",
+      "kind": "function",
+      "signature": "async fn register_client(http: &dyn HttpTransport, metadata: &AuthorizationServerMetadata, client_metadata: &OAuthClientMetadata, policy: &UrlPolicy) -> Result<OAuthClientInformation, McpError>",
+      "source": "flow::register_client"
+    },
+    {
+      "path": "ferrin_mcp::oauth::select_resource_url",
+      "kind": "function",
+      "signature": "fn select_resource_url(server_url: &Url, metadata: Option<&ProtectedResourceMetadata>) -> Result<Url, McpError>",
+      "source": "discovery::select_resource_url"
+    },
+    {
+      "path": "ferrin_mcp::oauth::start_authorization",
+      "kind": "function",
+      "signature": "fn start_authorization(metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, redirect_url: &Url, pkce: &Pkce, scope: Option<&str>, state: Option<&str>, resource: &Url) -> Result<Url, McpError>",
+      "source": "flow::start_authorization"
+    },
+    {
+      "path": "ferrin_mcp::protocol",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::protocol::CallToolResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::CallToolResult",
+      "fields": [
+        "content: Vec<JsonValue>",
+        "structured_content: Option<JsonValue>",
+        "is_error: bool",
+        "extra: JsonObject"
+      ],
+      "methods": [
+        "fn text(&self) -> String",
+        "fn to_json(&self) -> JsonValue",
+        "fn typed_content(&self) -> Vec<Content>"
+      ],
+      "traits": [
+        "impl Clone for CallToolResult",
+        "impl Debug for CallToolResult",
+        "impl Default for CallToolResult",
+        "impl Eq for CallToolResult",
+        "impl PartialEq for CallToolResult",
+        "impl Serialize for CallToolResult",
+        "impl StructuralPartialEq for CallToolResult",
+        "impl<'de> Deserialize<'de> for CallToolResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ClientCapabilities",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ClientCapabilities",
+      "fields": [
+        "elicitation: Option<ElicitationCapability>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ClientCapabilities",
+        "impl Debug for ClientCapabilities",
+        "impl Default for ClientCapabilities",
+        "impl Eq for ClientCapabilities",
+        "impl PartialEq for ClientCapabilities",
+        "impl Serialize for ClientCapabilities",
+        "impl StructuralPartialEq for ClientCapabilities",
+        "impl<'de> Deserialize<'de> for ClientCapabilities"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::CompleteParams",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::CompleteParams",
+      "fields": [
+        "reference: CompletionReference",
+        "argument: CompletionArgument",
+        "context: Option<CompletionContext>"
+      ],
+      "traits": [
+        "impl Clone for CompleteParams",
+        "impl Debug for CompleteParams",
+        "impl Eq for CompleteParams",
+        "impl PartialEq for CompleteParams",
+        "impl Serialize for CompleteParams",
+        "impl StructuralPartialEq for CompleteParams",
+        "impl<'de> Deserialize<'de> for CompleteParams"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::CompleteResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::CompleteResult",
+      "fields": [
+        "completion: Completion",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for CompleteResult",
+        "impl Debug for CompleteResult",
+        "impl Default for CompleteResult",
+        "impl Eq for CompleteResult",
+        "impl PartialEq for CompleteResult",
+        "impl Serialize for CompleteResult",
+        "impl StructuralPartialEq for CompleteResult",
+        "impl<'de> Deserialize<'de> for CompleteResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::Completion",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::Completion",
+      "fields": [
+        "values: Vec<String>",
+        "total: Option<u64>",
+        "has_more: Option<bool>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for Completion",
+        "impl Debug for Completion",
+        "impl Default for Completion",
+        "impl Eq for Completion",
+        "impl PartialEq for Completion",
+        "impl Serialize for Completion",
+        "impl StructuralPartialEq for Completion",
+        "impl<'de> Deserialize<'de> for Completion"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::CompletionArgument",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::CompletionArgument",
+      "fields": [
+        "name: String",
+        "value: String"
+      ],
+      "traits": [
+        "impl Clone for CompletionArgument",
+        "impl Debug for CompletionArgument",
+        "impl Eq for CompletionArgument",
+        "impl PartialEq for CompletionArgument",
+        "impl Serialize for CompletionArgument",
+        "impl StructuralPartialEq for CompletionArgument",
+        "impl<'de> Deserialize<'de> for CompletionArgument"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::CompletionContext",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::CompletionContext",
+      "fields": [
+        "arguments: BTreeMap<String, String>"
+      ],
+      "traits": [
+        "impl Clone for CompletionContext",
+        "impl Debug for CompletionContext",
+        "impl Default for CompletionContext",
+        "impl Eq for CompletionContext",
+        "impl PartialEq for CompletionContext",
+        "impl Serialize for CompletionContext",
+        "impl StructuralPartialEq for CompletionContext",
+        "impl<'de> Deserialize<'de> for CompletionContext"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::CompletionReference",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "types::CompletionReference",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Prompt { name: String }",
+        "Resource { uri: String }"
+      ],
+      "traits": [
+        "impl Clone for CompletionReference",
+        "impl Debug for CompletionReference",
+        "impl Eq for CompletionReference",
+        "impl PartialEq for CompletionReference",
+        "impl Serialize for CompletionReference",
+        "impl StructuralPartialEq for CompletionReference",
+        "impl<'de> Deserialize<'de> for CompletionReference"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::Content",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "types::Content",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Text { text: String, extra: JsonObject }",
+        "Image { data: String, mime_type: String, extra: JsonObject }",
+        "Audio { data: String, mime_type: String, extra: JsonObject }",
+        "Resource { resource: ResourceContents, extra: JsonObject }",
+        "ResourceLink { uri: String, name: String, description: Option<String>, mime_type: Option<String>, extra: JsonObject }"
+      ],
+      "traits": [
+        "impl Clone for Content",
+        "impl Debug for Content",
+        "impl Eq for Content",
+        "impl PartialEq for Content",
+        "impl Serialize for Content",
+        "impl StructuralPartialEq for Content",
+        "impl<'de> Deserialize<'de> for Content"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::DiscoverResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::DiscoverResult",
+      "fields": [
+        "supported_versions: Vec<String>",
+        "capabilities: ServerCapabilities",
+        "instructions: Option<String>",
+        "meta: Option<JsonObject>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for DiscoverResult",
+        "impl Debug for DiscoverResult",
+        "impl Eq for DiscoverResult",
+        "impl PartialEq for DiscoverResult",
+        "impl Serialize for DiscoverResult",
+        "impl StructuralPartialEq for DiscoverResult",
+        "impl<'de> Deserialize<'de> for DiscoverResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ElicitAction",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "types::ElicitAction",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Accept",
+        "Decline",
+        "Cancel"
+      ],
+      "traits": [
+        "impl Clone for ElicitAction",
+        "impl Copy for ElicitAction",
+        "impl Debug for ElicitAction",
+        "impl Eq for ElicitAction",
+        "impl PartialEq for ElicitAction",
+        "impl Serialize for ElicitAction",
+        "impl StructuralPartialEq for ElicitAction",
+        "impl<'de> Deserialize<'de> for ElicitAction"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ElicitResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ElicitResult",
+      "fields": [
+        "action: ElicitAction",
+        "content: Option<JsonObject>"
+      ],
+      "methods": [
+        "fn accept(content: JsonObject) -> Self",
+        "fn cancel() -> Self",
+        "fn decline() -> Self"
+      ],
+      "traits": [
+        "impl Clone for ElicitResult",
+        "impl Debug for ElicitResult",
+        "impl Eq for ElicitResult",
+        "impl PartialEq for ElicitResult",
+        "impl Serialize for ElicitResult",
+        "impl StructuralPartialEq for ElicitResult",
+        "impl<'de> Deserialize<'de> for ElicitResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ElicitationCapability",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ElicitationCapability",
+      "fields": [
+        "apply_defaults: Option<bool>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ElicitationCapability",
+        "impl Debug for ElicitationCapability",
+        "impl Default for ElicitationCapability",
+        "impl Eq for ElicitationCapability",
+        "impl PartialEq for ElicitationCapability",
+        "impl Serialize for ElicitationCapability",
+        "impl StructuralPartialEq for ElicitationCapability",
+        "impl<'de> Deserialize<'de> for ElicitationCapability"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ElicitationRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ElicitationRequest",
+      "fields": [
+        "message: String",
+        "requested_schema: JsonValue",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ElicitationRequest",
+        "impl Debug for ElicitationRequest",
+        "impl Eq for ElicitationRequest",
+        "impl PartialEq for ElicitationRequest",
+        "impl Serialize for ElicitationRequest",
+        "impl StructuralPartialEq for ElicitationRequest",
+        "impl<'de> Deserialize<'de> for ElicitationRequest"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::GetPromptResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::GetPromptResult",
+      "fields": [
+        "description: Option<String>",
+        "messages: Vec<PromptMessage>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for GetPromptResult",
+        "impl Debug for GetPromptResult",
+        "impl Default for GetPromptResult",
+        "impl Eq for GetPromptResult",
+        "impl PartialEq for GetPromptResult",
+        "impl Serialize for GetPromptResult",
+        "impl StructuralPartialEq for GetPromptResult",
+        "impl<'de> Deserialize<'de> for GetPromptResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::INTERNAL_ERROR",
+      "kind": "constant",
+      "signature": "const: i64",
+      "source": "json_rpc::INTERNAL_ERROR"
+    },
+    {
+      "path": "ferrin_mcp::protocol::INVALID_PARAMS",
+      "kind": "constant",
+      "signature": "const: i64",
+      "source": "json_rpc::INVALID_PARAMS"
+    },
+    {
+      "path": "ferrin_mcp::protocol::INVALID_REQUEST",
+      "kind": "constant",
+      "signature": "const: i64",
+      "source": "json_rpc::INVALID_REQUEST"
+    },
+    {
+      "path": "ferrin_mcp::protocol::Implementation",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::Implementation",
+      "fields": [
+        "name: String",
+        "version: String",
+        "title: Option<String>"
+      ],
+      "traits": [
+        "impl Clone for Implementation",
+        "impl Debug for Implementation",
+        "impl Eq for Implementation",
+        "impl PartialEq for Implementation",
+        "impl Serialize for Implementation",
+        "impl StructuralPartialEq for Implementation",
+        "impl<'de> Deserialize<'de> for Implementation"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::InitializeResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::InitializeResult",
+      "fields": [
+        "protocol_version: String",
+        "capabilities: ServerCapabilities",
+        "server_info: Implementation",
+        "instructions: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for InitializeResult",
+        "impl Debug for InitializeResult",
+        "impl Eq for InitializeResult",
+        "impl PartialEq for InitializeResult",
+        "impl Serialize for InitializeResult",
+        "impl StructuralPartialEq for InitializeResult",
+        "impl<'de> Deserialize<'de> for InitializeResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JSONRPC_VERSION",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "json_rpc::JSONRPC_VERSION"
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcError",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json_rpc::JsonRpcError",
+      "fields": [
+        "id: Option<RequestId>",
+        "error: JsonRpcErrorObject"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcError",
+        "impl Debug for JsonRpcError",
+        "impl Eq for JsonRpcError",
+        "impl PartialEq for JsonRpcError",
+        "impl Serialize for JsonRpcError",
+        "impl StructuralPartialEq for JsonRpcError",
+        "impl<'de> Deserialize<'de> for JsonRpcError"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcErrorObject",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json_rpc::JsonRpcErrorObject",
+      "fields": [
+        "code: i64",
+        "message: String",
+        "data: Option<JsonValue>"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcErrorObject",
+        "impl Debug for JsonRpcErrorObject",
+        "impl Eq for JsonRpcErrorObject",
+        "impl PartialEq for JsonRpcErrorObject",
+        "impl Serialize for JsonRpcErrorObject",
+        "impl StructuralPartialEq for JsonRpcErrorObject",
+        "impl<'de> Deserialize<'de> for JsonRpcErrorObject"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcMessage",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "json_rpc::JsonRpcMessage",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Request(JsonRpcRequest)",
+        "Notification(JsonRpcNotification)",
+        "Response(JsonRpcResponse)",
+        "Error(JsonRpcError)"
+      ],
+      "methods": [
+        "fn error(id: Option<RequestId>, code: i64, message: impl Into<String>, data: Option<JsonValue>) -> Self",
+        "fn from_json(value: JsonValue) -> Result<Self, McpError>",
+        "fn id(&self) -> Option<&RequestId>",
+        "fn method(&self) -> Option<&str>",
+        "fn notification(method: impl Into<String>, params: Option<JsonObject>) -> Self",
+        "fn params(&self) -> Option<&JsonObject>",
+        "fn parse(text: &str) -> Result<Self, McpError>",
+        "fn parse_one_or_many(text: &str) -> Result<Vec<Self>, McpError>",
+        "fn request(id: impl Into<RequestId>, method: impl Into<String>, params: Option<JsonObject>) -> Self",
+        "fn response(id: RequestId, result: JsonObject) -> Self",
+        "fn to_json(&self) -> JsonValue",
+        "fn to_json_string(&self) -> String"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcMessage",
+        "impl Debug for JsonRpcMessage",
+        "impl Eq for JsonRpcMessage",
+        "impl PartialEq for JsonRpcMessage",
+        "impl StructuralPartialEq for JsonRpcMessage"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcNotification",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json_rpc::JsonRpcNotification",
+      "fields": [
+        "method: String",
+        "params: Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcNotification",
+        "impl Debug for JsonRpcNotification",
+        "impl Eq for JsonRpcNotification",
+        "impl PartialEq for JsonRpcNotification",
+        "impl Serialize for JsonRpcNotification",
+        "impl StructuralPartialEq for JsonRpcNotification",
+        "impl<'de> Deserialize<'de> for JsonRpcNotification"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json_rpc::JsonRpcRequest",
+      "fields": [
+        "id: RequestId",
+        "method: String",
+        "params: Option<JsonObject>"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcRequest",
+        "impl Debug for JsonRpcRequest",
+        "impl Eq for JsonRpcRequest",
+        "impl PartialEq for JsonRpcRequest",
+        "impl Serialize for JsonRpcRequest",
+        "impl StructuralPartialEq for JsonRpcRequest",
+        "impl<'de> Deserialize<'de> for JsonRpcRequest"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::JsonRpcResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "json_rpc::JsonRpcResponse",
+      "fields": [
+        "id: RequestId",
+        "result: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for JsonRpcResponse",
+        "impl Debug for JsonRpcResponse",
+        "impl Eq for JsonRpcResponse",
+        "impl PartialEq for JsonRpcResponse",
+        "impl Serialize for JsonRpcResponse",
+        "impl StructuralPartialEq for JsonRpcResponse",
+        "impl<'de> Deserialize<'de> for JsonRpcResponse"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::LATEST_LEGACY_PROTOCOL_VERSION",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::LATEST_LEGACY_PROTOCOL_VERSION"
+    },
+    {
+      "path": "ferrin_mcp::protocol::LATEST_PROTOCOL_VERSION",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::LATEST_PROTOCOL_VERSION"
+    },
+    {
+      "path": "ferrin_mcp::protocol::ListCapability",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ListCapability",
+      "fields": [
+        "list_changed: Option<bool>",
+        "subscribe: Option<bool>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ListCapability",
+        "impl Debug for ListCapability",
+        "impl Default for ListCapability",
+        "impl Eq for ListCapability",
+        "impl PartialEq for ListCapability",
+        "impl Serialize for ListCapability",
+        "impl StructuralPartialEq for ListCapability",
+        "impl<'de> Deserialize<'de> for ListCapability"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ListPromptsResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ListPromptsResult",
+      "fields": [
+        "prompts: Vec<Prompt>",
+        "next_cursor: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ListPromptsResult",
+        "impl Debug for ListPromptsResult",
+        "impl Default for ListPromptsResult",
+        "impl Eq for ListPromptsResult",
+        "impl PartialEq for ListPromptsResult",
+        "impl Serialize for ListPromptsResult",
+        "impl StructuralPartialEq for ListPromptsResult",
+        "impl<'de> Deserialize<'de> for ListPromptsResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ListResourceTemplatesResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ListResourceTemplatesResult",
+      "fields": [
+        "resource_templates: Vec<ResourceTemplate>",
+        "next_cursor: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ListResourceTemplatesResult",
+        "impl Debug for ListResourceTemplatesResult",
+        "impl Default for ListResourceTemplatesResult",
+        "impl Eq for ListResourceTemplatesResult",
+        "impl PartialEq for ListResourceTemplatesResult",
+        "impl Serialize for ListResourceTemplatesResult",
+        "impl StructuralPartialEq for ListResourceTemplatesResult",
+        "impl<'de> Deserialize<'de> for ListResourceTemplatesResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ListResourcesResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ListResourcesResult",
+      "fields": [
+        "resources: Vec<Resource>",
+        "next_cursor: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ListResourcesResult",
+        "impl Debug for ListResourcesResult",
+        "impl Default for ListResourcesResult",
+        "impl Eq for ListResourcesResult",
+        "impl PartialEq for ListResourcesResult",
+        "impl Serialize for ListResourcesResult",
+        "impl StructuralPartialEq for ListResourcesResult",
+        "impl<'de> Deserialize<'de> for ListResourcesResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ListToolsResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ListToolsResult",
+      "fields": [
+        "tools: Vec<McpTool>",
+        "next_cursor: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ListToolsResult",
+        "impl Debug for ListToolsResult",
+        "impl Default for ListToolsResult",
+        "impl Eq for ListToolsResult",
+        "impl PartialEq for ListToolsResult",
+        "impl Serialize for ListToolsResult",
+        "impl StructuralPartialEq for ListToolsResult",
+        "impl<'de> Deserialize<'de> for ListToolsResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::META_CLIENT_CAPABILITIES",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::META_CLIENT_CAPABILITIES"
+    },
+    {
+      "path": "ferrin_mcp::protocol::META_CLIENT_INFO",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::META_CLIENT_INFO"
+    },
+    {
+      "path": "ferrin_mcp::protocol::META_PROTOCOL_VERSION",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::META_PROTOCOL_VERSION"
+    },
+    {
+      "path": "ferrin_mcp::protocol::META_SERVER_INFO",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "versions::META_SERVER_INFO"
+    },
+    {
+      "path": "ferrin_mcp::protocol::METHOD_NOT_FOUND",
+      "kind": "constant",
+      "signature": "const: i64",
+      "source": "json_rpc::METHOD_NOT_FOUND"
+    },
+    {
+      "path": "ferrin_mcp::protocol::MODERN_PROTOCOL_ERROR_CODES",
+      "kind": "constant",
+      "signature": "const: [i64; 3]",
+      "source": "versions::MODERN_PROTOCOL_ERROR_CODES"
+    },
+    {
+      "path": "ferrin_mcp::protocol::McpTool",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::McpTool",
+      "fields": [
+        "name: String",
+        "title: Option<String>",
+        "description: Option<String>",
+        "input_schema: JsonObject",
+        "output_schema: Option<JsonObject>",
+        "annotations: Option<ToolAnnotations>",
+        "meta: Option<JsonObject>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for McpTool",
+        "impl Debug for McpTool",
+        "impl Eq for McpTool",
+        "impl PartialEq for McpTool",
+        "impl Serialize for McpTool",
+        "impl StructuralPartialEq for McpTool",
+        "impl<'de> Deserialize<'de> for McpTool"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::PARSE_ERROR",
+      "kind": "constant",
+      "signature": "const: i64",
+      "source": "json_rpc::PARSE_ERROR"
+    },
+    {
+      "path": "ferrin_mcp::protocol::Prompt",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::Prompt",
+      "fields": [
+        "name: String",
+        "title: Option<String>",
+        "description: Option<String>",
+        "arguments: Option<Vec<PromptArgument>>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for Prompt",
+        "impl Debug for Prompt",
+        "impl Eq for Prompt",
+        "impl PartialEq for Prompt",
+        "impl Serialize for Prompt",
+        "impl StructuralPartialEq for Prompt",
+        "impl<'de> Deserialize<'de> for Prompt"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::PromptArgument",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::PromptArgument",
+      "fields": [
+        "name: String",
+        "description: Option<String>",
+        "required: Option<bool>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for PromptArgument",
+        "impl Debug for PromptArgument",
+        "impl Eq for PromptArgument",
+        "impl PartialEq for PromptArgument",
+        "impl Serialize for PromptArgument",
+        "impl StructuralPartialEq for PromptArgument",
+        "impl<'de> Deserialize<'de> for PromptArgument"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::PromptMessage",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::PromptMessage",
+      "fields": [
+        "role: String",
+        "content: Content",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for PromptMessage",
+        "impl Debug for PromptMessage",
+        "impl Eq for PromptMessage",
+        "impl PartialEq for PromptMessage",
+        "impl Serialize for PromptMessage",
+        "impl StructuralPartialEq for PromptMessage",
+        "impl<'de> Deserialize<'de> for PromptMessage"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ProtocolEra",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "versions::ProtocolEra",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Legacy",
+        "Modern"
+      ],
+      "methods": [
+        "fn is_modern(self) -> bool",
+        "fn of_version(version: &str) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ProtocolEra",
+        "impl Copy for ProtocolEra",
+        "impl Debug for ProtocolEra",
+        "impl Eq for ProtocolEra",
+        "impl Hash for ProtocolEra",
+        "impl PartialEq for ProtocolEra",
+        "impl StructuralPartialEq for ProtocolEra"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ReadResourceResult",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ReadResourceResult",
+      "fields": [
+        "contents: Vec<ResourceContents>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ReadResourceResult",
+        "impl Debug for ReadResourceResult",
+        "impl Default for ReadResourceResult",
+        "impl Eq for ReadResourceResult",
+        "impl PartialEq for ReadResourceResult",
+        "impl Serialize for ReadResourceResult",
+        "impl StructuralPartialEq for ReadResourceResult",
+        "impl<'de> Deserialize<'de> for ReadResourceResult"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::RequestId",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "json_rpc::RequestId",
+      "variants": [
+        "Number(i64)",
+        "String(String)"
+      ],
+      "traits": [
+        "impl Clone for RequestId",
+        "impl Debug for RequestId",
+        "impl Display for RequestId",
+        "impl Eq for RequestId",
+        "impl From<&str> for RequestId",
+        "impl From<i64> for RequestId",
+        "impl Hash for RequestId",
+        "impl PartialEq for RequestId",
+        "impl Serialize for RequestId",
+        "impl StructuralPartialEq for RequestId",
+        "impl<'de> Deserialize<'de> for RequestId"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::Resource",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::Resource",
+      "fields": [
+        "uri: String",
+        "name: String",
+        "title: Option<String>",
+        "description: Option<String>",
+        "mime_type: Option<String>",
+        "size: Option<u64>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for Resource",
+        "impl Debug for Resource",
+        "impl Eq for Resource",
+        "impl PartialEq for Resource",
+        "impl Serialize for Resource",
+        "impl StructuralPartialEq for Resource",
+        "impl<'de> Deserialize<'de> for Resource"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ResourceContents",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ResourceContents",
+      "fields": [
+        "uri: String",
+        "name: Option<String>",
+        "title: Option<String>",
+        "mime_type: Option<String>",
+        "text: Option<String>",
+        "blob: Option<String>",
+        "meta: Option<JsonObject>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ResourceContents",
+        "impl Debug for ResourceContents",
+        "impl Eq for ResourceContents",
+        "impl PartialEq for ResourceContents",
+        "impl Serialize for ResourceContents",
+        "impl StructuralPartialEq for ResourceContents",
+        "impl<'de> Deserialize<'de> for ResourceContents"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ResourceTemplate",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ResourceTemplate",
+      "fields": [
+        "uri_template: String",
+        "name: String",
+        "title: Option<String>",
+        "description: Option<String>",
+        "mime_type: Option<String>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ResourceTemplate",
+        "impl Debug for ResourceTemplate",
+        "impl Eq for ResourceTemplate",
+        "impl PartialEq for ResourceTemplate",
+        "impl Serialize for ResourceTemplate",
+        "impl StructuralPartialEq for ResourceTemplate",
+        "impl<'de> Deserialize<'de> for ResourceTemplate"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::SUPPORTED_PROTOCOL_VERSIONS",
+      "kind": "constant",
+      "signature": "const: [&str; 5]",
+      "source": "versions::SUPPORTED_PROTOCOL_VERSIONS"
+    },
+    {
+      "path": "ferrin_mcp::protocol::ServerCapabilities",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ServerCapabilities",
+      "fields": [
+        "experimental: Option<JsonObject>",
+        "logging: Option<JsonObject>",
+        "completions: Option<JsonObject>",
+        "prompts: Option<ListCapability>",
+        "resources: Option<ListCapability>",
+        "tools: Option<ListCapability>",
+        "elicitation: Option<ElicitationCapability>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ServerCapabilities",
+        "impl Debug for ServerCapabilities",
+        "impl Default for ServerCapabilities",
+        "impl Eq for ServerCapabilities",
+        "impl PartialEq for ServerCapabilities",
+        "impl Serialize for ServerCapabilities",
+        "impl StructuralPartialEq for ServerCapabilities",
+        "impl<'de> Deserialize<'de> for ServerCapabilities"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::ToolAnnotations",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::ToolAnnotations",
+      "fields": [
+        "title: Option<String>",
+        "read_only_hint: Option<bool>",
+        "destructive_hint: Option<bool>",
+        "idempotent_hint: Option<bool>",
+        "open_world_hint: Option<bool>",
+        "extra: JsonObject"
+      ],
+      "traits": [
+        "impl Clone for ToolAnnotations",
+        "impl Debug for ToolAnnotations",
+        "impl Default for ToolAnnotations",
+        "impl Eq for ToolAnnotations",
+        "impl PartialEq for ToolAnnotations",
+        "impl Serialize for ToolAnnotations",
+        "impl StructuralPartialEq for ToolAnnotations",
+        "impl<'de> Deserialize<'de> for ToolAnnotations"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::protocol::is_supported_version",
+      "kind": "function",
+      "signature": "fn is_supported_version(version: &str) -> bool",
+      "source": "versions::is_supported_version",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::tools",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::tools::McpToolExecutor",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "traits": [
+        "impl Clone for McpToolExecutor",
+        "impl Debug for McpToolExecutor",
+        "impl ToolExecute for McpToolExecutor"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::tools::ToolSchemaPair",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "input: Schema<JsonValue>",
+        "output: Option<Schema<JsonValue>>"
+      ],
+      "methods": [
+        "fn input(input: Schema<JsonValue>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolSchemaPair",
+        "impl Debug for ToolSchemaPair"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::tools::ToolSchemas",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Automatic",
+        "Explicit(HashMap<String, ToolSchemaPair>)"
+      ],
+      "traits": [
+        "impl Clone for ToolSchemas",
+        "impl Debug for ToolSchemas",
+        "impl Default for ToolSchemas"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::tools::ToolsOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "schemas: ToolSchemas",
+        "request_timeout: Option<Duration>",
+        "name_prefix: Option<String>"
+      ],
+      "methods": [
+        "fn explicit(schemas: HashMap<String, ToolSchemaPair>) -> Self",
+        "fn name_prefix(self, prefix: impl Into<String>) -> Self",
+        "fn request_timeout(self, timeout: Duration) -> Self"
+      ],
+      "traits": [
+        "impl Clone for ToolsOptions",
+        "impl Debug for ToolsOptions",
+        "impl Default for ToolsOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::tools::mcp_to_model_output",
+      "kind": "function",
+      "signature": "fn mcp_to_model_output(args: ModelOutputArgs<'_>) -> ToolResultOutput",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_mcp::transport::CloseOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "cancellation: Option<CancellationToken>"
+      ],
+      "traits": [
+        "impl Clone for CloseOptions",
+        "impl Debug for CloseOptions",
+        "impl Default for CloseOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::DEFAULT_INHERITED_ENV_VARS",
+      "kind": "constant",
+      "signature": "const: &[&str]",
+      "source": "stdio::DEFAULT_INHERITED_ENV_VARS"
+    },
+    {
+      "path": "ferrin_mcp::transport::HeaderBinding",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "headers::HeaderBinding",
+      "fields": [
+        "header_name: String",
+        "path: Vec<String>",
+        "value_type: HeaderValueType"
+      ],
+      "traits": [
+        "impl Clone for HeaderBinding",
+        "impl Debug for HeaderBinding",
+        "impl Eq for HeaderBinding",
+        "impl PartialEq for HeaderBinding",
+        "impl StructuralPartialEq for HeaderBinding"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::HeaderValueType",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "headers::HeaderValueType",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Boolean",
+        "Integer",
+        "String"
+      ],
+      "traits": [
+        "impl Clone for HeaderValueType",
+        "impl Copy for HeaderValueType",
+        "impl Debug for HeaderValueType",
+        "impl Eq for HeaderValueType",
+        "impl PartialEq for HeaderValueType",
+        "impl StructuralPartialEq for HeaderValueType"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::HttpTransport",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "http::HttpTransport",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: HttpTransportConfig) -> Result<Self, McpError>",
+        "fn session_id(&self) -> Option<String>",
+        "fn url(&self) -> &Url"
+      ],
+      "traits": [
+        "impl Debug for HttpTransport",
+        "impl McpTransport for HttpTransport"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::HttpTransportConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "http_config::HttpTransportConfig",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "url: Url",
+        "headers: Headers",
+        "auth_provider: Option<Arc<dyn OAuthClientProvider>>",
+        "redirect: RedirectMode",
+        "initial_session_id: Option<String>",
+        "on_session_id_change: Option<SessionHook>",
+        "on_session_expired: Option<SessionHook>",
+        "terminate_session_on_close: bool",
+        "url_policy: UrlPolicy",
+        "max_response_bytes: u64",
+        "max_event_bytes: usize",
+        "reconnection: ReconnectionOptions",
+        "transport: Option<SharedTransport>"
+      ],
+      "methods": [
+        "fn auth_provider(self, provider: Arc<dyn OAuthClientProvider>) -> Self",
+        "fn headers(self, headers: Headers) -> Self",
+        "fn max_response_bytes(self, bytes: u64) -> Self",
+        "fn new(url: Url) -> Self",
+        "fn on_session_expired(self, hook: SessionHook) -> Self",
+        "fn on_session_id_change(self, hook: SessionHook) -> Self",
+        "fn reconnection(self, options: ReconnectionOptions) -> Self",
+        "fn redirect(self, mode: RedirectMode) -> Self",
+        "fn session_id(self, session_id: impl Into<String>) -> Self",
+        "fn terminate_session_on_close(self, terminate: bool) -> Self",
+        "fn transport(self, transport: SharedTransport) -> Self",
+        "fn url_policy(self, policy: UrlPolicy) -> Self"
+      ],
+      "traits": [
+        "impl Clone for HttpTransportConfig",
+        "impl Debug for HttpTransportConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::McpTransport",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "methods": [
+        "fn capabilities(&self) -> TransportCapabilities",
+        "fn close(&self, options: CloseOptions) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn incoming(&self) -> BoxStream<'static, TransportEvent>",
+        "fn protocol_version(&self) -> Option<String>",
+        "fn send(&self, message: JsonRpcMessage, options: SendOptions) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn set_protocol_version(&self, version: Option<&str>)",
+        "fn start(&self) -> BoxFuture<'_, Result<(), McpError>>"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::ReconnectionOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "http_config::ReconnectionOptions",
+      "fields": [
+        "initial_delay: Duration",
+        "max_delay: Duration",
+        "backoff_factor: f64",
+        "max_retries: u32"
+      ],
+      "methods": [
+        "fn delay(&self, attempt: u32) -> Duration"
+      ],
+      "traits": [
+        "impl Clone for ReconnectionOptions",
+        "impl Copy for ReconnectionOptions",
+        "impl Debug for ReconnectionOptions",
+        "impl Default for ReconnectionOptions",
+        "impl PartialEq for ReconnectionOptions",
+        "impl StructuralPartialEq for ReconnectionOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::RedirectMode",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "http_config::RedirectMode",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Error",
+        "Follow"
+      ],
+      "traits": [
+        "impl Clone for RedirectMode",
+        "impl Copy for RedirectMode",
+        "impl Debug for RedirectMode",
+        "impl Default for RedirectMode",
+        "impl Eq for RedirectMode",
+        "impl PartialEq for RedirectMode",
+        "impl StructuralPartialEq for RedirectMode"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::SendOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "cancellation: Option<CancellationToken>",
+        "headers: Headers"
+      ],
+      "traits": [
+        "impl Clone for SendOptions",
+        "impl Debug for SendOptions",
+        "impl Default for SendOptions"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::SessionHook",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(Option<&str>) + Send + Sync>",
+      "source": "http_config::SessionHook"
+    },
+    {
+      "path": "ferrin_mcp::transport::SharedMcpTransport",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn McpTransport>"
+    },
+    {
+      "path": "ferrin_mcp::transport::SseTransport",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "sse::SseTransport",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn endpoint(&self) -> Option<Url>",
+        "fn new(config: SseTransportConfig) -> Result<Self, McpError>"
+      ],
+      "traits": [
+        "impl Debug for SseTransport",
+        "impl McpTransport for SseTransport"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::SseTransportConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "sse::SseTransportConfig",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "url: Url",
+        "headers: Headers",
+        "auth_provider: Option<Arc<dyn OAuthClientProvider>>",
+        "url_policy: UrlPolicy",
+        "max_response_bytes: u64",
+        "max_event_bytes: usize",
+        "transport: Option<SharedTransport>"
+      ],
+      "methods": [
+        "fn auth_provider(self, provider: Arc<dyn OAuthClientProvider>) -> Self",
+        "fn headers(self, headers: Headers) -> Self",
+        "fn new(url: Url) -> Self",
+        "fn transport(self, transport: SharedTransport) -> Self",
+        "fn url_policy(self, policy: UrlPolicy) -> Self"
+      ],
+      "traits": [
+        "impl Clone for SseTransportConfig",
+        "impl Debug for SseTransportConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::StdioConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "stdio::StdioConfig",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "fields": [
+        "command: String",
+        "args: Vec<String>",
+        "env: BTreeMap<String, String>",
+        "cwd: Option<PathBuf>",
+        "stderr: StdioStderr",
+        "inherit_default_env: bool"
+      ],
+      "methods": [
+        "fn args<I, S>(self, args: I) -> Self where I: IntoIterator<Item = S>, S: Into<String>",
+        "fn cwd(self, cwd: impl Into<PathBuf>) -> Self",
+        "fn env(self, name: impl Into<String>, value: impl Into<String>) -> Self",
+        "fn inherit_default_env(self, inherit: bool) -> Self",
+        "fn new(command: impl Into<String>) -> Self",
+        "fn stderr(self, stderr: StdioStderr) -> Self"
+      ],
+      "traits": [
+        "impl Clone for StdioConfig",
+        "impl Debug for StdioConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::StdioStderr",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "stdio::StdioStderr",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Inherit",
+        "Null"
+      ],
+      "traits": [
+        "impl Clone for StdioStderr",
+        "impl Copy for StdioStderr",
+        "impl Debug for StdioStderr",
+        "impl Default for StdioStderr",
+        "impl Eq for StdioStderr",
+        "impl PartialEq for StdioStderr",
+        "impl StructuralPartialEq for StdioStderr"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::StdioTransport",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "stdio::StdioTransport",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: StdioConfig) -> Self",
+        "fn pid(&self) -> Option<u32>"
+      ],
+      "traits": [
+        "impl Debug for StdioTransport",
+        "impl McpTransport for StdioTransport"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::TransportCapabilities",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "supports_protocol_version_discovery: bool",
+        "supports_tool_parameter_headers: bool"
+      ],
+      "traits": [
+        "impl Clone for TransportCapabilities",
+        "impl Copy for TransportCapabilities",
+        "impl Debug for TransportCapabilities",
+        "impl Default for TransportCapabilities",
+        "impl Eq for TransportCapabilities",
+        "impl PartialEq for TransportCapabilities",
+        "impl StructuralPartialEq for TransportCapabilities"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::TransportConfig",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Http(HttpTransportConfig)",
+        "Sse(SseTransportConfig)",
+        "Stdio(StdioConfig)",
+        "Custom(SharedMcpTransport)"
+      ],
+      "methods": [
+        "fn build(self) -> Result<SharedMcpTransport, McpError>",
+        "fn http(url: Url) -> Self",
+        "fn sse(url: Url) -> Self",
+        "fn stdio(command: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for TransportConfig",
+        "impl Debug for TransportConfig"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::TransportEvent",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Message(JsonRpcMessage)",
+        "Error(McpError)",
+        "Closed"
+      ],
+      "traits": [
+        "impl Debug for TransportEvent"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::encode_header_value",
+      "kind": "function",
+      "signature": "fn encode_header_value(value: &str) -> String",
+      "source": "headers::encode_header_value",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_mcp::transport::header_bindings",
+      "kind": "function",
+      "signature": "fn header_bindings(input_schema: &JsonValue) -> Result<Vec<HeaderBinding>, McpError>",
+      "source": "headers::header_bindings"
+    },
+    {
+      "path": "ferrin_mcp::transport::tool_headers",
+      "kind": "function",
+      "signature": "fn tool_headers(bindings: &[HeaderBinding], arguments: &JsonObject) -> Result<Vec<(String, String)>, McpError>",
+      "source": "headers::tool_headers"
+    }
+  ]
+}

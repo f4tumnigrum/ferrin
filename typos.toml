@@ -1,0 +1,12 @@
+[files]
+extend-exclude = ["target/", "Cargo.lock", "**/snapshots/", "**/fixtures/", "verification/target/"]
+
+[default]
+extend-ignore-re = ["[0-9a-f]{7,40}"]
+
+[default.extend-words]
+# Intentional fragments used in streaming / partial-JSON examples and tests.
+hel = "hel"
+tru = "tru"
+caf = "caf"
+thi = "thi"

@@ -1,0 +1,62 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
+        with:
+          tool: git-cliff
+      - name: Verify the tag matches the workspace version and every changelog has a section for it
+        run: |
+          set -euo pipefail
+          cargo metadata --no-deps --format-version 1 > metadata.json
+          python3 - "${GITHUB_REF_NAME}" "$(cargo xtask publish-order | tr '\n' ' ')" <<'EOF'
+          import json, os, sys
+          tag, crates = sys.argv[1], sys.argv[2].split()
+          packages = {p["name"]: p for p in json.load(open("metadata.json"))["packages"]}
+          version = packages[crates[0]]["version"]
+          if tag != f"v{version}":
+              sys.exit(f"tag {tag} does not match workspace version {version}")
+          missing = []
+          for crate in crates:
+              changelog = os.path.join(os.path.dirname(packages[crate]["manifest_path"]), "CHANGELOG.md")
+              if f"## [{version}]" not in open(changelog).read():
+                  missing.append(crate)
+          if missing:
+              sys.exit("CHANGELOG.md has no [" + version + "] section in: " + ", ".join(missing))
+          print(f"{tag}: {len(crates)} crates ready")
+          EOF
+      - name: Publish crates in dependency order
+        run: |
+          set -euo pipefail
+          for crate in $(cargo xtask publish-order); do
+            if cargo info --registry crates-io "$crate@${GITHUB_REF_NAME#v}" >/dev/null 2>&1; then
+              echo "$crate already published, skipping"
+              continue
+            fi
+            cargo publish -p "$crate" --locked
+          done
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Render release notes from the conventional commits since the previous tag
+        run: git cliff --config cliff.toml --latest --strip all > RELEASE_NOTES.md
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          body_path: RELEASE_NOTES.md
+          files: CHANGELOG.md

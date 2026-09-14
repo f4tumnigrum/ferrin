@@ -1,0 +1,32 @@
+# git-cliff configuration: per-crate changelog fragments from Conventional Commits.
+# Usage: just changelog ferrin-core   (docs/03-engineering/06-versioning-and-release.md §5)
+[changelog]
+header = ""
+body = """
+{% if version %}## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}{% else %}## [Unreleased]{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}{% if commit.breaking %} (BREAKING){% endif %}
+{%- endfor %}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+protect_breaking_commits = true
+commit_parsers = [
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^perf", group = "Changed" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^security", group = "Security" },
+    { message = "^deprecate", group = "Deprecated" },
+    { message = "^revert", group = "Removed" },
+    { message = "^(chore|ci|test|build|style)", skip = true },
+]
+tag_pattern = "v[0-9].*"
+sort_commits = "oldest"

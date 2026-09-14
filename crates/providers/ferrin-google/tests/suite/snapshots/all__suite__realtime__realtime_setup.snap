@@ -1,0 +1,57 @@
+---
+source: crates/providers/ferrin-google/tests/suite/realtime.rs
+expression: "body[\"bidiGenerateContentSetup\"]"
+---
+{
+  "model": "models/gemini-2.5-flash-native-audio-preview",
+  "generationConfig": {
+    "responseModalities": [
+      "AUDIO"
+    ],
+    "speechConfig": {
+      "voiceConfig": {
+        "prebuiltVoiceConfig": {
+          "voiceName": "Kore"
+        }
+      }
+    },
+    "translationConfig": {
+      "targetLanguageCode": "de"
+    }
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "Be helpful."
+      }
+    ]
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "name": "get_weather",
+          "description": "Weather",
+          "parameters": {
+            "required": [
+              "city"
+            ],
+            "type": "object",
+            "properties": {
+              "city": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  }
+                ],
+                "nullable": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "inputAudioTranscription": {},
+  "sessionResumption": {}
+}

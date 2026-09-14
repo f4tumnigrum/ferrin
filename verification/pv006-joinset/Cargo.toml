@@ -1,0 +1,8 @@
+[package]
+name = "pv006-joinset"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true }

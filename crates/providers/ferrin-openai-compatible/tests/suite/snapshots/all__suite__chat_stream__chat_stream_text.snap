@@ -1,0 +1,59 @@
+---
+source: crates/providers/ferrin-openai-compatible/tests/suite/chat_stream.rs
+expression: parts
+---
+[
+  {
+    "type": "stream-start",
+    "warnings": []
+  },
+  {
+    "type": "response-metadata",
+    "id": "chatcmpl_s",
+    "timestamp": "2025-09-13T00:05:00Z",
+    "model_id": "example-model-2026"
+  },
+  {
+    "type": "text-start",
+    "id": "txt-0"
+  },
+  {
+    "type": "text-delta",
+    "id": "txt-0",
+    "delta": "Hello "
+  },
+  {
+    "type": "text-delta",
+    "id": "txt-0",
+    "delta": "streamed chat."
+  },
+  {
+    "type": "text-end",
+    "id": "txt-0"
+  },
+  {
+    "type": "finish",
+    "finish_reason": {
+      "unified": "stop",
+      "raw": "stop"
+    },
+    "usage": {
+      "input": {
+        "total": 20,
+        "no_cache": 15,
+        "cache_read": 5
+      },
+      "output": {
+        "total": 10,
+        "text": 8,
+        "reasoning": 2
+      }
+    },
+    "provider_metadata": {
+      "example": {
+        "acceptedPredictionTokens": 1,
+        "rejectedPredictionTokens": 0
+      }
+    }
+  }
+]

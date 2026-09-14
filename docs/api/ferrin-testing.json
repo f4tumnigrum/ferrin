@@ -1,0 +1,805 @@
+{
+  "crate": "ferrin-testing",
+  "version": "0.1.0",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_testing::ContractViolation",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "contract::ContractViolation",
+      "fields": [
+        "index: usize",
+        "message: String"
+      ],
+      "traits": [
+        "impl Clone for ContractViolation",
+        "impl Debug for ContractViolation",
+        "impl Display for ContractViolation",
+        "impl Eq for ContractViolation",
+        "impl PartialEq for ContractViolation",
+        "impl StructuralPartialEq for ContractViolation"
+      ]
+    },
+    {
+      "path": "ferrin_testing::Fixture",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "fixture::Fixture",
+      "fields": [
+        "status: StatusCode",
+        "headers: Headers",
+        "body: FixtureBody"
+      ],
+      "methods": [
+        "fn complete(status: StatusCode, content_type: &str, body: impl Into<Bytes>) -> Self",
+        "fn hold_open(self) -> Self",
+        "fn json(value: &JsonValue) -> Self",
+        "fn json_status(status: StatusCode, value: &JsonValue) -> Self",
+        "fn load(dir: impl AsRef<Path>, case: &str) -> Result<Self>",
+        "fn sse<I, S>(events: I) -> Self where I: IntoIterator<Item = S>, S: Into<String>",
+        "fn sse_json<'a>(values: impl IntoIterator<Item = &'a JsonValue>) -> Self",
+        "fn with_chunk_delay(self, delay: Duration) -> Self",
+        "fn with_header(self, name: &str, value: &str) -> Self",
+        "fn with_initial_delay(self, delay: Duration) -> Self",
+        "fn with_status(self, status: StatusCode) -> Self"
+      ],
+      "traits": [
+        "impl Clone for Fixture",
+        "impl Debug for Fixture"
+      ]
+    },
+    {
+      "path": "ferrin_testing::FixtureBody",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "fixture::FixtureBody",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Complete(Bytes)",
+        "Events { events: Vec<String>, initial_delay: Option<Duration>, chunk_delay: Option<Duration>, hold_open: bool }"
+      ],
+      "traits": [
+        "impl Clone for FixtureBody",
+        "impl Debug for FixtureBody"
+      ]
+    },
+    {
+      "path": "ferrin_testing::FixtureServer",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "fixture::FixtureServer",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn start() -> Result<Self>",
+        "fn addr(&self) -> SocketAddr",
+        "fn last_received(&self) -> Option<ReceivedRequest>",
+        "fn mount(&self, method: Method, path: impl Into<String>, fixture: Fixture)",
+        "fn mount_file(&self, method: Method, path: impl Into<String>, dir: impl AsRef<Path>, case: &str) -> Result<()>",
+        "fn mount_once(&self, method: Method, path: impl Into<String>, fixture: Fixture)",
+        "fn mount_times(&self, method: Method, path: impl Into<String>, fixture: Fixture, times: usize)",
+        "fn received(&self) -> Vec<ReceivedRequest>",
+        "fn received_count(&self) -> usize",
+        "fn reset(&self)",
+        "fn set_chunk_delay(&self, delay: Option<Duration>)",
+        "fn uri(&self) -> String",
+        "fn url(&self) -> Url"
+      ],
+      "traits": [
+        "impl Debug for FixtureServer",
+        "impl Drop for FixtureServer"
+      ]
+    },
+    {
+      "path": "ferrin_testing::HeaderFilter",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "transport::HeaderFilter",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "DenySensitive",
+        "Allow(HashSet<String>)"
+      ],
+      "methods": [
+        "fn keeps(&self, name: &str) -> bool"
+      ],
+      "traits": [
+        "impl Clone for HeaderFilter",
+        "impl Debug for HeaderFilter"
+      ]
+    },
+    {
+      "path": "ferrin_testing::MockCallKind",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "mock::MockCallKind",
+      "variants": [
+        "Generate",
+        "Stream"
+      ],
+      "traits": [
+        "impl Clone for MockCallKind",
+        "impl Copy for MockCallKind",
+        "impl Debug for MockCallKind",
+        "impl Eq for MockCallKind",
+        "impl Hash for MockCallKind",
+        "impl PartialEq for MockCallKind",
+        "impl StructuralPartialEq for MockCallKind"
+      ]
+    },
+    {
+      "path": "ferrin_testing::MockLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "mock::MockLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn builder() -> MockLanguageModelBuilder",
+        "fn call_count(&self) -> usize",
+        "fn calls(&self) -> Vec<RecordedCall>",
+        "fn generate_calls(&self) -> Vec<CallOptions>",
+        "fn generating(result: GenerateResult) -> Self",
+        "fn stream_calls(&self) -> Vec<CallOptions>",
+        "fn streaming(parts: Vec<StreamPart>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for MockLanguageModel",
+        "impl LanguageModel for MockLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_testing::MockLanguageModelBuilder",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "mock::MockLanguageModelBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> MockLanguageModel",
+        "fn build_shared(self) -> Arc<MockLanguageModel>",
+        "fn generate(self, result: GenerateResult) -> Self",
+        "fn generate_error(self, error: ProviderError) -> Self",
+        "fn generate_repeat(self, result: GenerateResult) -> Self",
+        "fn generate_with<F, Fut>(self, function: F) -> Self where F: Fn(CallOptions) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<GenerateResult, ProviderError>> + Send + 'static",
+        "fn model_id(self, model_id: impl Into<ModelId>) -> Self",
+        "fn provider(self, provider: impl Into<ProviderId>) -> Self",
+        "fn stream(self, parts: Vec<StreamPart>) -> Self",
+        "fn stream_error(self, error: ProviderError) -> Self",
+        "fn stream_repeat(self, parts: Vec<StreamPart>) -> Self",
+        "fn stream_with<F, Fut>(self, function: F) -> Self where F: Fn(CallOptions) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<StreamResult, ProviderError>> + Send + 'static",
+        "fn supported_urls(self, supported_urls: SupportedUrls) -> Self"
+      ],
+      "traits": [
+        "impl Debug for MockLanguageModelBuilder",
+        "impl Default for MockLanguageModelBuilder"
+      ]
+    },
+    {
+      "path": "ferrin_testing::ReceivedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "fixture::ReceivedRequest",
+      "fields": [
+        "method: Method",
+        "path: String",
+        "query: Option<String>",
+        "headers: Headers",
+        "body: Bytes"
+      ],
+      "methods": [
+        "fn body_json(&self) -> Result<Value, Error>",
+        "fn body_text(&self) -> String",
+        "fn header(&self, name: &str) -> Option<&str>"
+      ],
+      "traits": [
+        "impl Clone for ReceivedRequest",
+        "impl Debug for ReceivedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_testing::RecordedCall",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "mock::RecordedCall",
+      "fields": [
+        "kind: MockCallKind",
+        "options: CallOptions"
+      ],
+      "traits": [
+        "impl Clone for RecordedCall",
+        "impl Debug for RecordedCall"
+      ]
+    },
+    {
+      "path": "ferrin_testing::RecordedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "transport::RecordedRequest",
+      "fields": [
+        "method: Method",
+        "url: Url",
+        "headers: Headers",
+        "content_type: Option<String>",
+        "body: Bytes",
+        "response: Arc<Mutex<RecordedResponse>>"
+      ],
+      "methods": [
+        "fn body_json(&self) -> Result<Value, Error>",
+        "fn body_text(&self) -> String",
+        "fn response(&self) -> RecordedResponse"
+      ],
+      "traits": [
+        "impl Clone for RecordedRequest",
+        "impl Debug for RecordedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_testing::RecordedResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "transport::RecordedResponse",
+      "fields": [
+        "status: Option<StatusCode>",
+        "headers: Headers",
+        "chunks: Vec<Bytes>",
+        "complete: bool",
+        "error: Option<String>"
+      ],
+      "methods": [
+        "fn body(&self) -> Bytes",
+        "fn body_text(&self) -> String"
+      ],
+      "traits": [
+        "impl Clone for RecordedResponse",
+        "impl Debug for RecordedResponse",
+        "impl Default for RecordedResponse"
+      ]
+    },
+    {
+      "path": "ferrin_testing::RecordingTransport",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "transport::RecordingTransport",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn clear(&self)",
+        "fn is_empty(&self) -> bool",
+        "fn last_request(&self) -> Option<RecordedRequest>",
+        "fn len(&self) -> usize",
+        "fn new(inner: SharedTransport) -> Self",
+        "fn requests(&self) -> Vec<RecordedRequest>",
+        "fn with_header_allow_list<I, S>(self, names: I) -> Self where I: IntoIterator<Item = S>, S: AsRef<str>"
+      ],
+      "traits": [
+        "impl Debug for RecordingTransport",
+        "impl HttpTransport for RecordingTransport"
+      ]
+    },
+    {
+      "path": "ferrin_testing::SequentialIdGenerator",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "ids::SequentialIdGenerator",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn count(&self) -> u64",
+        "fn new(prefix: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for SequentialIdGenerator",
+        "impl Default for SequentialIdGenerator",
+        "impl IdGenerator for SequentialIdGenerator"
+      ]
+    },
+    {
+      "path": "ferrin_testing::SimulatedStream",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "stream::SimulatedStream",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> StreamResult",
+        "fn chunk_delay(self, delay: Duration) -> Self",
+        "fn hang_at_end(self) -> Self",
+        "fn initial_delay(self, delay: Duration) -> Self",
+        "fn new(parts: impl IntoIterator<Item = StreamPart>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for SimulatedStream",
+        "impl Debug for SimulatedStream"
+      ]
+    },
+    {
+      "path": "ferrin_testing::StreamContractChecker",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "contract::StreamContractChecker",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn check_stream(result: StreamResult) -> (Vec<StreamPart>, Result<(), Vec<ContractViolation>>)",
+        "fn check(parts: &[StreamPart]) -> Result<(), Vec<ContractViolation>>",
+        "fn finish(self) -> Result<(), Vec<ContractViolation>>",
+        "fn new() -> Self",
+        "fn observe(&mut self, part: &StreamPart)"
+      ],
+      "traits": [
+        "impl Debug for StreamContractChecker",
+        "impl Default for StreamContractChecker"
+      ]
+    },
+    {
+      "path": "ferrin_testing::api_call_error",
+      "kind": "function",
+      "signature": "fn api_call_error(status: StatusCode, message: impl Into<String>) -> ProviderError",
+      "source": "mock::api_call_error",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::contract",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::contract::ContractViolation",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "index: usize",
+        "message: String"
+      ],
+      "traits": [
+        "impl Clone for ContractViolation",
+        "impl Debug for ContractViolation",
+        "impl Display for ContractViolation",
+        "impl Eq for ContractViolation",
+        "impl PartialEq for ContractViolation",
+        "impl StructuralPartialEq for ContractViolation"
+      ]
+    },
+    {
+      "path": "ferrin_testing::contract::StreamContractChecker",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn check_stream(result: StreamResult) -> (Vec<StreamPart>, Result<(), Vec<ContractViolation>>)",
+        "fn check(parts: &[StreamPart]) -> Result<(), Vec<ContractViolation>>",
+        "fn finish(self) -> Result<(), Vec<ContractViolation>>",
+        "fn new() -> Self",
+        "fn observe(&mut self, part: &StreamPart)"
+      ],
+      "traits": [
+        "impl Debug for StreamContractChecker",
+        "impl Default for StreamContractChecker"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::fixture::Fixture",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "files::Fixture",
+      "fields": [
+        "status: StatusCode",
+        "headers: Headers",
+        "body: FixtureBody"
+      ],
+      "methods": [
+        "fn complete(status: StatusCode, content_type: &str, body: impl Into<Bytes>) -> Self",
+        "fn hold_open(self) -> Self",
+        "fn json(value: &JsonValue) -> Self",
+        "fn json_status(status: StatusCode, value: &JsonValue) -> Self",
+        "fn load(dir: impl AsRef<Path>, case: &str) -> Result<Self>",
+        "fn sse<I, S>(events: I) -> Self where I: IntoIterator<Item = S>, S: Into<String>",
+        "fn sse_json<'a>(values: impl IntoIterator<Item = &'a JsonValue>) -> Self",
+        "fn with_chunk_delay(self, delay: Duration) -> Self",
+        "fn with_header(self, name: &str, value: &str) -> Self",
+        "fn with_initial_delay(self, delay: Duration) -> Self",
+        "fn with_status(self, status: StatusCode) -> Self"
+      ],
+      "traits": [
+        "impl Clone for Fixture",
+        "impl Debug for Fixture"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture::FixtureBody",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "files::FixtureBody",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Complete(Bytes)",
+        "Events { events: Vec<String>, initial_delay: Option<Duration>, chunk_delay: Option<Duration>, hold_open: bool }"
+      ],
+      "traits": [
+        "impl Clone for FixtureBody",
+        "impl Debug for FixtureBody"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture::FixtureServer",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "server::FixtureServer",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn start() -> Result<Self>",
+        "fn addr(&self) -> SocketAddr",
+        "fn last_received(&self) -> Option<ReceivedRequest>",
+        "fn mount(&self, method: Method, path: impl Into<String>, fixture: Fixture)",
+        "fn mount_file(&self, method: Method, path: impl Into<String>, dir: impl AsRef<Path>, case: &str) -> Result<()>",
+        "fn mount_once(&self, method: Method, path: impl Into<String>, fixture: Fixture)",
+        "fn mount_times(&self, method: Method, path: impl Into<String>, fixture: Fixture, times: usize)",
+        "fn received(&self) -> Vec<ReceivedRequest>",
+        "fn received_count(&self) -> usize",
+        "fn reset(&self)",
+        "fn set_chunk_delay(&self, delay: Option<Duration>)",
+        "fn uri(&self) -> String",
+        "fn url(&self) -> Url"
+      ],
+      "traits": [
+        "impl Debug for FixtureServer",
+        "impl Drop for FixtureServer"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture::ReceivedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "server::ReceivedRequest",
+      "fields": [
+        "method: Method",
+        "path: String",
+        "query: Option<String>",
+        "headers: Headers",
+        "body: Bytes"
+      ],
+      "methods": [
+        "fn body_json(&self) -> Result<Value, Error>",
+        "fn body_text(&self) -> String",
+        "fn header(&self, name: &str) -> Option<&str>"
+      ],
+      "traits": [
+        "impl Clone for ReceivedRequest",
+        "impl Debug for ReceivedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture::decode_events_file",
+      "kind": "function",
+      "signature": "fn decode_events_file(text: &str) -> Vec<String>",
+      "source": "files::decode_events_file",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::fixture::encode_events_file",
+      "kind": "function",
+      "signature": "fn encode_events_file<'a>(events: impl IntoIterator<Item = &'a str>) -> String",
+      "source": "files::encode_events_file",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::ids",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::ids::SequentialIdGenerator",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn count(&self) -> u64",
+        "fn new(prefix: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for SequentialIdGenerator",
+        "impl Default for SequentialIdGenerator",
+        "impl IdGenerator for SequentialIdGenerator"
+      ]
+    },
+    {
+      "path": "ferrin_testing::mock",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::mock::MockCallKind",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "language_model::MockCallKind",
+      "variants": [
+        "Generate",
+        "Stream"
+      ],
+      "traits": [
+        "impl Clone for MockCallKind",
+        "impl Copy for MockCallKind",
+        "impl Debug for MockCallKind",
+        "impl Eq for MockCallKind",
+        "impl Hash for MockCallKind",
+        "impl PartialEq for MockCallKind",
+        "impl StructuralPartialEq for MockCallKind"
+      ]
+    },
+    {
+      "path": "ferrin_testing::mock::MockLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "language_model::MockLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn builder() -> MockLanguageModelBuilder",
+        "fn call_count(&self) -> usize",
+        "fn calls(&self) -> Vec<RecordedCall>",
+        "fn generate_calls(&self) -> Vec<CallOptions>",
+        "fn generating(result: GenerateResult) -> Self",
+        "fn stream_calls(&self) -> Vec<CallOptions>",
+        "fn streaming(parts: Vec<StreamPart>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for MockLanguageModel",
+        "impl LanguageModel for MockLanguageModel"
+      ]
+    },
+    {
+      "path": "ferrin_testing::mock::MockLanguageModelBuilder",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "language_model::MockLanguageModelBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> MockLanguageModel",
+        "fn build_shared(self) -> Arc<MockLanguageModel>",
+        "fn generate(self, result: GenerateResult) -> Self",
+        "fn generate_error(self, error: ProviderError) -> Self",
+        "fn generate_repeat(self, result: GenerateResult) -> Self",
+        "fn generate_with<F, Fut>(self, function: F) -> Self where F: Fn(CallOptions) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<GenerateResult, ProviderError>> + Send + 'static",
+        "fn model_id(self, model_id: impl Into<ModelId>) -> Self",
+        "fn provider(self, provider: impl Into<ProviderId>) -> Self",
+        "fn stream(self, parts: Vec<StreamPart>) -> Self",
+        "fn stream_error(self, error: ProviderError) -> Self",
+        "fn stream_repeat(self, parts: Vec<StreamPart>) -> Self",
+        "fn stream_with<F, Fut>(self, function: F) -> Self where F: Fn(CallOptions) -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<StreamResult, ProviderError>> + Send + 'static",
+        "fn supported_urls(self, supported_urls: SupportedUrls) -> Self"
+      ],
+      "traits": [
+        "impl Debug for MockLanguageModelBuilder",
+        "impl Default for MockLanguageModelBuilder"
+      ]
+    },
+    {
+      "path": "ferrin_testing::mock::RecordedCall",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "language_model::RecordedCall",
+      "fields": [
+        "kind: MockCallKind",
+        "options: CallOptions"
+      ],
+      "traits": [
+        "impl Clone for RecordedCall",
+        "impl Debug for RecordedCall"
+      ]
+    },
+    {
+      "path": "ferrin_testing::mock::api_call_error",
+      "kind": "function",
+      "signature": "fn api_call_error(status: StatusCode, message: impl Into<String>) -> ProviderError",
+      "source": "language_model::api_call_error",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::redact_secrets",
+      "kind": "function",
+      "signature": "fn redact_secrets(text: &str) -> String",
+      "source": "transport::redact_secrets",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::simulate_stream",
+      "kind": "function",
+      "signature": "fn simulate_stream(parts: impl IntoIterator<Item = StreamPart>) -> StreamResult",
+      "source": "stream::simulate_stream",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::stream",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::stream::SimulatedStream",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> StreamResult",
+        "fn chunk_delay(self, delay: Duration) -> Self",
+        "fn hang_at_end(self) -> Self",
+        "fn initial_delay(self, delay: Duration) -> Self",
+        "fn new(parts: impl IntoIterator<Item = StreamPart>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for SimulatedStream",
+        "impl Debug for SimulatedStream"
+      ]
+    },
+    {
+      "path": "ferrin_testing::stream::simulate_stream",
+      "kind": "function",
+      "signature": "fn simulate_stream(parts: impl IntoIterator<Item = StreamPart>) -> StreamResult",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::stream::text_parts",
+      "kind": "function",
+      "signature": "fn text_parts(deltas: impl IntoIterator<Item = impl Into<String>>, usage: Usage) -> Vec<StreamPart>",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::text_parts",
+      "kind": "function",
+      "signature": "fn text_parts(deltas: impl IntoIterator<Item = impl Into<String>>, usage: Usage) -> Vec<StreamPart>",
+      "source": "stream::text_parts",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_testing::transport::HeaderFilter",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "DenySensitive",
+        "Allow(HashSet<String>)"
+      ],
+      "methods": [
+        "fn keeps(&self, name: &str) -> bool"
+      ],
+      "traits": [
+        "impl Clone for HeaderFilter",
+        "impl Debug for HeaderFilter"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport::RecordedRequest",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "method: Method",
+        "url: Url",
+        "headers: Headers",
+        "content_type: Option<String>",
+        "body: Bytes",
+        "response: Arc<Mutex<RecordedResponse>>"
+      ],
+      "methods": [
+        "fn body_json(&self) -> Result<Value, Error>",
+        "fn body_text(&self) -> String",
+        "fn response(&self) -> RecordedResponse"
+      ],
+      "traits": [
+        "impl Clone for RecordedRequest",
+        "impl Debug for RecordedRequest"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport::RecordedResponse",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "status: Option<StatusCode>",
+        "headers: Headers",
+        "chunks: Vec<Bytes>",
+        "complete: bool",
+        "error: Option<String>"
+      ],
+      "methods": [
+        "fn body(&self) -> Bytes",
+        "fn body_text(&self) -> String"
+      ],
+      "traits": [
+        "impl Clone for RecordedResponse",
+        "impl Debug for RecordedResponse",
+        "impl Default for RecordedResponse"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport::RecordingTransport",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn clear(&self)",
+        "fn is_empty(&self) -> bool",
+        "fn last_request(&self) -> Option<RecordedRequest>",
+        "fn len(&self) -> usize",
+        "fn new(inner: SharedTransport) -> Self",
+        "fn requests(&self) -> Vec<RecordedRequest>",
+        "fn with_header_allow_list<I, S>(self, names: I) -> Self where I: IntoIterator<Item = S>, S: AsRef<str>"
+      ],
+      "traits": [
+        "impl Debug for RecordingTransport",
+        "impl HttpTransport for RecordingTransport"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport::SENSITIVE_HEADERS",
+      "kind": "constant",
+      "signature": "const: &[&str]"
+    },
+    {
+      "path": "ferrin_testing::transport::contains_secret",
+      "kind": "function",
+      "signature": "fn contains_secret(text: &str) -> bool",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_testing::transport::redact_secrets",
+      "kind": "function",
+      "signature": "fn redact_secrets(text: &str) -> String",
+      "attrs": [
+        "must_use"
+      ]
+    }
+  ]
+}

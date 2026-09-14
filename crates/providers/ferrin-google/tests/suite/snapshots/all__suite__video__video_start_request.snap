@@ -1,0 +1,38 @@
+---
+source: crates/providers/ferrin-google/tests/suite/video.rs
+expression: request
+---
+{
+  "instances": [
+    {
+      "prompt": "A cat surfing",
+      "image": {
+        "bytesBase64Encoded": "Zmlyc3Q=",
+        "mimeType": "image/jpeg"
+      },
+      "lastFrame": {
+        "bytesBase64Encoded": "bGFzdA==",
+        "mimeType": "image/jpeg"
+      },
+      "referenceImages": [
+        {
+          "image": {
+            "gcsUri": "gs://bucket/ref.png",
+            "mimeType": "image/png"
+          },
+          "referenceType": "asset"
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "sampleCount": 2,
+    "aspectRatio": "16:9",
+    "resolution": "720p",
+    "durationSeconds": 8,
+    "seed": 42,
+    "personGeneration": "allow_adult",
+    "negativePrompt": "rain",
+    "enhancePrompt": true
+  }
+}

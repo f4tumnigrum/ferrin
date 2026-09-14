@@ -1,0 +1,17 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {"inlineData": {"mimeType": "audio/L16;codec=pcm;rate=24000", "data": "AAABAAIAAwA="}}
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {"promptTokenCount": 6, "candidatesTokenCount": 40, "totalTokenCount": 46},
+  "modelVersion": "gemini-2.5-flash-preview-tts",
+  "responseId": "resp-speech"
+}

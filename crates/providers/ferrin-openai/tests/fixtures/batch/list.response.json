@@ -1,0 +1,39 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "batch_abc",
+      "object": "batch",
+      "endpoint": "/v1/responses",
+      "input_file_id": "file-batch-in",
+      "completion_window": "24h",
+      "status": "completed",
+      "created_at": 1757722500,
+      "expires_at": 1757808900,
+      "request_counts": {
+        "total": 2,
+        "completed": 0,
+        "failed": 0
+      },
+      "output_file_id": "file-batch-out"
+    },
+    {
+      "id": "batch_def",
+      "object": "batch",
+      "endpoint": "/v1/responses",
+      "input_file_id": "file-batch-in",
+      "completion_window": "24h",
+      "status": "in_progress",
+      "created_at": 1757722500,
+      "expires_at": 1757808900,
+      "request_counts": {
+        "total": 2,
+        "completed": 0,
+        "failed": 0
+      }
+    }
+  ],
+  "first_id": "batch_abc",
+  "last_id": "batch_def",
+  "has_more": true
+}

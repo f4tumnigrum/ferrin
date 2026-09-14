@@ -1,0 +1,111 @@
+# 测试规范
+
+## 1. 测试层次
+
+| 层次 | 位置 | 工具 | 网络 |
+| --- | --- | --- | --- |
+| 单元测试 | `tests/suite/*.rs`（`tests/all.rs` 汇总；`src/` 下不放测试代码，见第 10 节） | `cargo nextest`、`pretty_assertions`、`proptest` | 否 |
+| 集成测试 | `tests/suite/*.rs`（`tests/all.rs` 汇总） | `wiremock`、`ferrin-testing`、`insta` | 仅本地 mock 服务器 |
+| fixture 回放测试 | `tests/suite/` + `tests/fixtures/` | `ferrin-testing::FixtureServer` | 否 |
+| 契约测试 | `ferrin-testing::StreamContractChecker` | 断言事件顺序 | 否 |
+| 文档测试 | rustdoc 示例 | `cargo test --doc` | 否（示例使用 `MockLanguageModel`） |
+| 在线测试 | `tests/suite/live_*.rs`，`#[ignore]` | 真实 API，需环境变量密钥 | 是 |
+| 基准测试 | `benches/` | `criterion` | 否 |
+| 编译失败测试 | `crates/ferrin/tests/ui/` | `trybuild` | 否 |
+
+【决策】供应商测试以录制的原始 SSE 分片文件与 JSON 响应作为 fixture，重建响应后对规范化输出做快照断言；在线测试以 `#[ignore]` 门控并要求供应商密钥环境变量。依据：录制的原始分片保留供应商真实的分片边界与字段形状，比手写的规范事件更能暴露解析缺陷；`#[ignore]` 让默认测试运行不依赖网络与密钥。
+
+## 2. 测试执行
+
+- 统一通过 `just test [-p <crate>]` 执行（`cargo nextest run --workspace --no-fail-fast`，`RUST_MIN_STACK=8388608`）。
+- `.config/nextest.toml` 定义 `default`、`local`、`ci` profile：`retries = 0`（重试会掩盖不稳定测试）、`slow-timeout = { period = "60s", terminate-after = 1 }`、`fail-fast = false`；`ci` 追加 JUnit 输出（`junit.xml`）与 `failure-output = "immediate-final"`；名称匹配 `test(live_)` 的在线测试超时 300 s。
+- 【决策】`trybuild` 编译失败用例放在门面 crate `ferrin` 而非 `ferrin-macros`：用例需要 `ferrin::tool` 路径，若放在 `ferrin-macros` 会形成 `ferrin-macros --dev--> ferrin --> ferrin-macros` 的 dev 依赖环，`cargo publish` 校验时无法解析尚未发布的同版本 `ferrin`。
+- 【决策】（2026-09-14，首次 CI 运行后）`tool_macro_ui` 在 Windows 上标记 `#[ignore]`（`cfg_attr(windows, ignore)`）：`windows-2025` 运行器上 trybuild 的冷构建超过 nextest 为其设置的 360 s 上限（run 34797869442，其余 653 个测试全部通过）；被测的是宏诊断文本，与平台无关，由 Linux 与 macOS 作业覆盖。
+- 【事实】（2026-09-14）`trybuild` 用例由 `crates/ferrin/tests/suite/ui.rs` 的单个测试驱动（`tests/ui/pass/*.rs`、`tests/ui/fail/*.rs`，`.stderr` 快照随代码提交，`TRYBUILD=overwrite` 刷新）；首次运行需在 `target/tests/trybuild/` 下构建独立项目，因此 `.config/nextest.toml` 为 `test(tool_macro_ui)` 设置 180 s 的慢测试周期（默认 60 s 会在冷缓存下超时）。
+- 在线测试：`just test -- --run-ignored only live` 且设置对应环境变量。
+- 【事实】（2026-09-14）现有在线测试：`crates/ferrin/tests/suite/live_openai.rs`（门面级：生成、流式、工具往返、结构化输出；环境变量 `OPENAI_API_KEY`，可选 `OPENAI_BASE_URL`、`OPENAI_MODEL`（默认 `gpt-5`）、`OPENAI_PROVIDER_OPTIONS`（JSON 供应商选项））、`crates/providers/ferrin-openai/tests/suite/live_responses.rs`（Responses 与 Chat 族的生成、流式、工具调用产出；同一组变量）、`crates/providers/ferrin-openai-compatible/tests/suite/live_chat.rs`（`OPENAI_COMPATIBLE_BASE_URL`、`OPENAI_COMPATIBLE_API_KEY`、`OPENAI_COMPATIBLE_MODEL`）。当日以一个第三方 OpenAI 兼容端点全部通过；该端点不支持 `item_reference`，需 `OPENAI_PROVIDER_OPTIONS='{"openai":{"store":false}}'`（见 `docs/providers/openai.md`）。
+
+【决策】不允许 nextest 自动重试。依据：SDK 的核心价值是确定性行为，任何不稳定测试都应修复而非重试。
+
+## 3. Fixture 规范
+
+### 3.1 目录与文件
+
+```
+crates/providers/ferrin-openai/tests/fixtures/
+  responses/
+    text-basic.request.json         # recorded request body (secrets stripped)
+    text-basic.response.json        # non-streaming response body
+    text-basic.chunks.txt           # streaming: one SSE event per line, exactly as received
+    text-basic.meta.json            # status code, response headers (allow-listed), recorded_at, model id
+    tool-call.chunks.txt
+    reasoning.chunks.txt
+    error-429.response.json
+```
+
+### 3.2 录制
+
+`cargo xtask record-fixture --provider openai --case responses/tool-call` 执行：
+
+1. 从 `tests/fixtures/<case>.scenario.json` 读取场景（方法、路径、请求头、请求体、是否流式、模型 ID）。【决策】（2026-09-14）场景文件为 JSON，而非本节原先写的 `.scenario.rs`/TOML；字段与依据见[工作区布局](02-workspace-layout.md)第 6 节。
+2. 使用真实凭据发起一次请求，通过 `RecordingTransport` 捕获原始请求体、响应头、响应体（流式按 SSE 事件切分保存为 `.chunks.txt`）。
+3. 剔除敏感头（`authorization`、`x-api-key`、`set-cookie`、`openai-organization` 等，白名单方式保留 `content-type`、限流头、请求 ID）。
+4. 写入文件；元数据记录日期、供应商、用例与模型 ID。写入前检查每个文件不含 `sk-`、`Bearer ` 等模式与密钥原文，命中即失败。
+
+fixture 一经录制不得手工修改；行为变化需重新录制并在 PR 中说明。
+
+### 3.3 回放
+
+`FixtureServer` 按文件重建响应：非流式经 `wiremock` 返回 JSON；流式由 `ferrin-testing` 内置的最小 hyper 1.x 服务器以 `text/event-stream` 逐帧发送，可配置分片间延迟以测试超时逻辑（见第 9 节 PV-026）。测试断言：
+
+- 请求体快照（`insta::assert_json_snapshot!`）与录制的请求体一致。
+- 规范化输出（`GenerateResult` 或事件序列）快照。
+- 警告集合。
+
+## 4. 核心层测试
+
+- 生成循环：用 `MockLanguageModel` 编排多步响应，覆盖继续条件的每个分支（待审批、缺少执行函数、延迟结果、停止条件、`tool-calls` 之外的完成原因）。
+- 流式管线：`simulate_stream` 构造事件序列；对每个阶段单独测试（工具执行注入顺序、部件 ID 重映射、重试边界丢弃、停止门）。
+- 超时与重试：`tokio::time::pause()` + `advance()`，断言退避时长与 `Retry-After` 优先级。
+- 取消：在不同阶段取消令牌，断言 `Error::Cancelled` 与任务清理（`JoinSet` 为空）。
+- 审批：签名生成与校验、篡改输入检测、找不到调用、策略重解析。
+- 结构化输出：五种策略的完整与部分解析；部分 JSON 修复的属性测试。
+
+## 5. 属性测试
+
+`proptest` 覆盖：
+
+- `partial_json::repair`：对任意合法 JSON 的任意前缀，修复结果可解析。
+- `SseDecoder`：对任意事件序列的任意字节切分方式，解码结果相同。
+- `Usage::add`：结合律与 `None` 单位元。
+- `ToolNameMapping`：重命名可逆。
+
+## 6. 快照
+
+- 使用 `insta`，快照文件与测试同目录 `snapshots/`。
+- 审阅通过 `cargo insta review`；CI 中 `INSTA_UPDATE=no`，未接受的快照导致失败。
+- 快照内容不含时间戳、随机 ID（测试注入 `SequentialIdGenerator` 与固定时钟）。
+
+## 7. 覆盖率
+
+- `cargo llvm-cov --workspace --lcov` 在 CI 生成报告。
+- 目标：`ferrin-spec`、`ferrin-schema`、`ferrin-core` 行覆盖 ≥ 85%；供应商 crate ≥ 75%。低于目标不阻断合并，但在 PR 中显示差异。
+
+## 8. 测试数据与密钥
+
+- 仓库中不出现真实密钥；fixture 录制脚本在写入前校验不含 `sk-`、`Bearer ` 等模式。
+- 在线测试只在手动触发的 CI 工作流中运行，密钥来自 CI secret。
+
+## 9. 待验证
+
+- 【事实】（PV-026，`verification/pv026-sse-server`）`wiremock` 0.6.5 的 `ResponseTemplate` 只有完整内存体（`set_body_*`）与整响应延迟（`set_delay`），无分片或流式发送 API。原型用 `hyper` 1.11 + `http-body-util::StreamBody` 实现的服务器可按分片延迟发送，reqwest 客户端收到 3 个独立帧（到达时刻 0 ms、53 ms、105 ms，配置间隔 50 ms）。
+- 【决策】`FixtureServer` 双后端：非流式 fixture 走 `wiremock`，流式 fixture 走 `ferrin-testing::sse_server`（hyper 1.x，约 80 行）；两者共用 fixture 文件格式与请求体快照断言。（2026-09-13 修订为单后端，见第 10 节与 [ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md)。）
+
+## 10. 实现记录（2026-09-13）
+
+- 【决策】测试代码与实现代码分离：每个 crate 的测试只位于 `tests/suite/*.rs`（由 `tests/all.rs` 以 `mod suite;` 汇总，子模块在 `tests/suite/mod.rs` 声明），`src/` 下不出现 `*_tests.rs` 文件或 `#[cfg(test)] mod tests`。需要验证的内部行为通过公共 API 触达；无法从公共 API 触达的辅助函数不单独测试。依据：实现文件只包含实现，读者与 `cargo xtask check-module-size` 的行数统计都不受测试代码干扰。
+- 【决策】（[ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md) 第 4 项）`ferrin_testing::FixtureServer` 为单后端：内置 hyper 1.x 服务器按 `Fixture` 的 `FixtureBody::{Complete, Sse}` 回放，非流式 JSON 与流式 SSE 共用 `mount`/`mount_once`/`mount_times`/`mount_file`、`received()` 请求记录与 `set_chunk_delay` 分片延迟；`ferrin-testing` 不依赖 `wiremock`。供应商 crate 的测试可继续直接使用 `wiremock` 作为 dev 依赖。
+- 【事实】`ferrin_testing::MockLanguageModel` 记录每次调用（`calls()`、`generate_calls()`、`stream_calls()`），构建器提供 `generate`/`generate_error`/`generate_repeat`/`generate_with` 与对应的 `stream_*` 脚本方法；`simulate_stream` 与 `SimulatedStream`（`initial_delay`、`chunk_delay`、`hang_at_end`）构造规范流；`RecordingTransport` 以头部白名单记录请求与响应，`redact_secrets` 在写入前替换 `sk-`、`Bearer ` 等模式。
+- 【事实】核心层非文本模态的测试以内联实现规范 trait 的 mock（`EmbeddingModel`、`ImageModel`、`SpeechModel`、`TranscriptionModel`、`RerankingModel`、`VideoModel`、`Files`、`Skills`、`Batch`、`RealtimeModel`）驱动；实时会话测试用 `tokio-tungstenite` 在 `127.0.0.1` 起本地 WebSocket 服务器并回显子协议头。
+- 【事实】`Fixture::load(dir, case)` 对同一 `case` 先找 `<case>.response.json`，再找 `<case>.chunks.txt`；两者同时存在时只回放前者。`ferrin-openai` 的流式用例因此以 `-stream` 后缀命名（`text-basic.response.json` 与 `text-basic-stream.chunks.txt`），第 3.1 节的目录示例按此理解。
+- 【待验证】（PV-031）`ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible` 与 `ferrin-google` 的 fixture（`crates/providers/<crate>/tests/fixtures/`）在 `record-fixture` 命令实现（2026-09-14）之前依据供应商公开 API 文档的响应 schema 手工编写，不含真实请求 ID 与账户信息，尚未用该命令以真实凭据重新录制；第 3.2 节“fixture 一经录制不得手工修改”的规则自录制版本起适用。
