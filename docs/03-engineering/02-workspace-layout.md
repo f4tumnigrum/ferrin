@@ -43,8 +43,8 @@ ferrin/
     00-overview/ 01-architecture/ 02-api/ 03-engineering/ 04-decisions/ 05-appendix/
     README.md                # 设计文档索引与文档约定
     api/                     # `cargo xtask api-snapshot` 生成的公共 API 摘要（每个 crate 一个 JSON，CI 校验）
-    providers/               # 各供应商 crate 的选项与行为说明
-    providers/               # 每个供应商的能力矩阵与选项文档
+    providers/               # 每个供应商的能力矩阵、选项与行为说明
+  assets/                    # 仓库 README 使用的图片（横幅）；不进入任何发布包
   CHANGELOG.md               # 工作区级；每个 crate 另有 CHANGELOG.md
   CONTRIBUTING.md SECURITY.md
   AGENTS.md                  # AI 编码代理与贡献者的操作摘要（以 docs/ 为准）
