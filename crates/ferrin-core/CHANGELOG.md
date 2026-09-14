@@ -51,3 +51,10 @@ All notable changes to this crate are documented here. The format follows
   `RealtimeHandle`, `realtime_tool_definitions`; local function tools are
   executed inside the session and a single follow-up response is requested
   once every tool call of a response has an output.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.

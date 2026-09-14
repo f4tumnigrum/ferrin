@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml/badge.svg)](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml)
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
-[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#许可)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#许可)
 
 Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和任意 OpenAI 兼容端点。
 
@@ -335,6 +335,12 @@ just check-all        # fmt, clippy, tests, doctests, docs, API snapshot, deny, 
 - 工具审批签名使用 HMAC-SHA256 与常量时间比较。
 - 详细规则见[安全规范](docs/03-engineering/08-security-practices.md)。
 
+## 致谢
+
+Ferrin 的能力范围与核心抽象（Provider 规范、生成循环、工具审批、流式部件、中间件）参考了 [Vercel AI SDK](https://github.com/vercel/ai) 的设计（Apache-2.0）。核心生成循环、供应商适配器与部分算法（如部分 JSON 修复、消息裁剪）由其 TypeScript 实现移植到 Rust 并有修改，涉及的 crate 与模块见 [NOTICE](NOTICE) 及相应的 rustdoc 说明。工程实践（工作区约定、lint 配置、CI 结构）参考了 [OpenAI Codex](https://github.com/openai/codex)。
+
+Ferrin 是独立实现的项目，与 Vercel、OpenAI 均无关联，也不是它们的官方项目。
+
 ## 许可
 
-MIT 或 Apache-2.0 双许可，任选其一（[LICENSE-MIT](LICENSE-MIT)、[LICENSE-APACHE](LICENSE-APACHE)）。
+Apache-2.0（[LICENSE](LICENSE)）。派生代码的署名见 [NOTICE](NOTICE)；两份文件同时随每个发布的 crate 分发。

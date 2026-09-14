@@ -5,6 +5,12 @@
 //! 2026-07-28 protocol versions, tool bridging into [`ferrin_tool::ToolSet`],
 //! MCP Apps helpers and (with the `oauth` feature) the OAuth 2.1
 //! authorization flow.
+//!
+//! # Attribution
+//!
+//! Portions of this crate are derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified. See the `NOTICE` file in the crate root.
 
 pub mod apps;
 pub mod client;

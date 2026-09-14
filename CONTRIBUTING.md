@@ -40,4 +40,7 @@ just check-all
 
 ## Licensing
 
-Contributions are licensed under MIT OR Apache-2.0, matching the project.
+Contributions are licensed under Apache-2.0, matching the project. Code
+derived from another project must be attributed in `NOTICE`, in the crate
+documentation of the affected crate and in the module documentation of the
+affected file (ADR 0017).

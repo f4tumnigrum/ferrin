@@ -11,3 +11,7 @@ Conversion to provider prompts lives in `ferrin-core`.
 Part of the [Ferrin](../../README.md) workspace. Design:
 `docs/01-architecture/03-core-data-model.md` §7,
 `docs/01-architecture/05-prompt-conversion.md`.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Portions of this crate are derived from the Vercel AI SDK (Apache-2.0); the crate and module documentation carry the attribution.

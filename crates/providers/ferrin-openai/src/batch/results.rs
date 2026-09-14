@@ -1,4 +1,7 @@
 //! Conversion of batch result files to specification items.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::collections::HashMap;
 use std::collections::VecDeque;

@@ -1,5 +1,8 @@
 //! Conversion of the specification prompt to `systemInstruction` and
 //! `contents`.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use base64::Engine;
 use ferrin_provider_util::media_type::resolve_full_media_type;

@@ -23,3 +23,8 @@ All notable changes to this crate are documented here. The format follows
 - `RecordingTransport`, `RecordedRequest`, `RecordedResponse`,
   `HeaderFilter`, `redact_secrets`, `contains_secret`.
 - `SequentialIdGenerator`, `api_call_error`.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).

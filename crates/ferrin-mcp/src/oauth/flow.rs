@@ -1,5 +1,8 @@
 //! The authorization flow: registration, PKCE authorization, code exchange
 //! and refresh.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use base64::Engine;
 use ferrin_provider_util::http::HttpTransport;

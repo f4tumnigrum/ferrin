@@ -17,3 +17,8 @@ All notable changes to this crate are documented here. The format follows
   the serde derives, `json!` and `StreamExt`.
 - `trybuild` compile-pass and compile-fail cases for `#[ferrin::tool]` in
   `tests/ui/`.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).

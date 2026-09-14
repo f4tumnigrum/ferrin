@@ -76,4 +76,4 @@ async fn call() -> Result<Reply, ferrin_spec::ProviderError> {
 
 ## License
 
-MIT OR Apache-2.0.
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

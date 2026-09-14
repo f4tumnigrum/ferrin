@@ -5,6 +5,12 @@
 //! modalities (embeddings, images, speech, transcription, reranking, video).
 //!
 //! Design: `docs/01-architecture/07-generation-loop-and-streaming.md` and following.
+//!
+//! # Attribution
+//!
+//! Portions of this crate are derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified. See the `NOTICE` file in the crate root.
 
 pub mod agent;
 pub mod batch;

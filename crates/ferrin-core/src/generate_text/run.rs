@@ -3,6 +3,9 @@
 //! [`LoopContext`] holds the per-call state shared with the streaming
 //! pipeline (approval replay, tool execution, event emission); [`run`] drives
 //! the non-streaming loop.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use super::GenerateTextResult;
 use super::ParsedToolCall;

@@ -1,5 +1,8 @@
 //! Batch generation (`batchGenerateContent`): inline or file-based input,
 //! status, results, cancel and list.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 mod results;
 

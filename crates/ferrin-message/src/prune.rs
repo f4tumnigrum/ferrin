@@ -1,8 +1,9 @@
 //! Message pruning: drop reasoning, tool calls and empty messages to control
 //! context size.
 //!
-//! Ported from the reference `pruneMessages`; intended for `prepare_step`
-//! callbacks.
+//! Derived from the `pruneMessages` function of the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified; see `NOTICE`. Intended for `prepare_step` callbacks.
 
 use std::collections::HashMap;
 use std::collections::HashSet;

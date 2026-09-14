@@ -1,4 +1,7 @@
 //! Assembly of the Responses API request body from call options.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use ferrin_provider_util::provider_options::parse_provider_options;
 use ferrin_provider_util::reasoning::is_custom_reasoning;

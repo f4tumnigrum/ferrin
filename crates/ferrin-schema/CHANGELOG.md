@@ -23,3 +23,10 @@ All notable changes to this crate are documented here. The format follows
   `json-schema-validation` feature, a draft-07 `Validator` built on
   `jsonschema`.
 - `SchemaError` with conversion into `ferrin_spec::ProviderError`.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.

@@ -1,4 +1,7 @@
 //! Chat Completions API language model (`<name>.chat`).
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 pub mod api_types;
 pub mod convert_prompt;

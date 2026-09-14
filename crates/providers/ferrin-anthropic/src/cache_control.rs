@@ -1,4 +1,7 @@
 //! Cache control breakpoints read from part and message options.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;

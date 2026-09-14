@@ -29,3 +29,10 @@ All notable changes to this crate are documented here. The format follows
 - Error frame mapping shared by the streaming models: HTTP status inferred
   from `code` / `type`, early error frames fail the call, later frames end
   the stream with a terminal error part.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.
