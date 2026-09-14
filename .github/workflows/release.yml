@@ -46,22 +46,41 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          pending=()
-          for crate in $(cargo xtask publish-order); do
-            if cargo info --registry crates-io "$crate@$version" >/dev/null 2>&1; then
-              echo "$crate $version is already published, skipping"
-            else
-              pending+=(-p "$crate")
+          for attempt in $(seq 1 40); do
+            pending=()
+            for crate in $(cargo xtask publish-order); do
+              if cargo info --registry crates-io "$crate@$version" >/dev/null 2>&1; then
+                echo "$crate $version is already published"
+              else
+                pending+=(-p "$crate")
+              fi
+            done
+            if [ "${#pending[@]}" -eq 0 ]; then
+              echo "every crate is published"
+              exit 0
             fi
+            # One invocation: Cargo orders the packages, makes them available to
+            # each other's verification builds and waits for every upload to
+            # reach the index before publishing its dependents.
+            if cargo publish "${pending[@]}" --locked 2>&1 | tee publish.log; then
+              exit 0
+            fi
+            # crates.io limits how many new crates an account may publish in a
+            # short period and names the time after which the next one is
+            # accepted. Wait for it and retry with whatever is still pending.
+            if ! grep -q "429 Too Many Requests" publish.log; then
+              exit 1
+            fi
+            retry_at=$(grep -oE 'try again after [A-Za-z]+, [0-9]+ [A-Za-z]+ [0-9]+ [0-9:]+ GMT' publish.log | head -1 | sed 's/^try again after //' || true)
+            now=$(date -u +%s)
+            resume=$(date -u -d "$retry_at" +%s 2>/dev/null || echo $((now + 600)))
+            wait=$((resume - now + 20))
+            [ "$wait" -lt 20 ] && wait=20
+            echo "rate limited by crates.io; waiting ${wait}s (until ${retry_at:-the next refill}) before attempt $((attempt + 1))"
+            sleep "$wait"
           done
-          if [ "${#pending[@]}" -eq 0 ]; then
-            echo "every crate is already published"
-            exit 0
-          fi
-          # One invocation: Cargo orders the packages, makes them available to
-          # each other's verification builds and waits for every upload to
-          # reach the index before publishing its dependents.
-          cargo publish "${pending[@]}" --locked
+          echo "still rate limited after 40 attempts"
+          exit 1
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - name: Render release notes from the conventional commits since the previous tag

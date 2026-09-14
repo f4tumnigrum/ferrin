@@ -9,7 +9,8 @@ lists releases and cross-crate changes. The format follows
 ### Changed
 
 - `release.yml` publishes all not-yet-published crates in one multi-package
-  `cargo publish` invocation, and `ferrin-testing` is a path-only workspace
+  `cargo publish` invocation, waits out crates.io's new-crate rate limit
+  (HTTP 429) and retries, and `ferrin-testing` is a path-only workspace
   dev-dependency so published manifests no longer reference it.
 
 ## [0.1.0] - 2026-09-14

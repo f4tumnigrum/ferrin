@@ -38,7 +38,7 @@
 
 1. 发布 PR：更新 `workspace.package.version`、各 `CHANGELOG.md`（`Unreleased` → 版本段）、`docs/` 中的版本引用；`semver.yml`（以上一发布 tag 为基线）与 `ci.yml` 的 `package` 作业通过。
 2. 合并后打 tag `v0.y.z`。
-3. `release.yml`（环境 `release`，secret `CARGO_REGISTRY_TOKEN`）先校验 tag 与版本、变更日志段，再把 `cargo xtask publish-order` 列出、且 crates.io 上尚无该版本（`cargo info` 查不到）的 crate 以一次 `cargo publish -p <a> -p <b> … --locked` 发布：Cargo 自行按依赖顺序上传，等待每个 crate 在索引可见后再发布其依赖方，并把本次发布集合内的包提供给彼此的验证构建。失败后重跑时已发布的 crate 被跳过，因此可从中断点继续。
+3. `release.yml`（环境 `release`，secret `CARGO_REGISTRY_TOKEN`）先校验 tag 与版本、变更日志段，再把 `cargo xtask publish-order` 列出、且 crates.io 上尚无该版本（`cargo info` 查不到）的 crate 以一次 `cargo publish -p <a> -p <b> … --locked` 发布：Cargo 自行按依赖顺序上传，等待每个 crate 在索引可见后再发布其依赖方，并把本次发布集合内的包提供给彼此的验证构建。遇到 crates.io 对新 crate 的发布频率限制（HTTP 429，响应正文给出可重试时间）时，工作流等待到该时间后对仍未发布的 crate 重试，最多 40 轮。失败后重跑时已发布的 crate 被跳过，因此可从中断点继续。
 4. 发布 GitHub Release：正文由 `git cliff --latest` 从上一 tag 以来的约定式提交生成，并附根 `CHANGELOG.md`。
 5. docs.rs 构建检查：所有 crate `all-features` 文档构建成功。
 
@@ -51,6 +51,8 @@
 【事实】（2026-09-14，v0.1.0 发布记录）逐个 `cargo publish -p <crate>` 在第 6 个 crate `ferrin-openai-compatible` 失败：其开发依赖 `ferrin-testing`（发布顺序忽略开发依赖，该 crate 排在其后）带版本号，Cargo 打包时到 crates.io 索引解析该依赖，报 “no matching package named `ferrin-testing`”；此前 5 个 crate（`ferrin-macros`、`ferrin-spec`、`ferrin-message`、`ferrin-provider-util`、`ferrin-schema`）已成功上传。同一次发布还确认：crates.io 令牌的 Crates 限定填精确名 `ferrin` 时对其他 14 个 crate 返回 403，账号邮箱未验证时返回 400 “A verified email address is required”。
 
 【决策】（2026-09-14）两项修正：`release.yml` 改为对全部未发布 crate 执行一次多包 `cargo publish`（见第 3 步）；`[workspace.dependencies]` 中的 `ferrin-testing` 改为仅 `path`，不带 `version`。依据：多包发布让 Cargo 用本次发布集合满足验证构建的依赖，与 CI `package` 作业和本地多包 `cargo package` 的行为一致；`ferrin-testing` 在工作区内只作为开发依赖使用，Cargo 打包时会剔除不带版本要求的路径型开发依赖，发布出的清单不再引用它，逐个发布也不会再被它阻塞。`ferrin-testing` 自身仍正常发布，供下游在自己的开发依赖中使用。
+
+【事实】（2026-09-14，v0.1.0 发布记录）crates.io 对同一账号发布新 crate 有频率限制（策略见 `https://crates.io/docs/rate-limits`）：首次成功的运行连续上传 5 个 crate 后未再受阻；约 10 分钟后的运行只再上传 1 个（`ferrin-openai-compatible`），第 7 个（`ferrin-testing`）返回 `429 Too Many Requests`，正文为 “You have published too many new crates in a short period of time. Please try again after Mon, 14 Sep 2026 07:01:00 GMT”。该限制只针对新 crate；已存在 crate 的新版本另有更宽的限制。据此 `release.yml` 的发布步骤加入按服务器给出时间等待并重试的循环（见第 3 步）。
 
 ## 7. 支持策略
 
