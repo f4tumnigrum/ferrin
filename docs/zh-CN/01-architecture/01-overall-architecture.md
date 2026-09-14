@@ -8,24 +8,15 @@
 
 【决策】Ferrin 保留这一分层，并按 Rust 的 crate 边界细化为六个层次。依据：Rust 的编译单元与依赖解析以 crate 为粒度，细分层次可以让供应商适配器与 MCP 客户端只依赖轻量 crate，避免编译时间与依赖面随核心层膨胀。
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│ L5 应用集成层   ferrin (facade)  ferrin-otel  ferrin-testing      │
-├──────────────────────────────────────────────────────────────────┤
-│ L4 核心层       ferrin-core                                       │
-│                 generate/stream loop · output · agent ·           │
-│                 middleware · registry · telemetry · modalities    │
-├──────────────────────────────────────────────────────────────────┤
-│ L3 供应商层     ferrin-openai  ferrin-anthropic  ferrin-google    │
-│                 ferrin-openai-compatible  ferrin-mcp              │
-├──────────────────────────────────────────────────────────────────┤
-│ L2 工具层       ferrin-provider-util   ferrin-tool                │
-│                 http · sse · retry-class · secure-url · settings  │
-├──────────────────────────────────────────────────────────────────┤
-│ L1 模型层       ferrin-message   ferrin-schema                    │
-├──────────────────────────────────────────────────────────────────┤
-│ L0 规范层       ferrin-spec                                       │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    L5["L5 应用集成<br/>ferrin · ferrin-otel · ferrin-testing"]
+    L4["L4 核心<br/>ferrin-core"]
+    L3["L3 供应商<br/>OpenAI · Anthropic · Google · OpenAI-compatible · MCP"]
+    L2["L2 工具<br/>provider-util · tool"]
+    L1["L1 数据模型<br/>message · schema"]
+    L0["L0 规范<br/>ferrin-spec"]
+    L5 --> L4 --> L3 --> L2 --> L1 --> L0
 ```
 
 依赖只能自上而下。同层 crate 之间的依赖关系在 [Crate 划分与职责](02-crates.md) 中逐一列出。
@@ -34,50 +25,31 @@
 
 ### 2.1 文本生成（单步）
 
-```
-Application
-  │  GenerateText builder (messages, tools, settings)
-  ▼
-ferrin-core::prompt::standardize      ── 校验 prompt/messages 互斥、system 位置
-  │
-  ▼
-ferrin-core::prompt::convert          ── 应用侧 Message → spec::Prompt
-  │                                       (URL 下载、媒体类型探测、工具输出规范化)
-  ▼
-ferrin-core::prompt::prepare_tools    ── ToolSet → spec::ToolDefinition[] + ToolChoice
-  │
-  ▼
-ferrin-core::retry::with_backoff      ── 重试策略包裹一次模型调用
-  │
-  ▼
-spec::LanguageModel::do_generate      ── 供应商适配器：构造请求、发送、解析
-  │
-  ▼
-ferrin-core::generate_text::step      ── 解析工具调用、审批判定、执行工具、组装 StepResult
-  │
-  ▼
-StopCondition / 继续条件               ── 决定是否进入下一步骤
-  │
-  ▼
-GenerateTextResult                    ── steps、response.messages、total_usage、output
+```mermaid
+flowchart TD
+    A["应用<br/>GenerateText builder：messages、tools、settings"] --> B["prompt::standardize<br/>校验 prompt/messages 互斥与 system 位置"]
+    B --> C["prompt::convert<br/>应用侧 Message → spec::Prompt<br/>下载 URL、探测媒体类型、规范化工具输出"]
+    C --> D["prompt::prepare_tools<br/>ToolSet → ToolDefinition[] + ToolChoice"]
+    D --> E["retry::with_backoff<br/>以重试策略包裹一次模型调用"]
+    E --> F["LanguageModel::do_generate<br/>供应商适配器构造请求、发送并解析"]
+    F --> G["generate_text::step<br/>解析工具调用、审批判定、执行工具、组装 StepResult"]
+    G --> H["StopCondition<br/>决定是否进入下一步骤"]
+    H --> I["GenerateTextResult<br/>steps · response.messages · total_usage · output"]
 ```
 
 ### 2.2 流式生成
 
-```
-do_stream ──► StreamPart 流
-   │
-   ├─ stage 1  model_call_stream    规范化流事件、工具输入增量解析、工具调用修复
-   ├─ stage 2  execute_tools        并发执行客户端工具，结果注入流
-   ├─ stage 3  step_stitcher        多步骤拼接，步骤边界事件，继续条件
-   ├─ stage 4  resilient            流中错误转为 Error 事件，可选流级重试
-   ├─ stage 5  stop_gate            stop 条件满足后阻断后续步骤
-   ├─ stage 6  user_transforms      应用自定义变换（如 smooth_stream）
-   ├─ stage 7  output_transform     结构化输出的部分解析
-   └─ stage 8  event_processor      聚合 steps/usage/messages，触发回调与遥测
-                  │
-                  ▼
-        StreamTextResult { events, completion }
+```mermaid
+flowchart TD
+    S["do_stream<br/>StreamPart 流"] --> P1["阶段 1 · model_call_stream<br/>规范化流事件、解析工具输入增量、修复工具调用"]
+    P1 --> P2["阶段 2 · execute_tools<br/>并发执行客户端工具并注入结果"]
+    P2 --> P3["阶段 3 · step_stitcher<br/>拼接多步骤、发出边界事件、检查继续条件"]
+    P3 --> P4["阶段 4 · resilient<br/>将流中错误转为 Error 事件，可选流级重试"]
+    P4 --> P5["阶段 5 · stop_gate<br/>stop 条件满足后阻断后续步骤"]
+    P5 --> P6["阶段 6 · user_transforms<br/>应用自定义变换，例如 smooth_stream"]
+    P6 --> P7["阶段 7 · output_transform<br/>部分解析结构化输出"]
+    P7 --> P8["阶段 8 · event_processor<br/>聚合 steps、usage、messages，触发回调与遥测"]
+    P8 --> R["StreamTextResult<br/>events + completion"]
 ```
 
 各阶段的职责与事件类型见[生成循环与流式管线](07-generation-loop-and-streaming.md)。

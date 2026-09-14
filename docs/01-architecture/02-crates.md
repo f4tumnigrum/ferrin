@@ -31,21 +31,31 @@
 
 ## 3. Dependency graph
 
-```
-ferrin-spec
-  ├── ferrin-schema
-  ├── ferrin-message
-  │     └── ferrin-tool ──────────────┐
-  ├── ferrin-provider-util ───────────┤
-  │     ├── ferrin-openai             │
-  │     ├── ferrin-anthropic          │
-  │     ├── ferrin-openai-compatible  │
-  │     ├── ferrin-google             │
-  │     └── ferrin-mcp ◄──────────────┘
-  └── ferrin-core ◄── (spec, schema, message, tool, provider-util)
-        ├── ferrin-otel
-        ├── ferrin-testing
-        └── ferrin (facade) ◄── providers, mcp, otel (feature-gated)
+```mermaid
+flowchart TD
+    spec[ferrin-spec] --> schema[ferrin-schema]
+    spec --> message[ferrin-message]
+    message --> tool[ferrin-tool]
+    spec --> util[ferrin-provider-util]
+    util --> openai[ferrin-openai]
+    util --> anthropic[ferrin-anthropic]
+    util --> compatible[ferrin-openai-compatible]
+    util --> google[ferrin-google]
+    util --> mcp[ferrin-mcp]
+    spec --> core[ferrin-core]
+    schema --> core
+    message --> core
+    tool --> core
+    util --> core
+    core --> otel[ferrin-otel]
+    core --> testing[ferrin-testing]
+    core --> facade[ferrin facade]
+    openai --> facade
+    anthropic --> facade
+    compatible --> facade
+    google --> facade
+    mcp --> facade
+    otel --> facade
 ```
 
 [Decision] `ferrin-mcp` does not depend on `ferrin-core`. MCP tools enter tool sets as dynamic tools and need only `ferrin-tool` and `ferrin-provider-util`, without core loop types. This also allows standalone MCP use outside generation.

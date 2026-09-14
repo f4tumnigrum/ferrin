@@ -38,17 +38,14 @@ pub(crate) struct StandardizedPrompt {
 
 ### 2.1 Ferrin conversion pipeline
 
-```
-Vec<Message>
-  │ collect_download_targets(supported_urls)
-  ▼
-DownloadPlan { urls: Vec<(Url, Option<MediaType>)> }
-  │ download_all(plan, download_fn, cancellation)   // concurrent, bounded by max_parallel_downloads
-  ▼
-DownloadedFiles: HashMap<Url, DownloadedFile { bytes, media_type }>
-  │ convert_message(msg, &downloaded, &tools)
-  ▼
-spec::Prompt
+```mermaid
+flowchart TD
+    A["Vec&lt;Message&gt;"] --> B["collect_download_targets<br/>supported_urls"]
+    B --> C["DownloadPlan<br/>URLs + optional media types"]
+    C --> D["download_all<br/>concurrent, bounded by max_parallel_downloads"]
+    D --> E["DownloadedFiles<br/>bytes + media types"]
+    E --> F["convert_message<br/>downloaded files + tools"]
+    F --> G["spec::Prompt"]
 ```
 
 [Decision] The download function is a trait object:

@@ -8,13 +8,13 @@
 
 【决策】Ferrin 使用 `tokio_util::sync::CancellationToken`（0.7.19）作为取消原语：
 
-```
-caller token
-  └── call token (child)                 // total timeout attaches here
-        ├── step token (child)           // step timeout
-        │     ├── model-call token       // first-chunk / chunk timeouts re-arm here
-        │     └── tool tokens (child)    // per-tool timeout
-        └── download tokens (child)
+```mermaid
+flowchart TD
+    Caller["调用方取消令牌"] --> Call["调用令牌<br/>总超时"]
+    Call --> Step["步骤令牌<br/>步骤超时"]
+    Step --> Model["模型调用令牌<br/>首块/块间超时"]
+    Step --> Tools["工具令牌<br/>按工具超时"]
+    Call --> Downloads["下载令牌"]
 ```
 
 - 子令牌在父令牌取消时自动取消；超时通过 `tokio::time::timeout` 包裹并在触发时取消对应子令牌。

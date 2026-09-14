@@ -31,21 +31,31 @@
 
 ## 3. 依赖图
 
-```
-ferrin-spec
-  ├── ferrin-schema
-  ├── ferrin-message
-  │     └── ferrin-tool ──────────────┐
-  ├── ferrin-provider-util ───────────┤
-  │     ├── ferrin-openai             │
-  │     ├── ferrin-anthropic          │
-  │     ├── ferrin-openai-compatible  │
-  │     ├── ferrin-google             │
-  │     └── ferrin-mcp ◄──────────────┘
-  └── ferrin-core ◄── (spec, schema, message, tool, provider-util)
-        ├── ferrin-otel
-        ├── ferrin-testing
-        └── ferrin (facade) ◄── providers, mcp, otel (feature-gated)
+```mermaid
+flowchart TD
+    spec[ferrin-spec] --> schema[ferrin-schema]
+    spec --> message[ferrin-message]
+    message --> tool[ferrin-tool]
+    spec --> util[ferrin-provider-util]
+    util --> openai[ferrin-openai]
+    util --> anthropic[ferrin-anthropic]
+    util --> compatible[ferrin-openai-compatible]
+    util --> google[ferrin-google]
+    util --> mcp[ferrin-mcp]
+    spec --> core[ferrin-core]
+    schema --> core
+    message --> core
+    tool --> core
+    util --> core
+    core --> otel[ferrin-otel]
+    core --> testing[ferrin-testing]
+    core --> facade[ferrin facade]
+    openai --> facade
+    anthropic --> facade
+    compatible --> facade
+    google --> facade
+    mcp --> facade
+    otel --> facade
 ```
 
 【决策】`ferrin-mcp` 不依赖 `ferrin-core`。依据：MCP 工具以动态工具形态接入工具集，只需要 `ferrin-tool` 与 `ferrin-provider-util`，不需要核心循环的类型；不依赖核心层也让 MCP 客户端可以单独用于非生成场景。
