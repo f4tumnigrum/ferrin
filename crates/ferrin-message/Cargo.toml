@@ -30,6 +30,11 @@ percent-encoding = { workspace = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 serde_json = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "prune"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true

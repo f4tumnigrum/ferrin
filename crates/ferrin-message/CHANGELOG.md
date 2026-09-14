@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `prune` benchmark over 40- and 200-message conversations with reasoning and
+  tool-call pruning variants.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

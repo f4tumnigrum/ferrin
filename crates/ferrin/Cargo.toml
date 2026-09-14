@@ -53,6 +53,14 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 trybuild = { workspace = true }
 pretty_assertions = { workspace = true }
 url = { workspace = true }
+criterion = { workspace = true }
+http = { workspace = true }
+secrecy = { workspace = true }
+
+[[bench]]
+name = "end_to_end"
+harness = false
+required-features = ["openai"]
 
 [package.metadata.docs.rs]
 all-features = true

@@ -5,6 +5,13 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `generate_text` benchmark (single step, 11- and 51-message histories,
+  two-step tool loop, `extract_reasoning` middleware) and `stream_text`
+  benchmark (`text_stream`, event stream, `consume`, word-chunked
+  `smooth_stream`) over `MockLanguageModel`.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

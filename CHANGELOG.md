@@ -6,6 +6,15 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Criterion benchmark suite (`just bench`, manual `bench.yml` workflow) covering
+  SSE decoding, partial JSON repair, schema derivation and validation, message
+  pruning, tool fingerprints, the generation and streaming pipelines, the
+  OpenAI, Anthropic and Google adapters against the fixture server, and
+  end-to-end streaming through the facade; `criterion` 0.8.2 is a workspace
+  dev-dependency.
+
 ### Changed
 
 - `release.yml` publishes all not-yet-published crates in one multi-package

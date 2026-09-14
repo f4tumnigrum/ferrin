@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `fingerprint` benchmark: `canonical_json`, `fingerprint_tools` for 5 and 20
+  tools, `detect_tool_drift`.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

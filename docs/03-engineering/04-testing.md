@@ -10,7 +10,7 @@
 | 契约测试 | `ferrin-testing::StreamContractChecker` | 断言事件顺序 | 否 |
 | 文档测试 | rustdoc 示例 | `cargo test --doc` | 否（示例使用 `MockLanguageModel`） |
 | 在线测试 | `tests/suite/live_*.rs`，`#[ignore]` | 真实 API，需环境变量密钥 | 是 |
-| 基准测试 | `benches/` | `criterion` | 否 |
+| 基准测试 | `benches/<name>.rs`（`[[bench]] harness = false`；11 个目标见第 11 节） | `criterion` 0.8.2，`just bench [filter]` | 否（mock 模型与本地 fixture 服务器） |
 | 编译失败测试 | `crates/ferrin/tests/ui/` | `trybuild` | 否 |
 
 【决策】供应商测试以录制的原始 SSE 分片文件与 JSON 响应作为 fixture，重建响应后对规范化输出做快照断言；在线测试以 `#[ignore]` 门控并要求供应商密钥环境变量。依据：录制的原始分片保留供应商真实的分片边界与字段形状，比手写的规范事件更能暴露解析缺陷；`#[ignore]` 让默认测试运行不依赖网络与密钥。
@@ -110,3 +110,12 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 - 【事实】核心层非文本模态的测试以内联实现规范 trait 的 mock（`EmbeddingModel`、`ImageModel`、`SpeechModel`、`TranscriptionModel`、`RerankingModel`、`VideoModel`、`Files`、`Skills`、`Batch`、`RealtimeModel`）驱动；实时会话测试用 `tokio-tungstenite` 在 `127.0.0.1` 起本地 WebSocket 服务器并回显子协议头。
 - 【事实】`Fixture::load(dir, case)` 对同一 `case` 先找 `<case>.response.json`，再找 `<case>.chunks.txt`；两者同时存在时只回放前者。`ferrin-openai` 的流式用例因此以 `-stream` 后缀命名（`text-basic.response.json` 与 `text-basic-stream.chunks.txt`），第 3.1 节的目录示例按此理解。
 - 【待验证】（PV-031）`ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible` 与 `ferrin-google` 的 fixture（`crates/providers/<crate>/tests/fixtures/`）在 `record-fixture` 命令实现（2026-09-14）之前依据供应商公开 API 文档的响应 schema 手工编写，不含真实请求 ID 与账户信息，尚未用该命令以真实凭据重新录制；第 3.2 节“fixture 一经录制不得手工修改”的规则自录制版本起适用。
+
+## 11. 实现记录（2026-09-14，基准测试）
+
+- 【决策】基准测试使用 `criterion` 0.8.2（工作区开发依赖，features `async_tokio`、`html_reports`），每个目标是一个 `benches/<name>.rs` 文件并在清单中声明 `[[bench]] harness = false`；文件在 crate 根放行 `clippy::unwrap_used`/`clippy::expect_used`（与 `tests/all.rs` 同理）。依据：criterion 提供统计置信区间、吞吐量单位与 HTML 报告，`async_tokio` 让异步管线直接在 tokio 运行时上计时，无需自写驱动。
+- 【决策】基准测试不访问网络、不含 `sleep`：核心层用 `ferrin_testing::MockLanguageModel`（`generate_repeat`/`stream_repeat`，双步工具循环用 `generate_with` 加原子计数器交替返回工具调用与文本）；供应商适配器用 `FixtureServer` 回放本 crate `tests/fixtures/` 下的录制响应，每次迭代 `reset()` 后重新 `mount`，避免请求记录随迭代次数增长；门面 crate 的端到端基准以 `Fixture::sse_json` 现场合成 Responses API 文本流（不跨 crate 引用 fixture 文件，保证 `cargo package` 的自包含），并发用 `JoinSet`。依据：被测对象是 Ferrin 自身的开销（请求组装、HTTP、SSE 解码、事件映射、生成循环），真实供应商的延迟只会淹没这些差异。
+- 【事实】目标清单（criterion 组 / 基准 id）：`ferrin-provider-util` `sse`（`sse_decoder/feed/{whole_body,4096,512,64}` 按分片大小喂入 2000 事件的 Responses 风格流，`decode_stream/4096`；吞吐量按字节）；`ferrin-schema` `partial_json`（`repair`、`parse_partial` 各取约 4 KiB 文档的 25/50/75/100 % 前缀，`serde_json_complete/100` 作对照）与 `schema`（`derived`、`openai_strict`、`validate/{typed_serde,raw_json_schema}`）；`ferrin-message` `prune`（`none`、`reasoning_all`、`tool_calls_all`、`tool_calls_before_last_4` × 40/200 条消息）；`ferrin-tool` `fingerprint`（`canonical_json/40_properties`、`fingerprint_tools/{5,20}`、`detect_tool_drift/20`）；`ferrin-core` `generate_text`（`single_step_prompt`、`history/{11,51}`、`tool_loop_two_steps`、`extract_reasoning_middleware`）与 `stream_text`（`text_stream/{100,1000}`、`events/1000`、`consume/1000`、`smooth_stream/word/1000`）；`ferrin-openai` `responses`、`ferrin-anthropic` `messages`、`ferrin-google` `generate_content`（各含 `generate/<case>` 与两个 `stream/<case>`，用例即 fixture 名）；`ferrin` `end_to_end`（`stream_text/{20,200}` 个增量、`concurrent_streams/{1,16,64}`，需 feature `openai`）。
+- 【事实】（2026-09-14，开发机 macOS，Rust 1.98.1，参数 `--warm-up-time 0.5 --measurement-time 1 --sample-size 10`，仅验证可运行，非正式测量）11 个目标全部完成。量级：SSE 解码 2000 事件约 1.4 ms（分片 64 字节时约 1.5 ms）；部分 JSON 修复 4 KiB 前缀 2.7–11 µs；200 条消息裁剪 15–35 µs；`generate_text` 单步约 7 µs、双步工具循环约 39 µs；`stream_text` 1000 个增量约 0.7 ms（每增量约 0.7 µs）；三个适配器 `do_generate` 约 60 µs、`do_stream` 90–180 µs（含本地 HTTP 往返）；端到端 200 个增量约 1.6 ms，64 路并发（每路 50 个增量）约 8.3 ms。
+- 【决策】基准结果不入库、不作为 CI 门禁：`ci.yml` 的 `clippy` 作业以 `--all-targets` 编译检查基准代码；`bench.yml` 只能手动触发（输入 `filter`），把 `target/criterion` 作为构建产物保留 30 天。依据：共享 runner 的计时噪声大，回归判定应在同一台机器上以 criterion 基线（`--save-baseline`/`--baseline`）比较。
+- 【事实】`cargo bench --workspace -- <criterion 选项>` 会失败：没有 `[[bench]]` 的 lib 目标仍以 libtest harness 运行，libtest 拒绝 criterion 的选项（`error: Unrecognized option: 'sample-size'`，2026-09-14 以 `ferrin-spec` 验证）；位置参数形式的名称过滤两者都接受。因此 `just bench [filter]` 只传过滤器，criterion 选项须限定单个目标：`cargo bench -p <crate> --bench <name> -- --save-baseline <tag>`。

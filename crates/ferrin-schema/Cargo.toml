@@ -33,6 +33,15 @@ thiserror = { workspace = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "partial_json"
+harness = false
+
+[[bench]]
+name = "schema"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true
