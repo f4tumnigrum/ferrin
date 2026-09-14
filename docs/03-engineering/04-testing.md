@@ -88,8 +88,9 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 
 ## 7. 覆盖率
 
-- `cargo llvm-cov --workspace --lcov` 在 CI 生成报告。
-- 目标：`ferrin-spec`、`ferrin-schema`、`ferrin-core` 行覆盖 ≥ 85%；供应商 crate ≥ 75%。低于目标不阻断合并，但在 PR 中显示差异。
+- `coverage.yml` 以 `cargo llvm-cov nextest --workspace --all-features --lcov` 生成报告：`cargo llvm-cov report --summary-only` 的输出写入作业摘要，`lcov.info` 作为构建产物保留 14 天。
+- 【决策】（2026-09-14）不接入外部覆盖率服务（如 Codecov）。依据：覆盖率数据留在 GitHub 内即可满足查看需求，避免向第三方上传源码级数据与维护额外令牌；原先的上传步骤因缺少令牌一直静默失败。需要 PR 级差异时可在本地用 `cargo llvm-cov --lcov` 与主分支的构建产物比较。
+- 目标：`ferrin-spec`、`ferrin-schema`、`ferrin-core` 行覆盖 ≥ 85%；供应商 crate ≥ 75%。低于目标不阻断合并。
 
 ## 8. 测试数据与密钥
 
