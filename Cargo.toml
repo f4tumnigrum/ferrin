@@ -23,7 +23,9 @@ ferrin-tool = { path = "crates/ferrin-tool", version = "0.1.0" }
 ferrin-core = { path = "crates/ferrin-core", version = "0.1.0", default-features = false }
 ferrin-mcp = { path = "crates/ferrin-mcp", version = "0.1.0" }
 ferrin-otel = { path = "crates/ferrin-otel", version = "0.1.0" }
-ferrin-testing = { path = "crates/ferrin-testing", version = "0.1.0" }
+# Path only: it is used exclusively as a dev-dependency, so Cargo strips it
+# from the published manifests and publishing never has to resolve it first.
+ferrin-testing = { path = "crates/ferrin-testing" }
 ferrin-macros = { path = "crates/ferrin-macros", version = "0.1.0" }
 ferrin = { path = "crates/ferrin", version = "0.1.0" }
 ferrin-openai = { path = "crates/providers/ferrin-openai", version = "0.1.0" }

@@ -6,6 +6,12 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `release.yml` publishes all not-yet-published crates in one multi-package
+  `cargo publish` invocation, and `ferrin-testing` is a path-only workspace
+  dev-dependency so published manifests no longer reference it.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added
