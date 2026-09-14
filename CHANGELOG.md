@@ -6,6 +6,8 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-14
+
 ### Added
 
 - Workspace skeleton: 15 crates, `xtask`, one example, CI workflows, lint and

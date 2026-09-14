@@ -13,7 +13,7 @@ client (`ferrin::mcp`), the OpenTelemetry bridge (`ferrin::otel`) and the
 `#[ferrin::tool]` macro. `ferrin::prelude` gathers the items most programs
 need.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/02-crates.md`, API: `docs/02-api/02-api-reference.md`.
 
 ## Example

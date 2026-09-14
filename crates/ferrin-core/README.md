@@ -5,7 +5,7 @@ agents, middleware, provider registry, retry and timeout policies, and the
 non-text modalities (embeddings, images, speech, transcription, reranking,
 video, files, skills, batches, realtime sessions, speech translation).
 
-Part of the [Ferrin](../../README.md) workspace. Applications normally depend
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Applications normally depend
 on the `ferrin` facade crate, which re-exports this crate together with the
 provider adapters. Design: `docs/01-architecture/07-generation-loop-and-streaming.md`
 and the following architecture documents.

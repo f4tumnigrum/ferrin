@@ -8,7 +8,7 @@ messages from a history.
 
 Conversion to provider prompts lives in `ferrin-core`.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/03-core-data-model.md` §7,
 `docs/01-architecture/05-prompt-conversion.md`.
 

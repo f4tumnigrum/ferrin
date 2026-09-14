@@ -6,7 +6,7 @@ files, skills, batch processing and realtime sessions. The `realtime` feature
 adds the WebSocket-backed streaming transcription and speech translation
 models.
 
-Part of the [Ferrin](../../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/17-provider-implementation-guide.md`; capability matrix,
 provider options and metadata: `docs/providers/openai.md`.
 

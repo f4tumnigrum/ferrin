@@ -6,7 +6,7 @@ Streamable HTTP, legacy SSE and stdio transports, protocol negotiation for the
 completion methods, bridging of MCP tools into a `ferrin_tool::ToolSet`, MCP
 Apps helpers and (feature `oauth`) the OAuth 2.1 authorization flow with PKCE.
 
-Part of the [Ferrin](../../README.md) workspace. Design:
+Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
 `docs/01-architecture/15-mcp.md`, ADR 0015.
 
 ## Example
