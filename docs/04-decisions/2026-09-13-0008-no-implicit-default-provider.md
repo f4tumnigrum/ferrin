@@ -1,28 +1,30 @@
-# 0008: 不提供隐式默认供应商
+# 0008: No implicit default provider
 
-- 状态：accepted
-- 日期：2026-09-13
-- 相关：[中间件与注册表](../01-architecture/10-middleware-and-registry.md)第 2.3 节
+**English** | [Chinese](../zh-CN/04-decisions/2026-09-13-0008-no-implicit-default-provider.md)
 
-## 背景
+- Status: accepted
+- Date: 2026-09-13
+- Related: [Middleware and registry](../01-architecture/10-middleware-and-registry.md), section 2.3
 
-【事实】一些 SDK 允许以字符串指定模型并通过进程级全局默认供应商解析，缺省时指向托管网关；这意味着未显式配置的调用也会发起网络请求，且解析结果依赖全局可变状态。
+## Context
 
-## 决策
+[Fact] Some SDKs resolve string models through a process-global provider defaulting to a hosted gateway, making unconfigured network calls and relying on global mutable state.
 
-1. Ferrin 不内置任何网关或默认供应商；未经显式配置不发起网络请求。
-2. 字符串模型引用仅通过调用方传入的 `ProviderRegistry` 或显式设置一次的进程级默认注册表（`set_default_registry`，`OnceLock`）解析；未设置时返回 `Error::NoDefaultRegistry`。
+## Decision
 
-## 依据
+1. No built-in gateway/default provider; network access requires explicit configuration.
+2. Resolve strings through caller registries or a once-installed default registry; otherwise return NoDefaultRegistry.
 
-- 项目范围排除托管网关。
-- 隐式网络目标是安全与可观测性风险；显式配置使数据流向可审计。
-- `OnceLock` 单次设置避免运行期竞态与配置漂移。
+## Rationale
 
-## 备选方案
+- Hosted gateways are outside scope.
+- Explicit network destinations make data flow auditable.
+- `OnceLock` prevents runtime races/configuration drift.
 
-- 环境变量指定默认供应商：库行为随环境隐式变化，违反“无全局可变状态”原则。
+## Alternatives
 
-## 影响
+- Environment-selected defaults would make behavior implicit.
 
-- 示例与文档中所有模型引用都从显式创建的供应商实例获得。
+## Consequences
+
+- Examples obtain models from explicitly created providers.

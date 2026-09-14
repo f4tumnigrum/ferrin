@@ -1,34 +1,36 @@
-# 0005: 流式结果交付形态
+# 0005: Streaming result delivery
 
-- 状态：accepted
-- 日期：2026-09-13
-- 相关：[生成循环与流式管线](../01-architecture/07-generation-loop-and-streaming.md)第 3 节
+**English** | [Chinese](../zh-CN/04-decisions/2026-09-13-0005-stream-result-delivery.md)
 
-## 背景
+- Status: accepted
+- Date: 2026-09-13
+- Related: [Generation loop](../01-architecture/07-generation-loop-and-streaming.md), section 3
 
-【事实】JavaScript 生态中流式 SDK 的常见形态是同步返回结果对象、通过 tee 提供多个消费视图（完整事件流、文本流、部分输出流）、在任一属性被访问时自动消费流，并让供应商错误进入流而不抛出；该形态依赖无界缓冲与隐式驱动。
+## Context
 
-Rust 的 `Stream` 是拉取式、单消费者；多视图需要无界缓冲或后台任务。
+[Fact] JavaScript streaming SDKs commonly return synchronous handles with tee views, implicit consumption, and in-stream provider errors, relying on unbounded buffering and background driving.
 
-## 决策
+Rust streams are pull-based and single-consumer; multiple views need buffering or tasks.
 
-1. `stream_text(...).await` 在首步骤模型请求建立后返回 `Result<StreamTextResult, Error>`。
-2. `StreamTextResult` 提供单一事件流与 `Completion` 句柄，可 `split()`；派生视图（`text_stream`、`partial_output_stream`）消费同一底层流。
-3. 不提供内置多路复用；不做无界缓冲；未消费的流不推进。
-4. 后续步骤错误以 `StreamEvent::Error` 传递并由 `Completion` 返回 `Err`。
+## Decision
 
-## 依据
+1. Await first request establishment before returning `Result<StreamTextResult, Error>`.
+2. Provide one event stream plus `Completion`, splittable; text/partial views consume the same underlying stream.
+3. No built-in multiplexing or unbounded buffers; unconsumed streams do not advance.
+4. Later errors emit `StreamEvent::Error` and fail `Completion`.
 
-- 背压与所有权语义清晰；无隐藏后台任务与内存增长。
-- 配置与鉴权错误在调用点以 `?` 处理，符合 Rust 生态惯例（`reqwest::send().await?`）。
-- 应用需要多路消费时可使用 `tokio::sync::broadcast`，成本由应用显式承担。
+## Rationale
 
-## 备选方案
+- Clear backpressure/ownership without hidden unbounded memory or tasks.
+- Handle configuration/authentication with ? at startup, following Rust HTTP usage.
+- Applications explicitly pay for fan-out through broadcast when needed.
 
-- 完全模拟 tee：需要 `Arc<Mutex<VecDeque>>` 与多消费者游标，复杂且易泄漏。
-- 后台任务驱动 + `watch` 通道：隐式 `spawn`，与“库不隐式创建任务”原则冲突。
+## Alternatives
 
-## 影响
+- Full tee emulation needs shared queues and multiple cursors, adding complexity/leak risk.
+- Background driving plus `watch` introduces implicit task behavior.
 
-- API 文档必须强调“必须消费事件流或调用 `consume()`”。
-- 【决策】（PV-007）`simulate_streaming` 下首步骤等待时长等于一次非流式调用，属于该中间件的固有语义，在其文档中说明；不增加 `start_eager()`（见[生成循环与流式](../01-architecture/07-generation-loop-and-streaming.md)第 5 节）。
+## Consequences
+
+- Document that callers must consume events or call `consume()`.
+- [Decision] PV-007: simulated streaming inherently waits for complete non-streaming generation; document that behavior without start_eager ([Generation loop](../01-architecture/07-generation-loop-and-streaming.md), section 5).

@@ -1,12 +1,14 @@
-# HTTP 传输与安全
+# HTTP transport and security
 
-位于 `ferrin-provider-util`。本层供供应商适配器与核心层的下载功能使用，应用代码通常不直接调用。
+**English** | [Chinese](../zh-CN/01-architecture/14-http-and-security.md)
 
-## 1. 传输抽象
+Implemented in `ferrin-provider-util`, for provider adapters and core downloads; applications rarely call this layer directly.
 
-【事实】应用需要替换 SDK 的 HTTP 实现：企业代理、录制回放测试、特殊运行时（自定义 TLS、受限网络）都要求传输层可注入。
+## 1. Transport abstraction
 
-【决策】定义 `HttpTransport` trait，默认实现基于 reqwest 0.13.5：
+[Fact] Enterprise proxies, replay tests, and custom TLS or restricted networking require injectable HTTP implementations.
+
+[Decision] Define `HttpTransport`, with a default based on reqwest 0.13.5:
 
 ```rust
 pub trait HttpTransport: Send + Sync + 'static {
@@ -31,21 +33,21 @@ pub struct HttpResponse {
 pub struct ReqwestTransport { client: reqwest::Client }
 ```
 
-依据：trait 形态使测试可以注入录制回放传输而不依赖网络，也让请求构造逻辑独立于具体 HTTP 客户端。
+A trait allows replay transports without network access and separates request construction from the HTTP client.
 
-`ReqwestTransport::default()` 配置：rustls TLS、HTTP/2 优先、连接池、禁用自动重定向（重定向由安全下载逻辑显式处理）、无默认超时（超时由核心层令牌控制）、`User-Agent` 由请求头提供。
+Default `ReqwestTransport` configuration: rustls, HTTP/2 preference, pooling, no automatic redirects (secure downloads handle them), no default timeout (core tokens control it), and request-supplied `User-Agent`.
 
-【事实】2026-09-13 实现（`crates/ferrin-provider-util/src/http/`）与上述草案的差异：
+[Fact] The 2026-09-13 implementation (`crates/ferrin-provider-util/src/http/`) differs from the draft:
 
-- `RequestBody` 为 `Empty | Bytes { content_type, data } | Multipart(MultipartForm)`；JSON 体通过 `RequestBody::json(bytes)` 构造为带 `application/json` 的 `Bytes`，`MultipartForm` 由本 crate 自行编码（`--boundary`、`Content-Disposition`、`Content-Type` 逐部件写出，随机或固定边界），不使用 reqwest 的 `multipart` feature。
-- `HttpRequest` 增加 `pinned_addresses: Vec<SocketAddr>`：非空时传输层必须只连接这些地址（`ReqwestTransport` 为此构建带 `resolve_to_addrs` 的专用客户端）。
-- `HttpResponse` 提供 `from_bytes`、`from_stream`、`head()`；`TransportError { kind: TransportErrorKind, message, cause }`，`TransportErrorKind` 为 `Connect | Timeout | Reset | Io | Tls | InvalidUrl | InvalidRequest | Body | BodyTooLarge | Cancelled | Other`，`is_retryable()` 只对前四种为真。
-- `ReqwestTransport::new()` 可失败（TLS 后端初始化），`builder()` 暴露带默认配置的 `ClientBuilder`，`from_client()` 接受外部客户端；`default_transport()` 返回进程级共享的 `Arc<dyn HttpTransport>`。取消令牌同时作用于请求发送与响应体流（体流被取消时产出 `TransportErrorKind::Cancelled` 项后结束）。
-- reqwest 的 `Error` 按 `is_timeout/is_connect/is_body/is_decode/is_builder/is_request` 映射到上述分类；`is_request` 且错误链文本含 `reset`/`broken pipe`/`connection closed` 时归为 `Reset`。
+- `RequestBody` is `Empty | Bytes { content_type, data } | Multipart(MultipartForm)`. `RequestBody::json(bytes)` constructs JSON-typed bytes. The crate encodes `multipart` boundaries and per-part `Content-Disposition`/`Content-Type` itself, with random or fixed boundaries, without reqwest's `multipart` feature.
+- `HttpRequest` adds `pinned_addresses: Vec<SocketAddr>`. When nonempty, transports must connect only to these addresses; reqwest builds a dedicated `resolve_to_addrs` client.
+- `HttpResponse` offers `from_bytes`, `from_stream`, and `head()`. `TransportError { kind, message, cause }` uses kinds `Connect | Timeout | Reset | Io | Tls | InvalidUrl | InvalidRequest | Body | BodyTooLarge | Cancelled | Other`; only the first four are retryable.
+- `ReqwestTransport::new()` can fail during TLS initialization; `builder()` exposes a preconfigured `ClientBuilder`, and `from_client()` accepts an external client. `default_transport()` shares a process-wide `Arc<dyn HttpTransport>`. Cancellation covers sending and response streaming; a cancelled body emits one cancelled error and ends.
+- Map reqwest errors by `is_timeout/is_connect/is_body/is_decode/is_builder/is_request`; request errors whose chain contains `reset`, `broken pipe`, or `connection closed` become `Reset`.
 
-## 2. 请求辅助
+## 2. Request helpers
 
-【决策】请求辅助函数（JSON、表单与原始体的 POST，以及 GET）：发送请求、去除值为 `None` 的头、按状态码选择失败处理器或成功处理器、把网络错误包装为 `ApiCallError`（可重试性由错误类型推断）、把空响应体包装为 `EmptyResponseBody` 错误。依据：所有适配器共享同一条请求路径，错误分类与重试判定只需实现一次。
+[Decision] Helpers for JSON/form/raw POST and GET send requests, omit `None` headers, select success/failure handlers by status, wrap network errors as `ApiCallError` with classified retryability, and report empty bodies as `EmptyResponseBody`. One shared path centralizes classification.
 
 ```rust
 pub async fn post_json<T>(
@@ -65,13 +67,13 @@ pub struct ResponseHandlers<T> {
 }
 ```
 
-【事实】2026-09-13 实现：`post_json`/`post_form`/`post_bytes`/`get`/`delete` 均以 `&ResponseHandlers<T>` 借用处理器（同一组处理器可跨请求复用），底层为 `send(transport, HttpRequest, request_body: Option<JsonValue>, handlers)`；`ApiResponse<T>` 的第三个字段为 `raw: Option<JsonValue>`（成功处理器解析出的原始 JSON 值），不保留原始文本。请求缺少 `Content-Type` 时按体类型补齐。传输失败映射为 `ApiCallError { message: "cannot connect to API: ...", is_retryable: TransportError::is_retryable() }`；处理器返回的非 `ApiCall` 错误（如 `TypeValidationError`）被包装为带状态码与响应头的 `ApiCallError`，`ApiCall` 与 `Cancelled` 原样透出。
+[Fact] Implementation on 2026-09-13: `post_json`/`post_form`/`post_bytes`/`get`/`delete` borrow reusable `&ResponseHandlers<T>` and delegate to `send(transport, HttpRequest, request_body: Option<JsonValue>, handlers)`. `ApiResponse<T>` stores parsed `raw: Option<JsonValue>`, not raw text. Supply missing `Content-Type` from body type. Transport failures become `ApiCallError { message: "cannot connect to API: ...", is_retryable: TransportError::is_retryable() }`. Wrap non-API handler errors such as type validation with status/headers; pass `ApiCall` and `Cancelled` through.
 
-【决策】2026-09-13 在 `ferrin_spec::error::ProviderError` 增加 `Cancelled` 变体（`is_retryable() == false`，`kind_name() == "cancelled"`）；传输层的 `TransportErrorKind::Cancelled` 在请求辅助与响应处理器中一律转换为它。依据：适配器只能返回 `ProviderError`，若把取消包装为 `ApiCallError`，核心层无法区分“调用方取消”与“网络失败”，会触发重试或把取消记为供应商错误；Rust 中以专用变体表达“已取消”，不依赖错误消息或类型名判定。核心层把 `Provider(ProviderError::Cancelled)` 归并为 `Error::Cancelled`（见[错误模型](12-error-model.md)第 2.1 节）。
+[Decision] Add specification `Cancelled` on 2026-09-13, non-retryable with kind `cancelled`; request helpers and response handlers map transport cancellation to it. Wrapping cancellation as an API failure would confuse caller cancellation with network failure and trigger retries or wrong telemetry. The core maps it to `Error::Cancelled` ([Error model](12-error-model.md), section 2.1).
 
-## 3. 响应处理器
+## 3. Response handlers
 
-【决策】响应处理器族：JSON 响应处理器（解析并校验 JSON）、JSON 错误响应处理器（错误 JSON → `ApiCallError`，可自定义消息提取与可重试判定）、SSE 响应处理器（逐事件解析，`[DONE]` 跳过）、JSON Lines 响应处理器、二进制响应处理器、二进制流响应处理器、状态码错误处理器；解析失败的 SSE 事件产生错误项而不中断流。依据：供应商响应形态只有这几种，处理器族让适配器以声明方式组合而不重复解析代码。
+[Decision] Handler families cover validated JSON, JSON errors with configurable message/retry extraction, SSE (skip `[DONE]`), JSON Lines, binary, binary streams, and status errors. Malformed SSE events produce error items rather than aborting parsing. Adapters compose handlers instead of duplicating response logic.
 
 ```rust
 pub fn json_response_handler<T: DeserializeOwned>() -> impl ResponseHandler<T>;
@@ -84,27 +86,27 @@ pub fn binary_stream_response_handler() -> impl ResponseHandler<BoxStream<'stati
 pub enum ParseResult<T> { Ok { value: T, raw: JsonValue }, Err { error: JsonParseError | TypeValidationError, raw: String } }
 ```
 
-`ParseResult::Ok` 携带原始 JSON 值，供 `include_raw_chunks` 输出 `StreamPart::Raw`。
+`ParseResult::Ok` retains raw JSON for `include_raw_chunks` to emit `StreamPart::Raw`.
 
-【事实】2026-09-13 实现：
+[Fact] Implementation on 2026-09-13:
 
-- `ResponseHandler<T>::handle(&self, ResponseContext { url, request_body }, HttpResponse) -> BoxFuture<'static, Result<Handled<T> { value, raw: Option<JsonValue>, headers }, ProviderError>>`。处理器以构建器形态提供：`json_response_handler::<T>().with_max_bytes(n)`、`json_error_response_handler::<E>(to_message).with_is_retryable(|head, parsed: Option<&E>| ...)`、`text_response_handler()`、`status_code_error_response_handler()`、`binary_response_handler().with_max_bytes(n)`、`binary_stream_response_handler()`、`event_source_response_handler::<T>().with_max_event_bytes(n)`、`json_lines_response_handler::<T>()`。
-- `ParseResult<T>` 为 `Ok { value, raw: JsonValue } | Err { error: ProviderError, raw: Option<String> }`（`raw` 为收到的分片文本，传输错误时为 `None`），`into_result()` 丢弃原始载荷。
-- 响应体读取 `read_body(headers, stream, max_bytes)` 默认上限 2 GiB（`DEFAULT_MAX_RESPONSE_BYTES`），`Content-Length` 超限时在读取前失败，超限映射为 `TransportErrorKind::BodyTooLarge`（不可重试）。
-- 错误处理器：响应体为空或不能解析为 `E` 时，消息回落为状态码的标准原因短语（如 `Service Unavailable`），`data` 为空；解析成功时 `data` 为原始 JSON；`is_retryable` 默认由状态码决定（`ApiCallError::with_status`），`with_is_retryable` 可覆盖。
-- 流式处理器（SSE、JSON Lines）在 `content-length: 0` 时返回 `EmptyResponseBodyError`；SSE 跳过 `data: [DONE]`；JSON Lines 按 `\n` 切分并去除尾部 `\r`，忽略空行；两者的传输错误与解析错误都作为 `ParseResult::Err` 项产出，流不中断。
+- `ResponseHandler<T>::handle(&self, ResponseContext { url, request_body }, HttpResponse) -> BoxFuture<'static, Result<Handled<T> { value, raw: Option<JsonValue>, headers }, ProviderError>>`. Builders: `json_response_handler::<T>().with_max_bytes(n)`, `json_error_response_handler::<E>(to_message).with_is_retryable(|head, parsed: Option<&E>| ...)`, `text_response_handler()`, `status_code_error_response_handler()`, `binary_response_handler().with_max_bytes(n)`, `binary_stream_response_handler()`, `event_source_response_handler::<T>().with_max_event_bytes(n)`, and `json_lines_response_handler::<T>()`.
+- `ParseResult<T>` is `Ok { value, raw: JsonValue } | Err { error: ProviderError, raw: Option<String> }`; error `raw` data is received chunk text, absent for transport failures. `into_result()` discards `raw` payloads.
+- `read_body(headers, stream, max_bytes)` defaults to 2 GiB (`DEFAULT_MAX_RESPONSE_BYTES`), rejecting excessive `Content-Length` before reading. Excess size maps to non-retryable `TransportErrorKind::BodyTooLarge`.
+- Error handlers fall back to the status reason phrase, such as `Service Unavailable`, with no `data` for empty/unparseable bodies; successful parsing retains raw JSON. Status-based retryability via `ApiCallError::with_status` can be overridden.
+- SSE/JSON Lines reject `content-length: 0` with `EmptyResponseBodyError`. SSE skips `[DONE]`; JSON Lines splits on newline, trims trailing carriage returns, and ignores blank lines. Transport/parse failures yield `ParseResult::Err` items rather than immediately terminating the handler stream.
 
-## 4. SSE 解码
+## 4. SSE decoding
 
-【事实】OpenAI 风格的 SSE 流以 `data: [DONE]` 事件标记结束，该事件不是 JSON，解析器必须跳过它。
+[Fact] OpenAI-style SSE ends with non-JSON `data: [DONE]`, which parsers must skip.
 
-【决策】`ferrin_provider_util::sse::SseDecoder` 自行实现 WHATWG EventSource 解析（字段 `event`、`data`、`id`、`retry`，多行 `data` 以 `\n` 连接，注释行忽略，`\r\n`/`\r`/`\n` 三种行尾，UTF-8 BOM 剥离）。依据：解析规则固定且短小，自实现便于加入每事件到达时间戳（性能指标需要）与最大事件体积限制；`eventsource-stream` 0.2.3 自 2022 年未更新。
+[Decision] Implement WHATWG EventSource in `SseDecoder`: `event`, `data`, `id`, `retry`; newline-joined `data` lines; ignored comments; CRLF/CR/LF endings; UTF-8 BOM stripping. Small fixed rules permit timestamps and `event` limits; `eventsource-stream` 0.2.3 has not been updated since 2022.
 
-【事实】2026-09-13 实现：`SseDecoder::feed(&[u8]) -> Result<Vec<SseEvent>, SseError>` 增量解码（跨分片的行与 `\r\n` 均正确处理），`finish()` 丢弃未以空行结束的事件（规范要求）；`SseEvent { event: Option<String>, data, id: Option<String>, retry: Option<Duration>, received_at: Option<Instant> }`，`id` 含 NUL 时忽略，`retry` 仅接受纯数字；默认单事件上限 `DEFAULT_MAX_EVENT_BYTES` = 16 MiB，超限返回 `SseError::EventTooLarge`。`sse::decode_stream(body, max_event_bytes)` 把响应体流转换为事件流并填充 `received_at`，首个错误（传输或解码）后结束。
+[Fact] `SseDecoder::feed(&[u8]) -> Result<Vec<SseEvent>, SseError>` handles split lines/CRLF incrementally; `finish()` discards events lacking a terminating blank line per spec. `SseEvent { event: Option<String>, data, id: Option<String>, retry: Option<Duration>, received_at: Option<Instant> }` ignores NUL-containing IDs and accepts numeric-only retries. Default event limit is 16 MiB (`DEFAULT_MAX_EVENT_BYTES`), returning `SseError::EventTooLarge`. `sse::decode_stream(body, max_event_bytes)` timestamps events and ends after its first transport/decoding failure.
 
-## 5. 可重试性分类
+## 5. Retry classification
 
-【决策】`ApiCallError::is_retryable` 默认：状态码 408、409、429 或 ≥ 500；网络层错误视为可重试；适配器可在错误处理器中按响应体覆盖（如 Anthropic 流内错误 `overloaded_error` 对应 529、可重试，`request_too_large` 对应 413、不可重试）。依据：这些状态码在各供应商文档中标注为瞬时；流内错误帧没有 HTTP 状态码，只能按错误类型推断。
+[Decision] API statuses 408, 409, 429, and ≥500 default to retryable; network failures are retryable. Adapters may override using body data, for example Anthropic `overloaded_error` → retryable 529 and `request_too_large` → non-retryable 413. Provider guidance identifies transient statuses; in-stream errors need type-based inference because they have no HTTP status.
 
 ```rust
 pub fn is_retryable_status(status: StatusCode) -> bool {
@@ -112,13 +114,13 @@ pub fn is_retryable_status(status: StatusCode) -> bool {
 }
 ```
 
-`TransportError::{Connect, Timeout, Reset, Io}` 转换为 `ApiCallError { is_retryable: true }`；`TransportError::Tls`、`InvalidUrl` 为不可重试。
+`TransportError::{Connect, Timeout, Reset, Io}` map to retryable API errors; TLS and invalid URLs do not.
 
-【事实】2026-09-13 实现的 `retry` 模块另提供 `retry_after(&Headers) -> Option<Duration>`（优先 `retry-after-ms` 毫秒，其次 `retry-after` 的秒数或 HTTP 日期）与 `retry_after_within(&Headers, max)`（超过上限时忽略，供核心层重试策略使用，窗口为 60 s）。
+[Fact] The `retry` module also provides `retry_after(&Headers) -> Option<Duration>`, preferring milliseconds then seconds/HTTP dates, and `retry_after_within(&Headers, max)`, ignoring delays over the core's 60 s window.
 
-## 6. 设置与凭据加载
+## 6. Settings and credentials
 
-【决策】API 密钥与设置的加载：显式参数优先，其次环境变量（经 `ferrin_provider_util::settings` 读取），缺失时返回 `LoadApiKey`/`LoadSetting` 错误并说明应设置哪个参数或环境变量。依据：缺少密钥是最常见的首次接入失败，错误消息应直接给出修复方法。
+[Decision] Explicit settings/keys take precedence over environment variables read through `settings`. Missing values return `LoadApiKey`/`LoadSetting`, naming the parameter or variable to set so initial integration errors are actionable.
 
 ```rust
 pub fn load_api_key(config: ApiKeyConfig<'_>) -> Result<SecretString, LoadApiKeyError>;
@@ -126,13 +128,13 @@ pub fn load_setting(config: SettingConfig<'_>) -> Result<String, LoadSettingErro
 pub fn load_optional_setting(config: SettingConfig<'_>) -> Option<String>;
 ```
 
-【事实】2026-09-13 实现：`load_optional_setting(value: Option<String>, environment_variable: &str) -> Option<String>` 不使用配置结构（无错误消息可生成）；`ApiKeyConfig { api_key: Option<SecretString>, environment_variable, parameter_name, description }`、`SettingConfig { value: Option<String>, environment_variable, setting_name, description }`；错误消息格式为 `"{description} API key is missing. Pass it using the '{parameter}' parameter or the {ENV} environment variable."`。`settings::env_var(name)` 是工作区内唯一读取进程环境的位置（局部放行 `clippy::disallowed_methods`），非 UTF-8 值视为缺失。
+[Fact] `load_optional_setting(value: Option<String>, environment_variable: &str) -> Option<String>` needs no config struct because it emits no error. Config types are `ApiKeyConfig { api_key: Option<SecretString>, environment_variable, parameter_name, description }` and `SettingConfig { value: Option<String>, environment_variable, setting_name, description }`. Missing-key messages use `"{description} API key is missing. Pass it using the '{parameter}' parameter or the {ENV} environment variable."`. `settings::env_var(name)` alone reads process environment, with a local Clippy exception; non-UTF-8 values count as missing.
 
-【决策】密钥类型为 `secrecy::SecretString`（0.10.3），`Debug` 输出遮蔽；只在构造 `Authorization` 头时 `expose_secret()`。适配器把凭据加载放在请求构造阶段的 `headers()` 闭包中执行（【事实】`createOpenAI` 的 `getHeaders` 惰性闭包），使 `create_openai()` 不因缺少环境变量而失败。
+[Decision] Keys use `secrecy::SecretString` 0.10.3 and redacted `Debug`, exposing only during `Authorization` construction. Load inside request-time `headers()` closures, following the lazy `createOpenAI` `getHeaders` pattern, so missing environment variables do not fail `create_openai()`.
 
-## 7. 供应商选项解析
+## 7. Provider option parsing
 
-【决策】供应商选项解析：取 `provider_options[provider]` 并按类型反序列化，失败返回 `InvalidArgument` 错误；键不存在时返回 `None`。依据：其他供应商的键在本适配器中无意义，忽略而非报错使同一份选项可以跨供应商复用。
+[Decision] Deserialize only `provider_options[provider]`; invalid data returns `InvalidArgument`, missing keys return `None`. Ignoring other providers' keys allows shared option sets.
 
 ```rust
 pub fn parse_provider_options<T: DeserializeOwned + JsonSchema>(
@@ -141,19 +143,19 @@ pub fn parse_provider_options<T: DeserializeOwned + JsonSchema>(
 ) -> Result<Option<T>, InvalidArgumentError>;
 ```
 
-【决策】2026-09-13 实现的约束为 `T: DeserializeOwned`，不要求 `JsonSchema`：选项类型是适配器内部结构，serde 反序列化即完成校验，错误消息 `invalid {provider_key} provider options: {serde error}` 以 `InvalidArgumentError { argument: "provider_options", cause }` 返回。由此 `ferrin-provider-util` 不依赖 `ferrin-schema`（[Crate 划分](02-crates.md)第 2 节已同步）。
+[Decision] The 2026-09-13 implementation requires only `T: DeserializeOwned`, without `JsonSchema`. Serde validates adapter-internal options; errors use `invalid {provider_key} provider options: {serde error}` and `InvalidArgumentError { argument: "provider_options", cause }`. Thus provider utilities need no `ferrin-schema` dependency ([Crate boundaries](02-crates.md), section 2).
 
-## 8. 安全 URL 处理
+## 8. Secure URLs
 
-【决策】安全 URL 规则（依据：这些规则共同封堵 SSRF 与 DNS 重绑定）：
+[Decision] Rules jointly prevent SSRF and DNS rebinding:
 
-- 应用或模型提供的 URL 在下载前必须通过校验：仅允许 `http`/`https`（默认仅 `https`，可配置），拒绝解析到回环、链路本地、私有网段、多播与保留地址的主机名，拒绝含凭据的 URL。
-- 重定向不自动跟随；每一跳重新校验目标 URL；限制最大跳数。
-- 通过 DNS 固定（解析一次后连接固定地址）防止解析结果在校验后变化（DNS rebinding）。
-- `trusted_origins`/`credentialed_origins` 白名单允许对已知来源放宽限制或携带凭据。
-- 下载体积上限 100 MiB，超出中止；lint 规则要求所有出站请求位于经审计的入口。
+- Validate application/model download URLs before use: HTTP/HTTPS only (HTTPS by default, configurable), no embedded credentials, and reject hosts resolving to loopback, link-local, private, multicast, or reserved addresses.
+- Follow redirects manually, revalidate each target, and cap hops.
+- Resolve once and pin validated addresses for connection to prevent DNS rebinding.
+- `trusted_origins`/`credentialed_origins` allow explicit exceptions or credentials for known origins.
+- Abort downloads over 100 MiB; lints require outbound requests through audited entry points.
 
-【决策】`ferrin_provider_util::secure_url` 实现：
+[Decision] `ferrin_provider_util::secure_url` implementation:
 
 ```rust
 pub struct UrlPolicy {
@@ -169,44 +171,44 @@ pub async fn validate_url(url: &Url, policy: &UrlPolicy) -> Result<ValidatedUrl,
 pub async fn fetch(transport: &dyn HttpTransport, url: Url, policy: &UrlPolicy, cancellation: CancellationToken) -> Result<Downloaded, DownloadError>;
 ```
 
-- 私网判定使用 `ipnet` 2.12.2 的网段表（IPv4：`10/8`、`172.16/12`、`192.168/16`、`127/8`、`169.254/16`、`0/8`、`100.64/10`、`224/4`、`240/4`；IPv6：`::1`、`fc00::/7`、`fe80::/10`、`::ffff:0:0/96` 映射地址按 IPv4 规则）。
-- DNS 解析使用 `tokio::net::lookup_host`，全部解析结果都必须通过判定；随后通过 reqwest `ClientBuilder::resolve_to_addrs` 固定地址发起连接。
-- 重定向由 `fetch` 手动处理：读取 `Location`，合并为绝对 URL，重新 `validate_url`，跨源重定向剥离 `Authorization`。
-- 体积限制在流式读取时累计检查，超限立即中止连接。
+- Use `ipnet` 2.12.2 subnet tables: IPv4 `10/8`, `172.16/12`, `192.168/16`, `127/8`, `169.254/16`, `0/8`, `100.64/10`, `224/4`, `240/4`; IPv6 `::1`, `fc00::/7`, `fe80::/10`, and mapped `::ffff:0:0/96` checked as IPv4.
+- Resolve with `tokio::net::lookup_host`, validate every result, and connect through reqwest `ClientBuilder::resolve_to_addrs`.
+- `fetch` resolves `Location` to an absolute URL, revalidates, and strips `Authorization` on cross-origin redirects.
+- Enforce cumulative size while streaming and abort immediately on excess.
 
-【事实】2026-09-13 实现（`crates/ferrin-provider-util/src/secure_url/`）：
+[Fact] Implementation on 2026-09-13 (`crates/ferrin-provider-util/src/secure_url/`):
 
-- `UrlPolicy` 字段如上，另有构建器方法 `allow_http()`、`allow_private_networks()`、`trust_origin(&Url)`、`credential_origin(&Url)`、`max_redirects(n)`、`max_body_bytes(n)`；`Scheme` 为 `Https | Http`；`ValidatedUrl { url, addresses: Vec<SocketAddr> }`。
-- 校验顺序：scheme → 嵌入凭据 → 主机存在 → 受信来源直接放行（不解析 DNS）→ 主机名规则（`localhost`、`*.localhost`、`*.local` 与 IP 字面量）→ `tokio::net::lookup_host` 解析 → 全部地址通过网段判定。`allow_private_networks` 只跳过网段判定，仍解析并固定地址。
-- 网段表按 IANA 特殊用途地址登记扩展：IPv4 增加 `192.0.0/24`、`192.0.2/24`、`198.18/15`、`198.51.100/24`、`203.0.113/24`；IPv6 为 `::`、`::1`、`fc00::/7`、`fe80::/10`、`fec0::/10`、`ff00::/8`、`2001:db8::/32`、`3fff::/20`，且 IPv4 映射（`::ffff:a.b.c.d`）、IPv4 兼容（`::a.b.c.d`）、NAT64（`64:ff9b::/96`、`64:ff9b:1::/48`）与 6to4（`2002::/16`）地址按内嵌 IPv4 再判定一次。判定函数 `is_private_ip`、`is_private_hostname` 公开。
-- `fetch_with_headers(transport, url, headers, policy, cancellation)`：先删除 `BLOCKED_DOWNLOAD_HEADERS`（逐跳、代理、云元数据与 Cookie 头），`Authorization` 只发送给 `credentialed_origins` 中的来源；缺省补 `User-Agent: ferrin/<version>`；3xx 响应按 `Location` 合并绝对 URL，超过 `max_redirects` 报错，跨源跳转只保留 `User-Agent` 与 `Accept`（保留 `Accept` 以便内容协商在跨 CDN 跳转后仍有效）；非 2xx 为 `Status` 错误；体流经 `read_body` 按 `max_body_bytes` 限制。`fetch` 为无额外头的便捷形式。
-- `Downloaded { url, data, media_type: Option<MediaType>（Content-Type 去参数）, headers }`；`DownloadError { url: Box<Url>, kind: DownloadErrorKind }`，`DownloadErrorKind` 为 `Validation(UrlValidationError) | Transport(TransportError) | Status { status, headers } | InvalidRedirect | TooManyRedirects { limit } | Cancelled`；URL 装箱是为满足 `large-error-threshold = 128`。
+- `UrlPolicy` adds builder methods `allow_http()`, `allow_private_networks()`, `trust_origin(&Url)`, `credential_origin(&Url)`, `max_redirects(n)`, `max_body_bytes(n)`. `Scheme` is `Https | Http`; `ValidatedUrl { url, addresses: Vec<SocketAddr> }`.
+- Validation order: scheme, embedded credentials, host presence, trusted-origin bypass without DNS, hostname rules (`localhost`, `*.localhost`, `*.local`, literals), DNS resolution, all-address subnet checks. `allow_private_networks` skips only subnet rejection, retaining resolution and pinning.
+- IANA-based additions: IPv4 `192.0.0/24`, `192.0.2/24`, `198.18/15`, `198.51.100/24`, `203.0.113/24`; IPv6 `::`, `::1`, `fc00::/7`, `fe80::/10`, `fec0::/10`, `ff00::/8`, `2001:db8::/32`, `3fff::/20`. Mapped/compatible IPv4 (`::ffff:a.b.c.d`, `::a.b.c.d`), NAT64 (`64:ff9b::/96`, `64:ff9b:1::/48`), and 6to4 (`2002::/16`) also check embedded IPv4. `is_private_ip`/`is_private_hostname` are public.
+- `fetch_with_headers(transport, url, headers, policy, cancellation)` strips `BLOCKED_DOWNLOAD_HEADERS` (hop-by-hop, proxy, cloud metadata, Cookie), sends `Authorization` only to credentialed origins, and defaults `User-Agent` to `ferrin/<version>`. Resolve 3xx `Location`, enforce hop limits, and retain only `User-Agent` and `Accept` across origins, preserving CDN content negotiation. Non-2xx responses return `Status`; `read_body` enforces `max_body_bytes`. `fetch` is the no-extra-headers convenience form.
+- `Downloaded { url, data, media_type: Option<MediaType>, headers }` strips Content-Type parameters. `DownloadError { url: Box<Url>, kind: DownloadErrorKind }` uses `Validation(UrlValidationError) | Transport(TransportError) | Status { status, headers } | InvalidRedirect | TooManyRedirects { limit } | Cancelled`. Boxing the URL meets the 128-byte error threshold.
 
-【决策】通过 Clippy `disallowed-methods` 禁止在 `secure_url` 模块之外直接调用 `reqwest::Client::get/post/execute`（配置见[编码规范](../03-engineering/03-coding-standards.md)）。
+[Decision] Clippy disallows direct `reqwest::Client::get/post/execute` outside secure URL handling; see [Coding standards](../03-engineering/03-coding-standards.md).
 
-## 9. ID 生成
+## 9. ID generation
 
-【决策】ID 生成器生成 `<prefix>-<随机字母数字>`（默认 16 位，分隔符 `-`）；核心层以 24 位随机部分生成文本 ID 与调用 ID。依据：带前缀的 ID 在日志中可辨识来源；24 位字母数字随机部分的碰撞概率可忽略。
+[Decision] IDs are `<prefix>-<random alphanumeric>`, default 16 random characters with `-`; core text/call IDs use 24. Prefixes identify sources in logs; 24 random characters make collisions negligible.
 
 ```rust
 pub trait IdGenerator: Send + Sync { fn generate(&self) -> String; }
 pub struct PrefixedIdGenerator { prefix: &'static str, size: usize }   // alphanumeric via rand 0.10 ThreadRng
 ```
 
-核心层默认前缀：`ftxt`（文本部件）、`call`（调用）、`appr`（审批）、`tool`（工具调用 ID 兜底）。测试通过 `ferrin_testing::SequentialIdGenerator` 获得确定性 ID。
+Core prefixes: `ftxt` text parts, `call` invocations, `appr` approvals, `tool` fallback `tool` IDs. Tests use `ferrin_testing::SequentialIdGenerator`.
 
-【事实】2026-09-13 实现：`PrefixedIdGenerator::new(prefix: impl Into<String>, size)`（前缀为 `Option<String>`，`unprefixed(size)` 无前缀，`with_separator(char)` 更换分隔符，默认 `-`），字母表 `0-9A-Za-z`，随机源 `rand::rng()`；`generate_id()` 生成 16 位无前缀 ID；任何 `Fn() -> String + Send + Sync` 闭包自动实现 `IdGenerator`。
+[Fact] `PrefixedIdGenerator::new(prefix: impl Into<String>, size)` stores an optional prefix; `unprefixed(size)` omits it and `with_separator(char)` replaces `-`. Alphabet `0-9A-Za-z`, source `rand::rng()`. `generate_id()` returns 16 unprefixed characters; `Fn() -> String + Send + Sync` automatically implements `IdGenerator`.
 
 ## 10. User-Agent
 
-【决策】`with_user_agent_suffix` 在现有 `user-agent` 值后追加空格分隔的标识；链路为应用头 → `ferrin/<version>` → `ferrin-<provider>/<version>`。依据：HTTP User-Agent 语法允许多个产品标识，追加而非覆盖保留应用自己的标识。
+[Decision] `with_user_agent_suffix` appends space-separated products: application → `ferrin/<version>` → `ferrin-<provider>/<version>`, preserving caller identity under HTTP User-Agent syntax.
 
-Ferrin 链路：应用头 → `ferrin/<core-version>` → `ferrin-<provider>/<provider-crate-version>`（Agent 额外前置 `ferrin-agent/tool-loop`）。
+Ferrin chain: application → `ferrin/<core-version>` → `ferrin-<provider>/<provider-crate-version>`; agents prepend `ferrin-agent/tool-loop` to the SDK chain.
 
-## 11. 待验证
+## 11. Verification items
 
-- 【事实】（PV-015，`verification/pv015-reqwest`）reqwest 0.13.5 保留 `ClientBuilder::resolve_to_addrs`、`redirect(redirect::Policy::none())`、`https_only`，并新增 `http1_max_headers`（默认 100）与 `Error::is_dns()`（0.13.5 变更日志）。构建 100 个固定地址客户端耗时 5.8 ms（每个约 58 µs）；对不可达固定地址的请求在超时后失败且 `is_dns() == false`，证明未再进行 DNS 解析。0.13 的破坏性变更：默认 TLS 后端改为 rustls（feature 名由 `rustls-tls` 改为 `rustls`），默认加密提供者为 aws-lc，默认证书校验器为 `rustls-platform-verifier`，`query`/`form` 变为可选 feature，TLS 方法改名（旧名软弃用）。
-- 【决策】每个下载目标构建专用客户端的方案成立（成本在微秒级、内存随请求生命周期释放），不引入 hyper-util 直连方案。`ReqwestTransport` 的 features 原定为 `rustls`、`http2`、`stream`、`json`、`multipart`、`charset`（2026-09-13 修订，见下一条）。
-- 【决策】2026-09-13 实现后 reqwest 只启用 `rustls`（经工作区 feature）、`http2`、`stream`：JSON 序列化由 `serde_json` 直接完成，multipart 由本 crate 编码（见第 1 节），响应体一律按字节读取后有损转换为 UTF-8，`charset` 解码无用武之地。依据：少启用三个 feature 可去掉 `mime_guess`、`encoding_rs` 等传递依赖，并让请求体编码在传输实现之间保持一致（测试传输与录制传输看到与 reqwest 完全相同的字节）。
-- 【事实】（PV-016，`verification/pv016-header-values`）`http` 1.5.0 的 `HeaderValue::from_str` 与 `from_bytes` 都接受 0x80–0xFF 字节（UTF-8 文本可直接构造），拒绝换行与 DEL，接受制表符；`HeaderValue::to_str()` 对含非 ASCII 字节的值返回错误，需用 `as_bytes()` 读取。
-- 【决策】`Headers::insert(&str, &str)` 使用 `HeaderValue::from_str`；响应头读取接口提供 `get_str()`（仅 ASCII）与 `get_bytes()`，供应商元数据中的头值以 UTF-8 有损转换后保存。第一方供应商的请求头均为 ASCII，不受影响。
+- [Fact] (PV-015, `verification/pv015-reqwest`) reqwest 0.13.5 retains `resolve_to_addrs`, disabled redirect policy, and `https_only`, adding `http1_max_headers` (default 100) and `Error::is_dns()` per its changelog. Constructing 100 pinned clients took 5.8 ms, about 58 µs each. An unreachable pinned address timed out with `is_dns() == false`, confirming no further DNS lookup. Version 0.13 switches defaults to `rustls` (`rustls-tls` renamed `rustls`), aws-lc, and `rustls-platform-verifier`; `query`/`form` become optional; TLS methods are renamed with soft deprecations.
+- [Decision] Dedicated clients per download target are viable at microsecond cost and request-bound memory lifetime; do not add direct hyper-util connections. Originally proposed reqwest features were `rustls`, `http2`, `stream`, `json`, `multipart`, `charset`; revised below on 2026-09-13.
+- [Decision] Enable only workspace `rustls`, `http2`, and `stream`. Serialize JSON with `serde_json`, encode multipart locally, and decode response bytes as lossy UTF-8. Removing three features eliminates dependencies such as `mime_guess` and `encoding_rs` while ensuring test, recording, and reqwest transports see identical body bytes.
+- [Fact] (PV-016, `verification/pv016-header-values`) `http` 1.5.0 `HeaderValue::from_str`/`from_bytes` accept 0x80–0xFF and tabs, reject newlines/DEL, and allow UTF-8 construction. `to_str()` rejects non-ASCII values; use `as_bytes()`.
+- [Decision] `Headers::insert(&str, &str)` uses `HeaderValue::from_str`; read through ASCII-only `get_str()` or `get_bytes()`. Store metadata headers with lossy UTF-8 conversion. First-party request headers are ASCII and unaffected.

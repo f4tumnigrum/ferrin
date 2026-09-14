@@ -1,69 +1,71 @@
-# 架构决策记录流程
+# Architecture decision record process
 
-## 1. 目的
+**English** | [Chinese](../zh-CN/03-engineering/07-adr-process.md)
 
-架构决策记录（ADR）保存对项目结构、公共契约或工程流程有长期影响的决策及其依据，使后续维护者能理解“为什么”而不仅是“是什么”。
+## 1. Purpose
 
-【决策】ADR 文件名以日期前缀，状态为 `proposed`、`accepted`、`rejected`、`deprecated`、`superseded`，由 `docs/04-decisions/README.md` 列出索引。依据：日期前缀给出自然的时间序；状态字段让被取代的决策留档而不误导读者。
+Architecture decision records (ADRs) preserve decisions and rationale with lasting effects on project structure, public contracts, or engineering processes, so future maintainers understand why as well as what.
 
-## 2. 何时需要 ADR
+[Decision] ADR filenames start with a date, use status `proposed`, `accepted`, `rejected`, `deprecated`, or `superseded`, and are indexed in `docs/04-decisions/README.md`. Dates provide chronological ordering; status keeps `superseded` decisions available without misleading readers.
 
-- 新增或移除 crate；调整 crate 间依赖方向。
-- `ferrin-spec` 公共类型或 trait 的破坏性变更。
-- 公共 API 形态的全局性规则（构建器约定、错误模型、序列化格式）。
-- 引入新的核心外部依赖（HTTP 客户端、Schema 库、运行时）。
-- 安全相关机制（签名、URL 策略、密钥处理）的设计或变更。
-- 工程流程的重大调整（CI 门禁、发布方式、MSRV 策略）。
+## 2. When an ADR is required
 
-局部实现选择（算法、数据结构、模块内部组织）不需要 ADR，在代码注释与 PR 描述中说明即可。
+- Adding or removing a crate, or changing dependency direction between crates.
+- Breaking changes to public types or traits in `ferrin-spec`.
+- Global public API conventions (builders, error model, serialization format).
+- Introducing a core external dependency (HTTP client, schema library, runtime).
+- Designing or changing security mechanisms (signatures, URL policy, secret handling).
+- Major engineering process changes (CI gates, release process, MSRV policy).
 
-## 3. 文件约定
+Local implementation choices (algorithms, data structures, internal module organization) do not require an ADR; document them in code comments and the PR description.
 
-- 位置：`docs/04-decisions/`。
-- 文件名：`YYYY-MM-DD-NNNN-<kebab-case-title>.md`，`NNNN` 为四位递增编号。
-- 语言：正文中文；代码与标识符英文。
-- 状态：`proposed` → `accepted` | `rejected`；`accepted` 可转为 `deprecated` 或 `superseded by NNNN`。
+## 3. File conventions
 
-## 4. 模板
+- Location: `docs/04-decisions/`, with matching Chinese translations in `docs/zh-CN/04-decisions/`.
+- Filename: `YYYY-MM-DD-NNNN-<kebab-case-title>.md`, where `NNNN` is a four-digit increasing number.
+- Language: English in the primary edition; Chinese prose in the independent Chinese edition. Code and identifiers use English in both ([ADR 0018](../04-decisions/2026-09-14-0018-english-primary-documentation.md)).
+- Status: `proposed` → `accepted` or `rejected`; `accepted` may become `deprecated` or `superseded by NNNN`.
+
+## 4. Template
 
 ```markdown
-# NNNN: <标题>
+# NNNN: <Title>
 
-- 状态：proposed | accepted | rejected | deprecated | superseded by NNNN
-- 日期：YYYY-MM-DD
-- 相关：<关联 ADR、issue、PR>
+- Status: proposed | accepted | rejected | deprecated | superseded by NNNN
+- Date: YYYY-MM-DD
+- Related: <ADRs, issues, PRs>
 
-## 背景
+## Context
 
-<问题、约束、相关事实（标注来源）>
+<Problem, constraints, relevant facts with sources>
 
-## 决策
+## Decision
 
-<做出的决定，使用肯定句>
+<The decision, stated affirmatively>
 
-## 依据
+## Rationale
 
-<技术理由；与备选方案的比较>
+<Technical reasons and comparison with alternatives>
 
-## 备选方案
+## Alternatives
 
-- <方案 A>：<为何未采用>
-- <方案 B>：<为何未采用>
+- <Option A>: <Why it was rejected>
+- <Option B>: <Why it was rejected>
 
-## 影响
+## Consequences
 
-<对代码、API、依赖、流程的影响；需要跟进的事项；待验证项>
+<Effects on code, APIs, dependencies, and process; follow-up work; pending items>
 ```
 
-## 5. 流程
+## 5. Workflow
 
-1. 作者以 `proposed` 状态提交 ADR PR（可与实现 PR 分离）。
-2. 至少两名维护者评审；涉及 `ferrin-spec` 的 ADR 需全部活跃维护者知悉。
-3. 达成一致后状态改为 `accepted` 合并；否决改为 `rejected` 并保留文件。
-4. 实现 PR 引用 ADR 编号。
-5. 决策被替代时，新 ADR 引用旧编号，旧 ADR 状态改为 `superseded by`。
-6. `docs/04-decisions/README.md` 索引随 ADR 同 PR 更新。
+1. Submit an ADR PR with status `proposed` (it may be separate from the implementation PR).
+2. At least two maintainers review it; all active maintainers must be aware of ADRs affecting `ferrin-spec`.
+3. On agreement, set status to `accepted` and merge; if `rejected`, set `rejected` and retain the file.
+4. Reference the ADR number in the implementation PR.
+5. When replacing a decision, cite the old ADR in the new one and set the old status to `superseded by`.
+6. Update `docs/04-decisions/README.md` and its Chinese counterpart in the same PR as the ADR.
 
-## 6. 与本文档集的关系
+## 6. Relationship to this documentation
 
-本文档集中标注为【决策】的条目在初始化阶段已汇总为编号 0001–0012 的 ADR（见 [ADR 索引](../04-decisions/README.md)）。后续设计文档修改若改变已有决策，必须先通过 ADR 流程。
+The initial `[Decision]` entries in this collection were recorded as ADRs 0001–0012 (see the [ADR index](../04-decisions/README.md)). Subsequent changes to an existing documented decision must first follow the ADR process.

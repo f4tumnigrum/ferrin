@@ -1,19 +1,21 @@
-# Provider 规范层
+# Provider specification
 
-`ferrin-spec` 定义供应商适配器必须实现的 trait 与数据类型。本层不含任何 HTTP、序列化格式或供应商逻辑。
+**English** | [Chinese](../zh-CN/01-architecture/04-provider-spec.md)
 
-## 1. 规范版本
+`ferrin-spec` defines the traits and data types provider adapters must implement. This layer contains no HTTP, wire-format, or provider-specific logic.
 
-【事实】动态类型语言中的 SDK 通常给每个模型接口加规范版本字段，由核心层在运行时把旧版本实例升级到当前版本，以便不同规范版本的适配器共存；这一机制在有编译期类型检查的语言中没有必要。
+## 1. Specification version
 
-【决策】Ferrin 不做多规范版本共存。规范版本由 crate 版本表达：`ferrin-spec` 的每个破坏性发布即一次规范升级，供应商 crate 通过 Cargo 版本约束绑定。crate 内导出常量 `pub const SPEC_VERSION: &str = env!("CARGO_PKG_VERSION");` 供诊断输出。依据：Rust 的类型系统在编译期保证适配器与核心使用同一规范；运行时版本字段与升级适配层只在无编译期检查的语言中必要。
+[Fact] SDKs in dynamically typed languages commonly attach a specification version to each model interface and upgrade older instances at runtime, allowing adapters with different versions to coexist. Compile-time type checking makes this mechanism unnecessary.
 
-## 2. Trait 形态
+[Decision] Ferrin does not support concurrent specification versions. Each breaking `ferrin-spec` release is a specification upgrade, bound by adapter Cargo version constraints. Export `pub const SPEC_VERSION: &str = env!("CARGO_PKG_VERSION");` for diagnostics. Rust checks specification compatibility between adapters and the core at compile time, eliminating runtime version fields and upgrade adapters.
 
-【决策】每个模型能力定义两层 trait：
+## 2. Trait shape
 
-1. 实现层 trait：原生 `async fn` 语义，供适配器实现。
-2. 对象层 trait：`Dyn` 前缀，返回装箱 Future，对象安全，由 blanket impl 自动提供。
+[Decision] Define two trait layers for each model capability:
+
+1. Implementation trait: native async semantics for adapter authors.
+2. Object trait: `Dyn` prefix, boxed futures, object-safe, automatically supplied by a blanket implementation.
 
 ```rust
 use std::future::Future;
@@ -51,15 +53,15 @@ pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type BoxStream<'a, T> = Pin<Box<dyn Stream<Item = T> + Send + 'a>>;
 ```
 
-依据：见[总体架构](01-overall-architecture.md)第 5 节。核心层与中间件持有 `Arc<dyn DynLanguageModel>`；`ferrin_spec::dynamic` 提供 `pub type LanguageModelRef = Arc<dyn DynLanguageModel>` 等别名。
+See [Overall architecture](01-overall-architecture.md), section 5. The core and middleware hold `Arc<dyn DynLanguageModel>`; `ferrin_spec::dynamic` provides aliases such as `pub type LanguageModelRef = Arc<dyn DynLanguageModel>`.
 
-`supported_urls` 为异步。依据：部分供应商需要请求远端能力表才能确定支持的 URL 模式。
+`supported_urls` is async because some providers need a remote capability lookup to determine supported URL patterns.
 
-## 3. 语言模型
+## 3. Language model
 
-### 3.1 调用选项
+### 3.1 Call options
 
-【决策】`CallOptions` 覆盖采样参数（最大输出令牌、temperature、top-p、top-k、presence/frequency penalty、停止序列、seed）、响应格式（`text` | `json {schema?, name?, description?}`）、工具与工具选择（`auto` | `none` | `required` | 指定工具）、原始分片开关、取消令牌、请求头、推理等级（`provider-default` | `none` | `minimal` | `low` | `medium` | `high` | `xhigh`）与供应商选项。依据：这是主流供应商采样参数的并集；适配器对不支持的参数产生 `unsupported` 警告而非报错（第 7 节契约第 1 条）。
+[Decision] `CallOptions` covers sampling (maximum output tokens, temperature, top-p, top-k, presence/frequency penalties, stop sequences, seed), response format (`text` | `json {schema?, name?, description?}`), tools and tool choice (`auto` | `none` | `required` | a named tool), raw chunk inclusion, cancellation, headers, reasoning level (`provider-default` | `none` | `minimal` | `low` | `medium` | `high` | `xhigh`), and provider options. This is the union of major providers' parameters; `unsupported` options produce warnings instead of errors (section 7, contract 1).
 
 ```rust
 #[derive(Debug, Clone)]
@@ -99,11 +101,11 @@ pub enum ToolChoice { Auto, None, Required, Tool { tool_name: ToolName } }
 pub enum ReasoningEffort { #[default] ProviderDefault, None, Minimal, Low, Medium, High, XHigh }
 ```
 
-`CallOptions` 不派生 `Serialize`：它包含取消令牌。fixture 录制使用 `CallOptions::to_recordable()` 输出可序列化快照。
+`CallOptions` does not derive `Serialize` because it contains a cancellation token. Fixture recording uses `CallOptions::to_recordable()` for serializable snapshots.
 
-### 3.2 工具定义
+### 3.2 Tool definitions
 
-【决策】函数工具携带 `name`、`description?`、`input_schema`（JSON Schema）、`strict?`、`input_examples?`、`provider_options?`；供应商工具携带 `id`（`<provider>.<name>`）、`name` 与 `args`（JSON 对象）。依据：函数工具由应用定义并在客户端执行；供应商工具（网页搜索、代码执行等）由供应商定义并在服务端执行，只需要标识与参数。
+[Decision] Function tools carry `name`, `description?`, `input_schema` (JSON Schema), `strict?`, `input_examples?`, and `provider_options?`. Provider tools carry `id` (`<provider>.<name>`), `name`, and `args` (a JSON object). Applications define and execute function tools locally; providers define and execute tools such as web search and code execution, needing only an identifier and arguments.
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,9 +127,9 @@ pub enum ToolDefinition {
 }
 ```
 
-### 3.3 结果
+### 3.3 Results
 
-【决策】非流式结果携带 `content`、`finish_reason`、`usage`、`provider_metadata?`、`request? {body?}`、`response? {id?, timestamp?, model_id?, headers?, body?}` 与 `warnings`；流式结果携带 `stream`、`request? {body?}` 与 `response? {headers?}`，其余信息以流事件（`response-metadata`、`finish`）传递。依据：流式调用在流结束前无法得知用量与完成原因，这些字段只能作为事件出现。
+[Decision] Non-streaming results carry `content`, `finish_reason`, `usage`, `provider_metadata?`, `request? {body?}`, `response? {id?, timestamp?, model_id?, headers?, body?}`, and `warnings`. Streaming results carry `stream`, `request? {body?}`, and `response? {headers?}`; other information arrives as `response-metadata` and `finish` events. Usage and `finish` reason cannot be known until the `stream` ends.
 
 ```rust
 pub struct GenerateResult {
@@ -147,37 +149,37 @@ pub struct StreamResult {
 }
 ```
 
-【决策】`StreamResult::stream` 的元素类型是 `StreamPart` 而不是 `Result<StreamPart, _>`：供应商错误以 `StreamPart::Error` 事件传递。依据：错误作为事件让核心层的弹性阶段可以在同一条流上实现流级重试与 `on_error` 回调，而不必区分“元素错误”与“流结束原因”。传输层的致命错误（连接中断）由适配器转换为 `Error` 事件后结束流。
+[Decision] `StreamResult::stream` yields `StreamPart`, not `Result<StreamPart, _>`; provider errors are `StreamPart::Error` events. This lets the resilience stage implement stream retries and `on_error` on one event path, without distinguishing item errors from termination causes. Adapters convert fatal transport failures into an `Error` event and end the stream.
 
-### 3.4 流事件顺序契约
+### 3.4 Stream ordering contract
 
-【决策】流以 `stream-start` 开始，`finish` 结束；`text-delta` 必须位于同 `id` 的 `text-start`/`text-end` 之间；工具输入以 `tool-input-start`、若干 `tool-input-delta`、`tool-input-end`、`tool-call` 顺序出现；供应商分配的部件 ID 只需在单次调用内唯一，核心层在多步骤流中重映射冲突 ID。依据：明确的开始/结束事件让消费者可以按 `id` 聚合并行部件；ID 唯一性只要求到单次调用，因为供应商的 ID 生成不受核心层控制。
+[Decision] Streams start with `stream-start` and end with `finish`. Each `text-delta` lies between `text-start`/`text-end` for its ID. Tool input follows `tool-input-start`, zero or more `tool-input-delta`, `tool-input-end`, then `tool-call`. Provider part IDs need only be unique within one call; the core remaps collisions across steps. Explicit boundaries support interleaved parts; provider ID generation is outside the core's control.
 
-【决策】`ferrin-testing` 提供 `StreamContractChecker`，在适配器测试中断言上述顺序；核心层在 debug 构建下启用同样检查。
+[Decision] `ferrin-testing` provides `StreamContractChecker` to assert this ordering in adapter tests; the core enables the same checks in debug builds.
 
-## 4. 其他模型接口
+## 4. Other model interfaces
 
-下表列出规范层全部接口及其方法。所有方法的完整签名见 `ferrin-spec` 源码文档；此处给出方法与结果的概要。
+The following table summarizes all specification interfaces and their methods. Complete signatures are in `ferrin-spec` rustdoc.
 
-| Trait | 方法 | 说明 |
+| Trait | Methods | Notes |
 | --- | --- | --- |
-| `EmbeddingModel` | `max_embeddings_per_call() -> Option<usize>`、`supports_parallel_calls() -> bool`、`do_embed(EmbedOptions{values, cancellation, headers, provider_options}) -> EmbedResult{embeddings, usage{tokens}, provider_metadata, response, warnings}` | 上限由 `max_embeddings_per_call` 给出，核心层据此分块 |
-| `ImageModel` | `max_images_per_call() -> Option<usize>`、`do_generate(ImageOptions{prompt, n, size, aspect_ratio, seed, files?, mask?, ...}) -> ImageResult{images, warnings, response, provider_metadata}` | 单次调用可返回多张图像 |
-| `SpeechModel` | `do_generate(SpeechOptions{text, voice, output_format, instructions, speed, language, ...}) -> SpeechResult{audio, warnings, request, response, provider_metadata}` | 音频以字节与媒体类型返回 |
-| `TranscriptionModel` | `do_generate(TranscriptionOptions{audio, media_type, ...}) -> TranscriptionResult{text, segments, language, duration_in_seconds, ...}`；可选 `do_stream` | 流式转写可选 |
-| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score, document?}], usage, ...}` | 结果按相关度降序 |
-| `VideoModel` | 同步 `do_generate` 或异步三段式 `do_start`/`do_status`/可选 `handle_webhook` | 两种形态见下文决策 |
-| `Files` | `upload_file(UploadFileOptions{data, media_type, filename, provider_options}) -> UploadFileResult{provider_reference, provider_metadata, warnings}`；可选 `get_file_metadata`、`download_file`、`delete_file` | 上传后返回供应商引用，供文件部件使用 |
-| `Skills` | `upload_skill(...) -> {provider_reference, ...}` | 与文件上传同构 |
-| `Batch` | `start`、`status`、`results`（流）、可选 `cancel`、`list` | 结果按项流式返回 |
-| `RealtimeModel` | WebSocket 会话：连接、发送事件、接收标准化事件、客户端密钥获取 | 事件集合见[其他模态](11-other-modalities.md) |
-| `SpeechTranslationModel` | 仅流式：`do_stream(...)` | 无非流式形态 |
+| `EmbeddingModel` | `max_embeddings_per_call() -> Option<usize>`, `supports_parallel_calls() -> bool`, `do_embed(EmbedOptions{values, cancellation, headers, provider_options}) -> EmbedResult{embeddings, usage{tokens}, provider_metadata, response, warnings}` | The core chunks input using `max_embeddings_per_call` |
+| `ImageModel` | `max_images_per_call() -> Option<usize>`, `do_generate(ImageOptions{prompt, n, size, aspect_ratio, seed, files?, mask?, ...}) -> ImageResult{images, warnings, response, provider_metadata}` | One call may return multiple images |
+| `SpeechModel` | `do_generate(SpeechOptions{text, voice, output_format, instructions, speed, language, ...}) -> SpeechResult{audio, warnings, request, response, provider_metadata}` | Returns audio bytes and media type |
+| `TranscriptionModel` | `do_generate(TranscriptionOptions{audio, media_type, ...}) -> TranscriptionResult{text, segments, language, duration_in_seconds, ...}`; optional `do_stream` | Streaming transcription is optional |
+| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score, document?}], usage, ...}` | Descending relevance order |
+| `VideoModel` | Synchronous `do_generate`, or asynchronous `do_start`/`do_status`/optional `handle_webhook` | See the decision below |
+| `Files` | `upload_file(UploadFileOptions{data, media_type, filename, provider_options}) -> UploadFileResult{provider_reference, provider_metadata, warnings}`; optional `get_file_metadata`, `download_file`, `delete_file` | Uploads return provider references for file parts |
+| `Skills` | `upload_skill(...) -> {provider_reference, ...}` | Same structure as file uploads |
+| `Batch` | `start`, `status`, streaming `results`, optional `cancel`, `list` | Results stream item by item |
+| `RealtimeModel` | WebSocket sessions: connect, send events, receive normalized events, obtain client secrets | See [Other modalities](11-other-modalities.md) for events |
+| `SpeechTranslationModel` | Streaming-only `do_stream(...)` | No non-streaming form |
 
-【决策】`VideoModel` 的同步与异步两种形态在 Rust 中表达为一个 trait：`do_generate`、`do_start`/`do_status`、`handle_webhook` 均有返回 `UnsupportedFunctionality` 的默认实现，并配套 `supports_generate()`、`supports_operations()`、`supports_webhook()` 能力查询；适配器至少实现其中一组。轮询、超时与 Webhook 等待只在核心层 `generate_video` 实现，规范层不含轮询循环（避免 `ferrin-spec` 依赖 `tokio::time`，且轮询策略与取消令牌只需实现一次）。可选方法以 `fn supports_x(&self) -> bool` + 返回 `UnsupportedFunctionality` 错误的默认实现表达，而不是 `Option<fn>`。依据：Rust trait 不能表达可选方法；显式能力查询方法可以让核心层在调用前判断，与动态语言中“方法是否存在”的运行时检查等价。
+[Decision] One `VideoModel` trait covers synchronous and asynchronous forms. `do_generate`, `do_start`/`do_status`, and `handle_webhook` default to `UnsupportedFunctionality`, with `supports_generate()`, `supports_operations()`, and `supports_webhook()` queries; adapters implement at least one group. Polling, timeouts, and webhook waiting belong only in core `generate_video`, keeping `tokio::time` out of `ferrin-spec` and centralizing cancellation and polling policy. Optional methods use `fn supports_x(&self) -> bool` plus an unsupported default, rather than `Option<fn>`: Rust traits have no optional methods, so explicit queries replace runtime method-existence checks.
 
 ## 5. Provider trait
 
-【决策】`Provider` trait 以必备方法暴露语言、嵌入与图像模型，转写、语音、重排、文件与技能为可选方法；找不到模型时返回 `NoSuchModelError`。依据：三类必备方法对应全部第一方供应商都提供的能力，其余按供应商可选，缺省实现返回 `None`，核心层据此在调用前判断。
+[Decision] `Provider` requires language, embedding, and image model methods; transcription, speech, reranking, files, and skills are optional. Missing models return `NoSuchModelError`. The three required families are offered by all first-party providers; optional methods default to `None` for the core to check before calling.
 
 ```rust
 pub trait Provider: Send + Sync + 'static {
@@ -201,11 +203,11 @@ pub trait Provider: Send + Sync + 'static {
 }
 ```
 
-【决策】模型工厂方法同步返回。依据：模型对象在首次请求时才需要凭据；把凭据加载推迟到请求构造阶段，使工厂调用不产生 I/O，也让缺失密钥的错误出现在真正发起调用的地方。
+[Decision] Model factories return synchronously. Credentials are needed only on the first request, so loading them during request construction keeps factories free of I/O and reports missing keys at the actual call site.
 
-## 6. 规范层错误
+## 6. Specification errors
 
-【决策】规范层错误以 `ProviderError` 枚举承载（变体见下方代码）；`ApiCallError` 保留 URL、请求体、状态码、响应头、响应体、可重试标志与结构化数据，`is_retryable` 默认在状态码为 408、409、429 或 ≥500 时为真。依据：每个变体对应适配器可能遇到的一类可区分失败，核心层按变体决定重试、降级或直接返回；408/409/429/5xx 是各供应商文档标注为瞬时的状态码。
+[Decision] `ProviderError` is an enum (variants below). `ApiCallError` retains URL, request body, status, response headers/body, retryability, and structured data. By default, statuses 408, 409, 429, and ≥500 are retryable. Distinct variants let the core retry, fall back, or return immediately; provider documentation identifies these statuses as transient.
 
 ```rust
 #[derive(Debug, thiserror::Error)]
@@ -244,21 +246,21 @@ pub struct ApiCallError {
 }
 ```
 
-`ProviderError::is_retryable()` 仅对 `ApiCall` 变体返回其字段值，其余为 `false`。完整错误模型见[错误模型](12-error-model.md)。
+`ProviderError::is_retryable()` returns the stored flag only for `ApiCall`, and `false` otherwise. See [Error model](12-error-model.md).
 
-【事实】2026-09-13 实现：`ApiCall`、`InvalidPrompt`、`InvalidResponseData`、`JsonParse`、`NoSuchModel`、`NoSuchProviderReference`、`TooManyEmbeddingValues` 的载荷以 `Box<...>` 承载（`From<具体错误>` 实现自动装箱），`TypeValidationError` 的上下文字段装箱，使 `size_of::<ProviderError>() <= 128`（`clippy.toml` 的 `large-error-threshold`）；测试以 `const_assert!` 固定该上限。
+[Fact] Implementation on 2026-09-13: payloads for `ApiCall`, `InvalidPrompt`, `InvalidResponseData`, `JsonParse`, `NoSuchModel`, `NoSuchProviderReference`, and `TooManyEmbeddingValues` use `Box<...>` with automatic boxing in `From` implementations. `TypeValidationError` context is boxed, keeping `size_of::<ProviderError>() <= 128` (`large-error-threshold` in `clippy.toml`), enforced with `const_assert!` in tests.
 
-【决策】2026-09-13 增加 `Cancelled` 变体，表示调用被取消令牌中止；`kind_name()` 为 `"cancelled"`，不可重试。依据见 [HTTP 传输与安全](14-http-and-security.md)第 2 节。
+[Decision] Added `Cancelled` on 2026-09-13 for cancellation-token aborts. Its `kind_name()` is `"cancelled"` and it is not retryable. See [HTTP transport and security](14-http-and-security.md), section 2.
 
-## 7. 适配器契约清单
+## 7. Adapter contract checklist
 
-适配器实现必须满足：
+Adapters must meet these requirements:
 
-1. `do_generate` 与 `do_stream` 在收到不支持的选项时不报错，而是产生 `Warning::Unsupported` 并忽略该选项（例如 Anthropic Messages API 没有 `frequency_penalty`、`presence_penalty` 与 `seed`，适配器对这三项产生警告）。
-2. `provider_options` 只读取自身供应商键；键名由供应商配置的 `name` 派生。
-3. 工具调用 `input` 原样传递供应商返回的 JSON 字符串，不做解析。
-4. 流以 `StreamStart` 开始、`Finish` 结束；错误以 `Error` 事件传递后流结束。
-5. `usage.raw` 与 `provider_metadata` 携带供应商原始信息，标准字段无法映射时置 `None`。
-6. `request.body` 为发送的 JSON 请求体，`response.body` 为原始响应体（非流式）。
-7. 取消令牌触发时中止 HTTP 请求并结束流。
-8. 不读取环境变量以外的进程状态；环境变量读取通过 `ferrin_provider_util::settings` 进行。
+1. Unsupported options in `do_generate`/`do_stream` produce `Warning::Unsupported` and are ignored, rather than causing errors (for example, Anthropic Messages lacks `frequency_penalty`, `presence_penalty`, and `seed`).
+2. Read only the adapter's own `provider_options` key, derived from its configured `name`.
+3. Pass tool-call `input` through as the original provider JSON string, without parsing.
+4. Start with `StreamStart` and end with `Finish`; on failure, emit `Error` and end the stream.
+5. Preserve original information in `usage.raw` and `provider_metadata`; use `None` for unmappable standard fields.
+6. `request.body` is the sent JSON body; non-streaming `response.body` is the raw response.
+7. Abort the HTTP request and end the stream when cancellation fires.
+8. Read no process state other than environment variables, accessed through `ferrin_provider_util::settings`.

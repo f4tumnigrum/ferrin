@@ -1,70 +1,72 @@
-# Ferrin 设计文档
+# Ferrin Design Documentation
 
-本目录是 Ferrin 的目标架构、技术设计与工程规范。设计文档与代码同仓维护：`docs/` 描述架构与规范，`crates/` 是其实现；各架构章节末尾的「实现记录」说明代码在何处细化了设计。使用者入口见仓库根目录的 [README](../README.md)。
+**English** | [Chinese](zh-CN/README.md)
 
-## 文档约定
+This directory describes Ferrin's target architecture, technical design, and engineering standards. Documentation and code are maintained together: `docs/` defines the architecture and contracts, and `crates/` implements them. The implementation records at the end of each architecture chapter explain where the code refines the design. For the user-facing introduction, see the root [README](../README.md).
 
-- 正文使用中文；代码、标识符、配置与示例使用英文。
-- 每条陈述按来源分为三类，并在段落或条目前标注：
-  - 事实（标注为 `【事实】`）：由供应商官方 API 文档、协议规范（MCP、RFC、OpenTelemetry 语义约定等）、依赖 crate 的文档或源码、`verification/` 原型或已记录的运行确认的行为或结构，附来源。
-  - 决策（标注为 `【决策】`）：Ferrin 的设计决策，附技术依据。
-  - 待验证（标注为 `【待验证】`）：尚未通过实验、原型或外部资料确认的事项，带 `PV-xxx` 编号并统一登记于[待验证事项汇总](05-appendix/02-pending-verification.md)；`scripts/docs_lint.py` 检查编号与登记。
-- 写作与同步规则见[文档规范](03-engineering/09-documentation-standards.md)。
+## Documentation conventions
 
-## 目录
+- English is the primary edition. The independent Chinese edition is available through the language switch above; code, identifiers, configuration, and examples use English in both editions.
+- Each statement belongs to one of three source categories, marked at the start of its paragraph or item:
+  - Fact (`[Fact]`): behavior or structure confirmed by official provider API documentation, protocol specifications (MCP, RFCs, OpenTelemetry semantic conventions, etc.), dependency documentation or source code, `verification/` prototypes, or recorded runs. Include the source.
+  - Decision (`[Decision]`): a Ferrin design decision, with its technical rationale.
+  - Pending verification (`[Pending verification]`): an item not yet confirmed by experiments, prototypes, or external sources, assigned a `PV-xxx` ID and registered in [Pending verification](05-appendix/02-pending-verification.md). `scripts/docs_lint.py` checks IDs and registration.
+- See [Documentation standards](03-engineering/09-documentation-standards.md) for writing and synchronization rules.
 
-### 00 概览
+## Contents
 
-- [项目定位与范围](00-overview/01-project-scope.md)
-- [术语表](00-overview/02-glossary.md)
+### 00 Overview
 
-### 01 架构与技术设计
+- [Project scope](00-overview/01-project-scope.md)
+- [Glossary](00-overview/02-glossary.md)
 
-- [总体架构](01-architecture/01-overall-architecture.md)
-- [Crate 划分与职责](01-architecture/02-crates.md)
-- [核心数据模型](01-architecture/03-core-data-model.md)
-- [Provider 规范层](01-architecture/04-provider-spec.md)
-- [Prompt 标准化与消息转换](01-architecture/05-prompt-conversion.md)
-- [工具系统](01-architecture/06-tool-system.md)
-- [生成循环与流式管线](01-architecture/07-generation-loop-and-streaming.md)
-- [结构化输出](01-architecture/08-structured-output.md)
+### 01 Architecture and technical design
+
+- [Overall architecture](01-architecture/01-overall-architecture.md)
+- [Crate boundaries and responsibilities](01-architecture/02-crates.md)
+- [Core data model](01-architecture/03-core-data-model.md)
+- [Provider specification](01-architecture/04-provider-spec.md)
+- [Prompt normalization and message conversion](01-architecture/05-prompt-conversion.md)
+- [Tool system](01-architecture/06-tool-system.md)
+- [Generation loop and streaming pipeline](01-architecture/07-generation-loop-and-streaming.md)
+- [Structured output](01-architecture/08-structured-output.md)
 - [Agent](01-architecture/09-agent.md)
-- [中间件与注册表](01-architecture/10-middleware-and-registry.md)
-- [其他模态与资源接口](01-architecture/11-other-modalities.md)
-- [错误模型](01-architecture/12-error-model.md)
-- [可观测性](01-architecture/13-observability.md)
-- [HTTP 传输与安全](01-architecture/14-http-and-security.md)
-- [MCP 集成](01-architecture/15-mcp.md)
-- [并发、取消与超时](01-architecture/16-concurrency-and-cancellation.md)
-- [Provider 适配器实现指南](01-architecture/17-provider-implementation-guide.md)
+- [Middleware and registry](01-architecture/10-middleware-and-registry.md)
+- [Other modalities and resource interfaces](01-architecture/11-other-modalities.md)
+- [Error model](01-architecture/12-error-model.md)
+- [Observability](01-architecture/13-observability.md)
+- [HTTP transport and security](01-architecture/14-http-and-security.md)
+- [MCP integration](01-architecture/15-mcp.md)
+- [Concurrency, cancellation, and timeouts](01-architecture/16-concurrency-and-cancellation.md)
+- [Provider implementation guide](01-architecture/17-provider-implementation-guide.md)
 
-### 02 公共 API
+### 02 Public API
 
-- [API 设计原则](02-api/01-api-design-principles.md)
-- [API 参考与示例](02-api/02-api-reference.md)
+- [API design principles](02-api/01-api-design-principles.md)
+- [API reference and examples](02-api/02-api-reference.md)
 
-### 03 工程规范
+### 03 Engineering standards
 
-- [工具链与依赖版本](03-engineering/01-toolchain-and-dependencies.md)
-- [工作区布局](03-engineering/02-workspace-layout.md)
-- [编码规范](03-engineering/03-coding-standards.md)
-- [测试规范](03-engineering/04-testing.md)
-- [CI 与质量门禁](03-engineering/05-ci-and-quality-gates.md)
-- [版本与发布](03-engineering/06-versioning-and-release.md)
-- [架构决策记录流程](03-engineering/07-adr-process.md)
-- [安全规范](03-engineering/08-security-practices.md)
-- [文档规范](03-engineering/09-documentation-standards.md)
+- [Toolchain and dependency versions](03-engineering/01-toolchain-and-dependencies.md)
+- [Workspace layout](03-engineering/02-workspace-layout.md)
+- [Coding standards](03-engineering/03-coding-standards.md)
+- [Testing](03-engineering/04-testing.md)
+- [CI and quality gates](03-engineering/05-ci-and-quality-gates.md)
+- [Versioning and release](03-engineering/06-versioning-and-release.md)
+- [ADR process](03-engineering/07-adr-process.md)
+- [Security practices](03-engineering/08-security-practices.md)
+- [Documentation standards](03-engineering/09-documentation-standards.md)
 
-### 04 架构决策记录
+### 04 Architecture decision records
 
-- [ADR 索引](04-decisions/README.md)
+- [ADR index](04-decisions/README.md)
 
-### 05 附录
+### 05 Appendices
 
-- [核心行为清单](05-appendix/01-core-behaviors.md)
-- [待验证事项汇总](05-appendix/02-pending-verification.md)
+- [Core behavior checklist](05-appendix/01-core-behaviors.md)
+- [Pending verification](05-appendix/02-pending-verification.md)
 
-### 供应商与生成文件
+### Providers and generated files
 
-- 供应商能力矩阵、设置与选项：[OpenAI](providers/openai.md)、[Anthropic](providers/anthropic.md)、[Google](providers/google.md)、[OpenAI 兼容端点](providers/openai-compatible.md)
-- `api/`：`cargo xtask api-snapshot` 生成的各 crate 公共 API 摘要（JSON），CI 校验其与代码一致
+- Provider capability matrices, settings, and options: [OpenAI](providers/openai.md), [Anthropic](providers/anthropic.md), [Google](providers/google.md), and [OpenAI-compatible endpoints](providers/openai-compatible.md)
+- `api/`: public API summaries for each crate (JSON), generated by `cargo xtask api-snapshot`. CI checks that these match the code; both language editions share these generated files.

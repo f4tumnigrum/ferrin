@@ -1,33 +1,35 @@
 # Ferrin
 
-![Ferrin：AI, in Rust. One API. Multiple providers.](assets/banner.png)
+**English** | [Chinese](README.zh-CN.md)
+
+![Ferrin: AI, in Rust. One API. Multiple providers.](assets/banner.png)
 
 [![ci](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml/badge.svg)](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/ferrin.svg)](https://crates.io/crates/ferrin)
 [![docs.rs](https://docs.rs/ferrin/badge.svg)](https://docs.rs/ferrin)
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
-[![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#许可)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#license)
 
-Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和任意 OpenAI 兼容端点。
+Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI, and any OpenAI-compatible endpoint.
 
-项目处于 0.1.x 阶段，首个版本 0.1.0 已于 2026-09-14 发布到 crates.io，公共 API 在 1.0 之前可能变化。当前状态见[项目状态](#项目状态)。
+The project is in the 0.1.x series. Version 0.1.0 was published to crates.io on 2026-09-14; the public API may change before 1.0. See [Project status](#project-status).
 
-## 特性
+## Features
 
-- **统一的模型接口**：`generate_text` / `stream_text` 对所有供应商使用同一套构建器，切换供应商只需换模型句柄。
-- **工具调用**：`#[ferrin::tool]` 把异步函数变成带 JSON Schema 的工具；多步工具循环、`stop_when` 停止条件、供应商执行的工具、动态工具。
-- **人在回路审批**：工具可标记为需要审批，审批请求带 HMAC 签名，审批结果作为消息回传。
-- **结构化输出**：`Output::<T>::object()` 让模型直接填充带 `JsonSchema` 的 Rust 类型，流式时可获得部分对象与数组元素。
-- **Agent**：`ToolLoopAgent` 封装模型、指令、工具与停止条件，可复用、可挂钩每一步。
-- **流式管线**：事件流与最终结果分离，文本流、平滑输出、原始分块透传，可直接转发为 SSE。
-- **其他模态**：嵌入、图像、语音合成、转写、语音翻译、重排、视频、文件与技能上传、批处理、实时会话。
-- **MCP 客户端**：Streamable HTTP、SSE 与 stdio 传输，OAuth 授权，服务器工具一键接入工具集。
-- **可观测性**：`tracing` span 遵循 OpenTelemetry GenAI 语义约定；`ferrin-otel` 导出 span 与指标。
-- **工程约束**：无 `unsafe`，库代码禁止 `unwrap`，全部 HTTP 经统一传输层，密钥使用 `secrecy` 类型且不进日志。
+- **Unified model interface**: `generate_text` / `stream_text` use the same builders across providers. Switch providers by replacing the model handle.
+- **Tool calling**: `#[ferrin::tool]` turns an async function into a tool with JSON Schema. Includes multi-step tool loops, `stop_when` conditions, provider-executed tools, and dynamic tools.
+- **Human approval**: tools can require approval. Requests carry HMAC signatures, and approval decisions return as messages.
+- **Structured output**: `Output::<T>::object()` fills a Rust type deriving `JsonSchema`, with partial objects and array elements available during streaming.
+- **Agents**: `ToolLoopAgent` packages a model, instructions, tools, and stop conditions into a reusable agent with hooks for each step.
+- **Streaming pipeline**: separate event streams and final results, text streams, smoothing, raw chunk passthrough, and direct SSE forwarding.
+- **Other modalities**: embeddings, images, speech synthesis, transcription, speech translation, reranking, video, file and skill uploads, batches, and realtime sessions.
+- **MCP client**: Streamable HTTP, SSE, and stdio transports, OAuth authorization, and server tools exposed as a tool set.
+- **Observability**: `tracing` spans follow the OpenTelemetry GenAI semantic conventions; `ferrin-otel` exports spans and metrics.
+- **Engineering constraints**: no `unsafe`, no `unwrap` in library code, a shared transport for all HTTP, and `secrecy` types that keep keys out of logs.
 
-## 快速开始
+## Quick start
 
-需要 Rust 1.98 及以上。
+Requires Rust 1.98 or later.
 
 ```toml
 [dependencies]
@@ -35,9 +37,9 @@ ferrin = { version = "0.1", features = ["openai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
-要跟随主分支的开发版本，可改为 git 依赖：`ferrin = { git = "https://github.com/f4tumnigrum/ferrin", features = ["openai"] }`。
+To follow development on the main branch, use a git dependency: `ferrin = { git = "https://github.com/f4tumnigrum/ferrin", features = ["openai"] }`.
 
-设置 `OPENAI_API_KEY` 后运行：
+Set `OPENAI_API_KEY`, then run:
 
 ```rust
 use ferrin::openai::{create_openai, OpenAiSettings};
@@ -56,11 +58,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`ferrin::prelude` 导出常用条目：入口函数、`Tool`/`ToolSet`、`Message`、`StreamEvent`、`Output`、`step_count`，以及 `serde`、`schemars`、`json!` 和 `StreamExt`。
+`ferrin::prelude` exports common entry points, `Tool`/`ToolSet`, `Message`, `StreamEvent`, `Output`, `step_count`, and `serde`, `schemars`, `json!`, and `StreamExt`.
 
-## 用法
+## Usage
 
-### 流式输出
+### Streaming
 
 ```rust
 let stream = stream_text(openai.responses("gpt-5"))
@@ -74,7 +76,7 @@ while let Some(delta) = text.next().await {
 }
 ```
 
-需要完整事件时把结果拆成事件流和完成句柄：
+For the complete event stream, split the result into an event stream and a completion handle:
 
 ```rust
 let (mut events, completion) = stream.split();
@@ -89,7 +91,7 @@ let result = completion.await?;
 println!("{} steps", result.steps.len());
 ```
 
-### 工具调用
+### Tool calling
 
 ```rust
 #[derive(Deserialize, JsonSchema)]
@@ -114,9 +116,9 @@ let result = generate_text(openai.responses("gpt-5"))
     .await?;
 ```
 
-函数的文档注释成为工具描述，输入类型的 `JsonSchema` 成为参数 schema。工具在同一次调用内自动执行，结果回传给模型，直到模型给出最终回答或触发停止条件。
+The function's doc comment becomes the tool description, and the input type's `JsonSchema` becomes its parameter schema. Tools execute automatically within the same invocation, returning results to the model until it produces a final answer or a stop condition fires.
 
-### 结构化输出
+### Structured output
 
 ```rust
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -155,7 +157,7 @@ let result = agent
     .await?;
 ```
 
-### 工具审批
+### Tool approval
 
 ```rust
 let delete_file = Tool::function::<DeleteFile>()
@@ -202,9 +204,9 @@ let result = generate_text(openai.responses("gpt-5"))
 client.close().await?;
 ```
 
-需要 feature `mcp`。stdio 传输用 `TransportConfig::stdio(command)`，见 `examples/example-mcp`。
+Requires the `mcp` feature. For stdio, use `TransportConfig::stdio(command)`; see `examples/example-mcp`.
 
-### 其他供应商
+### Other providers
 
 ```rust
 use ferrin::anthropic::{create_anthropic, AnthropicSettings};
@@ -223,9 +225,9 @@ let gemini = google.chat("gemini-2.5-flash");
 let llama = local.chat("llama3");
 ```
 
-模型句柄都实现 `LanguageModel`，可以直接传给 `generate_text`、`stream_text` 或 `ToolLoopAgent::builder`。
+All model handles implement `LanguageModel` and can be passed directly to `generate_text`, `stream_text`, or `ToolLoopAgent::builder`.
 
-### 错误处理
+### Error handling
 
 ```rust
 match generate_text(openai.responses("gpt-5")).prompt("hi").await {
@@ -235,55 +237,55 @@ match generate_text(openai.responses("gpt-5")).prompt("hi").await {
 }
 ```
 
-`ferrin::Error` 提供 `kind()`、`status_code()` 与 `is_retryable()`；可重试的供应商错误默认按指数退避重试，策略由 `RetryPolicy` 调整。
+`ferrin::Error` provides `kind()`, `status_code()`, and `is_retryable()`. Retryable provider errors use exponential backoff by default, configurable through `RetryPolicy`.
 
-## 供应商
+## Providers
 
-| 供应商 | crate / feature | 环境变量 | 能力 |
+| Provider | Crate / feature | Environment variables | Capabilities |
 | --- | --- | --- | --- |
-| OpenAI | `ferrin-openai` / `openai` | `OPENAI_API_KEY`、`OPENAI_BASE_URL` | Responses、Chat Completions、Completions、嵌入、图像、语音、转写、语音翻译、文件、技能、批处理、实时会话 |
-| Anthropic | `ferrin-anthropic` / `anthropic` | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` | Messages（工具、结构化输出、扩展思考、引用）、文件上传、技能、批处理 |
-| Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`、嵌入、图像、语音、转写、视频、文件、批处理、Live API 会话 |
-| OpenAI 兼容端点 | `ferrin-openai-compatible` / `openai-compatible` | 由设置指定 | Chat Completions、Completions、嵌入、图像 |
+| OpenAI | `ferrin-openai` / `openai` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | Responses, Chat Completions, Completions, embeddings, images, speech, transcription, speech translation, files, skills, batches, realtime sessions |
+| Anthropic | `ferrin-anthropic` / `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | Messages (tools, structured output, extended thinking, citations), file uploads, skills, batches |
+| Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`, embeddings, images, speech, transcription, video, files, batches, Live API sessions |
+| OpenAI-compatible endpoints | `ferrin-openai-compatible` / `openai-compatible` | Configured in settings | Chat Completions, Completions, embeddings, images |
 
-每个供应商的完整能力矩阵、设置项与供应商选项见 `docs/providers/`：[OpenAI](docs/providers/openai.md)、[Anthropic](docs/providers/anthropic.md)、[Google](docs/providers/google.md)、[OpenAI 兼容端点](docs/providers/openai-compatible.md)。实现新的供应商适配器见[Provider 适配器实现指南](docs/01-architecture/17-provider-implementation-guide.md)。
+Full capability matrices, settings, and provider options are in `docs/providers/`: [OpenAI](docs/providers/openai.md), [Anthropic](docs/providers/anthropic.md), [Google](docs/providers/google.md), and [OpenAI-compatible endpoints](docs/providers/openai-compatible.md). To build an adapter, see the [Provider implementation guide](docs/01-architecture/17-provider-implementation-guide.md).
 
 ## Cargo features
 
-`ferrin` 门面 crate 的 features：
+Features of the `ferrin` facade crate:
 
-| feature | 内容 | 默认 |
+| Feature | Contents | Default |
 | --- | --- | --- |
-| `macros` | `#[ferrin::tool]` 属性宏 | 是 |
-| `openai`、`anthropic`、`google`、`openai-compatible` | 对应的供应商 crate，同时在 `ferrin::openai` 等路径下导出 | 否 |
-| `mcp` | MCP 客户端（含 stdio 传输与 OAuth） | 否 |
-| `otel` | OpenTelemetry 桥接 `ferrin::otel::OtelTelemetry` | 否 |
-| `realtime` | `ferrin-core` 的实时会话循环（WebSocket） | 否 |
+| `macros` | `#[ferrin::tool]` attribute macro | Yes |
+| `openai`, `anthropic`, `google`, `openai-compatible` | Corresponding provider crate, also exported under paths such as `ferrin::openai` | No |
+| `mcp` | MCP client, including stdio and OAuth | No |
+| `otel` | OpenTelemetry bridge, `ferrin::otel::OtelTelemetry` | No |
+| `realtime` | Realtime session loop in `ferrin-core` (WebSocket) | No |
 
-各 crate 也可以单独依赖；`ferrin-openai` 的 WebSocket 流式模型（实时转写、语音翻译）需要该 crate 自身的 `realtime` feature。
+Crates can also be used independently. WebSocket streaming models in `ferrin-openai` (`realtime` transcription and speech translation) require that crate's own `realtime` feature.
 
-## 示例
+## Examples
 
-`examples/` 下有七个可运行示例，都读取 `OPENAI_API_KEY`，可用 `OPENAI_BASE_URL` 与 `OPENAI_MODEL`（默认 `gpt-5`）切换端点与模型：
+There are seven runnable examples under `examples/`. All read `OPENAI_API_KEY`; use `OPENAI_BASE_URL` and `OPENAI_MODEL` (default: `gpt-5`) to select an endpoint and model:
 
-| 示例 | 内容 |
+| Example | Description |
 | --- | --- |
-| `example-generate-text` | 单步文本生成，打印用量与警告 |
-| `example-structured-output` | 让模型填充一个 `Recipe` 结构体 |
-| `example-tool-approval` | 工具审批：在终端确认后执行工具 |
-| `example-agent` | `ToolLoopAgent` 与 `#[ferrin::tool]` 定义的多个工具 |
-| `example-mcp` | 通过 stdio 连接 MCP 服务器并使用其工具（需要 Node.js） |
-| `example-stream-sse-server` | hyper 服务器把 `StreamEvent` 以 Server-Sent Events 推送给浏览器 |
-| `example-otel` | 导出 GenAI 语义约定的 span 到标准输出 |
+| `example-generate-text` | Single-step text generation, printing usage and warnings |
+| `example-structured-output` | Fill a `Recipe` struct with model output |
+| `example-tool-approval` | Execute a tool after confirmation in the terminal |
+| `example-agent` | `ToolLoopAgent` with multiple tools defined by `#[ferrin::tool]` |
+| `example-mcp` | Connect to an MCP server over stdio and use its tools (requires Node.js) |
+| `example-stream-sse-server` | A hyper server sends `StreamEvent` values to a browser as Server-Sent Events |
+| `example-otel` | Export spans following the GenAI semantic conventions to stdout |
 
 ```sh
 OPENAI_API_KEY=... cargo run -p example-generate-text
 OPENAI_API_KEY=... cargo run -p example-stream-sse-server   # then: curl -N 'http://127.0.0.1:3000/chat?prompt=hello'
 ```
 
-使用工具的示例另外接受 `OPENAI_PROVIDER_OPTIONS`（JSON，按供应商名分组）。部分第三方 OpenAI 兼容代理不支持 Responses API 的 `item_reference`，此时设置 `OPENAI_PROVIDER_OPTIONS='{"openai":{"store":false}}'` 让多步调用回传完整条目。
+Examples using tools also accept `OPENAI_PROVIDER_OPTIONS` (JSON grouped by provider name). Some third-party OpenAI-compatible proxies do not support Responses API `item_reference` entries. Set `OPENAI_PROVIDER_OPTIONS='{"openai":{"store":false}}'` to send complete items back in multi-step calls.
 
-## 工作区
+## Workspace
 
 ```text
 crates/
@@ -305,16 +307,16 @@ docs/                      design documents, provider docs, API snapshots
 verification/              prototypes behind the pending-verification items (separate workspace)
 ```
 
-分层规则：`ferrin-spec` 不依赖其他 Ferrin crate；供应商 crate 只依赖 `ferrin-spec` 与 `ferrin-provider-util`；应用只需依赖 `ferrin`。`0.y` 阶段所有 crate 共用一个版本号。
+Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates depend only on `ferrin-spec` and `ferrin-provider-util`; applications need only `ferrin`. All crates share a version during the `0.y` series.
 
-## 项目状态
+## Project status
 
-- 15 个 crate、`xtask` 与七个示例均已实现；全部 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
-- 测试 665 个（其中 10 个为需要真实凭据的在线测试），CI 在 Linux、macOS、Windows 三平台运行 14 个作业，当前全部通过。
-- 真实端点验证：七个示例与全部在线测试在一个第三方 OpenAI 兼容端点上通过。OpenAI 官方端点、Anthropic 与 Google 尚未用真实凭据测试，供应商测试目前基于手工编写的 fixture（待验证事项 PV-031）。
-- 设计文档中 31 项待验证事项已关闭 30 项，详见[待验证事项汇总](docs/05-appendix/02-pending-verification.md)。
+- All 15 crates, `xtask`, and seven examples are implemented. Version 0.1.0 of every crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
+- There are 665 tests, including 10 live tests requiring real credentials. CI runs 14 jobs across Linux, macOS, and Windows; all passed in the recorded run.
+- Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. The official OpenAI, Anthropic, and Google endpoints have not been tested with real credentials. Provider tests currently use handwritten fixtures (pending item PV-031).
+- Of 31 pending-verification items in the design documents, 30 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).
 
-## 开发
+## Development
 
 ```sh
 rustup show           # picks up rust-toolchain.toml (1.98.1)
@@ -323,31 +325,31 @@ cargo binstall --locked cargo-nextest cargo-deny cargo-shear cargo-insta \
 just check-all        # fmt, clippy, tests, doctests, docs, API snapshot, deny, shear, features, typos, docs lint
 ```
 
-- 测试只放在 `crates/<crate>/tests/suite/*.rs`，由 `tests/all.rs` 聚合；供应商测试回放 `tests/fixtures/` 下的录制响应，不访问网络。
-- 在线测试以 `live_` 开头并标记 `#[ignore]`：`OPENAI_API_KEY=... just test -- --run-ignored only -E 'test(live_)'`。
-- `cargo xtask` 提供 `publish-order`、`check-module-size`、`check-versions`、`record-fixture`、`api-snapshot`。公共 API 变化后运行 `cargo xtask api-snapshot` 并提交 `docs/api/`。
-- 基准测试：`just bench`（criterion，报告在 `target/criterion/report/index.html`，`just bench sse` 按名称过滤）。覆盖 SSE 解码、部分 JSON 修复、schema、消息裁剪、工具指纹、生成与流式管线、三个供应商适配器（本地 fixture 服务器）和门面端到端流式；不访问网络，结果不入库，也不是 CI 门禁。
-- 贡献流程与代码规则见 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [AGENTS.md](AGENTS.md)；每个 crate 的 `CHANGELOG.md` 随改动更新。
+- Tests belong in `crates/<crate>/tests/suite/*.rs`, aggregated by `tests/all.rs`. Provider tests replay recorded responses from `tests/fixtures/` without network access.
+- Live tests start with `live_` and are marked `#[ignore]`: `OPENAI_API_KEY=... just test -- --run-ignored only -E 'test(live_)'`.
+- `cargo xtask` provides `publish-order`, `check-module-size`, `check-versions`, `record-fixture`, and `api-snapshot`. After public API changes, run `cargo xtask api-snapshot` and commit `docs/api/`.
+- Benchmarks: `just bench` (criterion; reports in `target/criterion/report/index.html`; `just bench sse` filters by name). Coverage includes SSE decoding, partial JSON repair, schemas, message pruning, tool fingerprints, generation and streaming pipelines, three provider adapters against local fixture servers, and end-to-end facade streaming. Benchmarks do not access the network, their results are not committed, and they are not CI gates.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for the contribution workflow and coding rules. Update each affected crate's `CHANGELOG.md` with its changes.
 
-## 文档
+## Documentation
 
-- [设计文档目录](docs/README.md)：架构、公共 API、工程规范、架构决策记录（ADR）与附录，含各章节的实现记录。
-- [API 参考与示例](docs/02-api/02-api-reference.md)：入口函数与构建器的签名和用法。
-- rustdoc：`just doc` 生成，文档示例可编译。
+- [Design documentation](docs/README.md): architecture, public API, engineering standards, architecture decision records (ADRs), and appendices, including implementation records in each chapter.
+- [API reference and examples](docs/02-api/02-api-reference.md): entry-point and builder signatures and usage.
+- rustdoc: generated with `just doc`, with compilable documentation examples.
 
-## 安全
+## Security
 
-- API 密钥使用 `secrecy` 类型保存，从环境变量延迟读取，不出现在日志与错误信息中。
-- 下载与 MCP 端点遵循安全 URL 策略：仅 HTTPS、拒绝私有网络地址、DNS 固定、大小限制。
-- 工具审批签名使用 HMAC-SHA256 与常量时间比较。
-- 详细规则见[安全规范](docs/03-engineering/08-security-practices.md)。
+- API keys use `secrecy` types, are read lazily from environment variables, and stay out of logs and errors.
+- Downloads and MCP endpoints follow the secure URL policy: HTTPS only, private network rejection, DNS pinning, and size limits.
+- Tool approval signatures use HMAC-SHA256 with constant-time comparison.
+- See [Security practices](docs/03-engineering/08-security-practices.md) for details.
 
-## 致谢
+## Acknowledgments
 
-Ferrin 的能力范围与核心抽象（Provider 规范、生成循环、工具审批、流式部件、中间件）参考了 [Vercel AI SDK](https://github.com/vercel/ai) 的设计（Apache-2.0）。核心生成循环、供应商适配器与部分算法（如部分 JSON 修复、消息裁剪）由其 TypeScript 实现移植到 Rust 并有修改，涉及的 crate 与模块见 [NOTICE](NOTICE) 及相应的 rustdoc 说明。工程实践（工作区约定、lint 配置、CI 结构）参考了 [OpenAI Codex](https://github.com/openai/codex)。
+Ferrin's capability scope and core abstractions (provider specification, generation loop, tool approval, stream parts, and middleware) draw on the design of the [Vercel AI SDK](https://github.com/vercel/ai) (Apache-2.0). The core generation loop, provider adapters, and selected algorithms such as partial JSON repair and message pruning were ported from TypeScript to Rust with modifications. See [NOTICE](NOTICE) and the corresponding rustdoc attribution for affected crates and modules. Engineering practices (workspace conventions, lint configuration, and CI structure) draw on [OpenAI Codex](https://github.com/openai/codex).
 
-Ferrin 是独立实现的项目，与 Vercel、OpenAI 均无关联，也不是它们的官方项目。
+Ferrin is an independent project, unaffiliated with Vercel or OpenAI and not an official project of either company.
 
-## 许可
+## License
 
-Apache-2.0（[LICENSE](LICENSE)）。派生代码的署名见 [NOTICE](NOTICE)；两份文件同时随每个发布的 crate 分发。
+Apache-2.0 ([LICENSE](LICENSE)). Attribution for derived code is in [NOTICE](NOTICE); both files ship with every published crate.

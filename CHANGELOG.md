@@ -8,6 +8,10 @@ lists releases and cross-crate changes. The format follows
 
 ### Added
 
+- Complete English documentation as the primary edition, with an independent
+  Chinese README and documentation tree, language navigation, and bilingual
+  link and pending-verification checks (ADR 0018).
+
 - Criterion benchmark suite (`just bench`, manual `bench.yml` workflow) covering
   SSE decoding, partial JSON repair, schema derivation and validation, message
   pruning, tool fingerprints, the generation and streaming pipelines, the

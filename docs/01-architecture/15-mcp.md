@@ -1,19 +1,21 @@
-# MCP 集成
+# MCP integration
 
-`ferrin-mcp` 提供 Model Context Protocol 客户端，把远端工具接入 Ferrin 工具集。
+**English** | [Chinese](../zh-CN/01-architecture/15-mcp.md)
 
-## 1. 能力范围
+`ferrin-mcp` provides a Model Context Protocol client that exposes remote tools as Ferrin tool sets.
 
-【决策】`ferrin-mcp` 覆盖的 MCP 客户端能力（协议依据：MCP 规范 2025-11-25 与 2026-07-28）：
+## 1. Scope
 
-- 客户端配置：传输、客户端名称、能力声明、工具调用重试次数。传输配置支持 Streamable HTTP 与旧版 SSE（URL、请求头、OAuth 提供者、重定向策略默认拒绝、初始会话 ID 与协议版本、会话变更与过期通知、关闭时终止会话），或自定义 `McpTransport` 实现（启动、发送、关闭、事件流、协议版本）。
-- 协议版本协商：支持最新协议与旧版列表；声明支持版本探测的传输先探测无状态协议（超时默认 1000 ms，错误码 `-32020..-32022` 表示现代协议）。
-- `tools(ToolsOptions)` 列出工具并返回工具集：提供显式 schema 时构造类型化工具，否则构造动态工具；工具的执行函数调用 `tools/call`，结果 `CallToolResult` 的 `content` 与 `isError` 转换为工具输出。
-- 工具调用重试：默认 0 次；可重试判定为状态码 408/409/429/≥500 或连接类错误；带 JSON-RPC 错误码的错误不重试。
-- 请求超时与总超时取最小值；支持取消令牌。
-- 还支持资源列举与读取、资源模板、提示列举与获取、补全、`discover`、诱导（elicitation）请求处理、MCP Apps（应用工具拆分、应用资源读取、资源指纹与漂移检测）、`x-mcp-header` 参数到请求头的绑定、OAuth（`auth`、`OAuthClientProvider`、`McpError::Unauthorized`）。
+[Decision] Client capabilities, based on MCP specifications 2025-11-25 and 2026-07-28:
 
-## 2. 架构
+- Configure transport, client name, capabilities, and tool retries. Streamable HTTP and legacy SSE accept URLs, headers, OAuth providers, redirect policy (deny by default), initial session ID/version, session-change/expiry notifications, and termination on close. Custom `McpTransport` implementations provide start/send/close, incoming events, and protocol version.
+- Negotiate latest and supported older versions. Discovery-capable transports first probe stateless protocols, with a 1000 ms default timeout; errors `-32020..-32022` identify modern servers.
+- `tools(ToolsOptions)` lists tools and returns a set, typed when explicit schemas are supplied and dynamic otherwise. Executors call `tools/call`; `CallToolResult.content` and `isError` map to tool output.
+- Tool retries default to zero. HTTP 408/409/429/≥500 and connection failures may retry; JSON-RPC errors never retry.
+- Use the smaller request/total timeout and support cancellation.
+- Also support resource listing/reading/templates, prompt listing/getting, completion, `discover`, elicitation handlers, MCP Apps tool splitting/resource reading/fingerprints/drift, `x-mcp-header` parameter binding, and OAuth (`auth`, `OAuthClientProvider`, `McpError::Unauthorized`).
+
+## 2. Architecture
 
 ```
 ferrin-mcp
@@ -39,9 +41,9 @@ ferrin-mcp
   └── error.rs             McpError, TransportFailure
 ```
 
-【决策】（2026-09-14）模块布局按上图实现，与最初规划相比：`headers.rs` 归入 `transport/`（绑定只在 HTTP 传输生效）；`resources.rs`/`prompts.rs`/`completion.rs` 合并为 `client/methods.rs`（每个方法只有参数构造与结果反序列化，单独成文件没有内容）；`client.rs` 拆为四个子模块以满足 500 行目标。
+[Decision] The 2026-09-14 layout follows the tree above. Move `headers.rs` into `transport/` because binding applies only to HTTP; combine resources/prompts/completion in `client/methods.rs` because each only builds parameters and deserializes; split the client into four modules to meet the 500-line target.
 
-### 2.1 传输 trait
+### 2.1 Transport trait
 
 ```rust
 pub trait McpTransport: Send + Sync + 'static {
@@ -55,45 +57,45 @@ pub trait McpTransport: Send + Sync + 'static {
 }
 ```
 
-【决策】协议版本以 `String` 而非新类型表示：服务端在 `server/discover` 与 `-32022` 的 `data.supported` 中可以宣告本 crate 未知的未来版本，客户端只需比较字符串并按 `SUPPORTED_PROTOCOL_VERSIONS` 的顺序挑选公共版本；`ProtocolEra::of_version` 负责“现代/旧版”的二分。`incoming()` 只能被消费一次（再次调用得到空流），由 `McpClient` 的分发任务独占。
+[Decision] Use `String` for protocol versions: servers may announce unknown future versions through discovery or `-32022` `data.supported`. Select common versions in `SUPPORTED_PROTOCOL_VERSIONS` order; `ProtocolEra::of_version` distinguishes modern/legacy. `incoming()` is single-use, returning an empty stream on subsequent calls; the client dispatcher owns it.
 
-【决策】以事件流 `incoming()` 取代消息、关闭、错误三个回调。依据：Rust 中回调需要 `Mutex<Option<Box<dyn Fn>>>` 一类的可变共享状态；单一事件流更符合所有权模型，并让客户端用 `select!` 统一处理消息与关闭。
+[Decision] Replace message/close/error callbacks with one incoming event stream. This avoids mutable callback storage such as `Mutex<Option<Box<dyn Fn>>>` and lets `select!` handle messages and closure under Rust ownership.
 
-### 2.2 协议实现来源
+### 2.2 Protocol implementation source
 
-【决策】`ferrin-mcp` 自行实现 JSON-RPC 与 MCP 消息类型，不依赖 `rmcp`。依据：
+[Decision] Implement JSON-RPC/MCP types directly, without `rmcp`:
 
-- 需要的协议子集（initialize、tools、resources、prompts、completion、elicitation、logging 通知）有限，且必须与 Ferrin 的 `Schema`、`ToolResultOutput`、审批与指纹机制紧密耦合。
-- 传输层行为（重定向策略默认 `error`、会话过期回调、恢复令牌、`x-mcp-header` 绑定、协议版本探测）由 MCP 规范与两代协议的差异决定，需要完全控制。
-- 避免把第三方 SDK 的类型暴露在公共 API 中，减少版本联动。
+- The needed subset (initialize, tools, resources, prompts, completion, elicitation, logging notifications) is limited and tightly integrated with Ferrin schemas, outputs, approvals, and fingerprints.
+- Redirect rejection, session expiry, resumption, header binding, and discovery require full control over two protocol generations.
+- Avoid third-party SDK types in the public API and their version coupling.
 
-### 2.2.1 协议版本与两代传输语义
+### 2.2.1 Versions and transport generations
 
-【事实】（PV-017）MCP 规范当前版本为 2026-07-28，前一版本为 2025-11-25（规范站点 `modelcontextprotocol.io/specification/`，2026-09-13 访问）；`protocol/versions.rs` 以此定义最新版本、旧版本与支持列表常量。
+[Fact] (PV-017) Latest MCP specification is 2026-07-28, preceded by 2025-11-25 (`modelcontextprotocol.io/specification/`, accessed 2026-09-13). `protocol/versions.rs` defines version constants accordingly.
 
-【事实】MCP 规范 2026-07-28（`basic/transports/streamable-http`、`basic/versioning`）相对 2025-11-25 的变化：
+[Fact] Changes in 2026-07-28 (`basic/transports/streamable-http`, `basic/versioning`) relative to 2025-11-25:
 
-- 无 `initialize` 握手；每个请求在 `params._meta` 中携带 `io.modelcontextprotocol/protocolVersion`、`io.modelcontextprotocol/clientInfo`、`io.modelcontextprotocol/clientCapabilities`，服务端逐请求接受或以 `UnsupportedProtocolVersionError`（`-32022`，`data.supported` 列出支持版本）拒绝；服务端必须实现 `server/discover`。
-- Streamable HTTP 只保留单一端点的 POST；客户端必须发送 `Accept: application/json, text/event-stream`、`MCP-Protocol-Version`、`Mcp-Method`，以及 `tools/call`/`resources/read`/`prompts/get` 的 `Mcp-Name`；被 `x-mcp-header` 标注的工具参数镜像为 `Mcp-Param-{name}`；非 ASCII 值以 `=?base64?...?=` 编码；头与体不一致返回 400 + `HeaderMismatch`（`-32020`）；未知方法返回 404 + `-32601`。
-- 响应为单个 JSON 或仅限该请求的 SSE 流；移除 GET 长连接、`Mcp-Session-Id` 会话、`Last-Event-ID` 恢复与服务端发起的请求；采样、诱导、roots 改为 MRTR（结果中的 `InputRequiredResult.inputRequests`，客户端携带 `inputResponses` 重试原请求）；列表变更通知通过 `subscriptions/listen` 请求的响应流投递；取消 = 关闭响应流。
-- 版本探测：先发现代请求，收到 400 时检查响应体，能识别的现代 JSON-RPC 错误说明对方是现代服务端（按 `supported` 重试），否则回退到 `initialize`；服务端所属“代”按 origin 缓存。
+- No `initialize` handshake. Every request carries protocol version, client info, and capabilities in `params._meta` under `io.modelcontextprotocol/*`. Servers accept each request or reject with `UnsupportedProtocolVersionError` (`-32022`, supported versions in `data.supported`); `server/discover` is required.
+- Streamable HTTP uses POST at one endpoint. Require Accept for JSON/SSE, `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` for `tools/call`, `resources/read`, and `prompts/get`. Mirror annotated arguments as `Mcp-Param-{name}`, encoding non-ASCII as `=?base64?...?=`. Header/body mismatch is HTTP 400 with `HeaderMismatch` (`-32020`); unknown methods are 404 with `-32601`.
+- Responses are one JSON object or request-scoped SSE. Remove long-lived GET, sessions, `Last-Event-ID` resumption, and server-initiated requests. Sampling, elicitation, and roots use MRTR `InputRequiredResult.inputRequests`, retried with `inputResponses`. List-change notifications use `subscriptions/listen`; cancellation closes the response stream.
+- Probe with a modern request; recognizable modern JSON-RPC errors in HTTP 400 identify modern servers and allow retry using `supported` versions, otherwise fall back to `initialize`. The specification describes caching server generation by origin.
 
-【决策】版本探测与两代传输行为：协议版本探测默认开启且传输声明支持（HTTP 传输为真）时，先以 1000 ms 超时探测 `server/discover`；错误码属于 `[-32020, -32021, -32022]` 时判定为现代服务端并直接返回错误，其他失败回退到 `initialize`（`2025-11-25`）+ `notifications/initialized`；探测结果的 `supportedVersions` 须包含所请求的版本。传输在旧协议下：请求头 `mcp-protocol-version` 为协商版本、`mcp-session-id` 仅在旧协议携带、关闭时对端点 `DELETE`（可配置）、GET 开启入站 SSE（405 视为不支持）、`last-event-id` 携带恢复令牌、带会话的 404 触发会话过期通知；新协议下发送 `Mcp-Method`/`Mcp-Name`/`Mcp-Param-*`。重定向模式默认拒绝。依据：两代协议的会话与恢复语义不同，客户端必须在探测结果确定后才选择传输行为。
+[Decision] When discovery is enabled and supported (HTTP supports it), probe `server/discover` with 1000 ms timeout. Errors `[-32020, -32021, -32022]` identify modern servers and propagate; other failures fall back to `initialize` (`2025-11-25`) and initialized notification. Discovery versions must include the requested version. Legacy transport uses negotiated version/session headers, optional `DELETE` on close, inbound GET SSE (405 means unavailable), Last-Event-ID resumption, and session-expiry notification on session-bearing 404. Modern transport sends method/name/parameter headers. Reject redirects by default; choose transport semantics only after determining the generation.
 
-【决策】`ferrin-mcp` 实现双代客户端：默认先探测 `server/discover`（`McpClientConfig::protocol_discovery`，默认开，超时 `discovery_timeout` 默认 1 s），成功且公共版本为现代版本时以 2026-07-28 无会话模式运行（不再发送 `initialize`）；探测失败（非 `-32020..-32022` 错误、超时、传输不支持探测或 `protocol_discovery` 关闭）或公共版本为旧版时回退到 `initialize`（请求 2025-11-25，接受服务端返回的任一受支持版本）+ `notifications/initialized`，并启用会话、GET 入站流、`last-event-id` 恢复与 `DELETE` 终止。两代共享同一 `McpTransport` trait；代际状态是 `McpClient` 的字段，**不**按 `origin` 跨客户端缓存（2026-09-14 修订：每个客户端对应一条连接，跨客户端缓存需要全局注册表，而代价只是每次连接一次 1 s 上限的探测）。诱导处理器 `ElicitationHandler` 同时服务旧协议的 `elicitation/create` 服务端请求与新协议的 MRTR 输入请求（客户端在收到 `resultType: "input_required"` 后按 2.2.2 节调用处理器并携带 `inputResponses` 重试原请求）。
+[Decision] Implement both generations. `protocol_discovery` defaults on with `discovery_timeout` 1 s. Successful modern common-version discovery runs sessionless 2026-07-28 without `initialize`. Other failures, timeout, unsupported/disabled discovery, or a legacy common version use `initialize` requesting 2025-11-25 (accepting any supported returned version), then initialized, sessions, inbound GET, resumption, and `DELETE`. Both share `McpTransport`. Store generation per client, not in a global `origin` cache (revised 2026-09-14): each client owns a connection, and one bounded probe avoids a global registry. `ElicitationHandler` serves both legacy server requests and modern MRTR, retrying original requests with responses as below.
 
-### 2.2.2 MRTR（多轮往返请求）的结果结构
+### 2.2.2 MRTR result structure
 
-【事实】（PV-030，2026-09-14 关闭）MCP 规范仓库 `schema/2026-07-28/schema.ts`（`https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/2026-07-28/schema.ts`）定义：
+[Fact] (PV-030, closed 2026-09-14) The MCP schema at `https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/2026-07-28/schema.ts` defines:
 
-- `Result { _meta?, resultType: ResultType }`，`ResultType = "complete" | "input_required"`；`InputRequiredResult extends Result { inputRequests?: InputRequests; requestState?: string }`（两者至少一个存在）。
-- `InputRequests = { [key: string]: InputRequest }`，`InputRequest = CreateMessageRequest | ListRootsRequest | ElicitRequest`，即带 `method` 与 `params` 的 JSON-RPC 请求对象；`InputResponses = { [key: string]: InputResponse }`，`InputResponse = CreateMessageResult | ListRootsResult | ElicitResult`。
-- `InputResponseRequestParams extends RequestParams { inputResponses?: InputResponses; requestState?: string }`：客户端以原方法、原参数加上这两个字段重试请求（新的 JSON-RPC id）。
-- `RequestMetaObject { progressToken?, "io.modelcontextprotocol/protocolVersion": string, "io.modelcontextprotocol/clientInfo"?: Implementation, "io.modelcontextprotocol/clientCapabilities": ClientCapabilities }`；`ResultMetaObject { "io.modelcontextprotocol/serverInfo"?: Implementation }`；`DiscoverResult { supportedVersions: string[], capabilities: ServerCapabilities, instructions? }`；错误码 `-32020 HeaderMismatch`、`-32021 MissingRequiredClientCapability`、`-32022 UnsupportedProtocolVersion { data: { supported, requested } }`。
+- `Result { _meta?, resultType: ResultType }`, with `ResultType = "complete" | "input_required"`; `InputRequiredResult extends Result { inputRequests?: InputRequests; requestState?: string }`, requiring at least one of those fields.
+- `InputRequests = { [key: string]: InputRequest }`; requests are `CreateMessageRequest | ListRootsRequest | ElicitRequest` with `method`/`params`. `InputResponses` maps the same keys to corresponding create-message, list-roots, or elicit results.
+- `InputResponseRequestParams extends RequestParams { inputResponses?: InputResponses; requestState?: string }`; retry the original method/parameters with these fields and a new JSON-RPC ID.
+- Request metadata contains optional progress token/client info, required protocol version/client capabilities under `io.modelcontextprotocol/*`; result metadata may contain server info. `DiscoverResult { supportedVersions: string[], capabilities: ServerCapabilities, instructions? }`. Errors: `-32020 HeaderMismatch`, `-32021 MissingRequiredClientCapability`, `-32022 UnsupportedProtocolVersion { data: { supported, requested } }`.
 
-【决策】`ferrin-mcp` 的实现：现代代下结果缺少 `resultType` 视为协议错误（`McpError::Protocol`）；`input_required` 时对 `inputRequests` 的每个条目调用 `ElicitationHandler`（仅接受 `method == "elicitation/create"`；`sampling/createMessage` 与 `roots/list` 输入请求返回 `McpError::Protocol`，本 crate 不提供采样与 roots），把结果按键写入 `inputResponses`，连同服务端返回的 `requestState` 重试原请求，轮数上限 `McpClientConfig::max_input_rounds`（默认 8）；未注册处理器时返回 `McpError::Elicitation`。服务端信息取自 `DiscoverResult._meta["io.modelcontextprotocol/serverInfo"]`。
+[Decision] Missing modern `resultType` is `McpError::Protocol`. For `input_required`, invoke the elicitation handler per keyed request, accepting only `elicitation/create`; sampling and roots return protocol errors because they are outside scope. Retry original parameters with keyed `inputResponses` and returned `requestState`, up to `max_input_rounds` (default 8). Missing handlers return `McpError::Elicitation`. Read server info from discovery `_meta["io.modelcontextprotocol/serverInfo"]`.
 
-### 2.3 客户端
+### 2.3 Client
 
 ```rust
 pub struct McpClient { /* Arc<inner>; Clone */ }
@@ -145,11 +147,11 @@ pub struct McpClientConfig {                     // McpClientConfig::new(transpo
 pub struct RequestOptions { pub timeout: Option<Duration>, pub max_total_timeout: Option<Duration>, pub cancellation: Option<CancellationToken>, pub headers: Headers }
 ```
 
-【决策】每个方法显式接收 `RequestOptions`（超时、总超时、取消令牌、请求级头），超时取 `timeout.or(default_request_timeout)` 与 `max_total_timeout` 的最小值；超时或取消时客户端撤销挂起项并发送 `notifications/cancelled`。`server_capabilities()` 等访问器返回克隆的 `Option`（连接期间状态在 `Mutex` 内），`close(&self)` 可在任一克隆上调用并使所有挂起请求以 `McpError::Closed` 失败。
+[Decision] Each method takes explicit `RequestOptions` (timeout, total timeout, cancellation, per-request headers). Use the minimum of `timeout.or(default_request_timeout)` and `max_total_timeout`. On timeout/cancel, remove pending state and send cancellation notification. Accessors such as `server_capabilities()` clone optional state protected by a mutex. Closing any client clone fails all pending requests with `McpError::Closed`.
 
-### 2.4 工具桥接
+### 2.4 Tool bridging
 
-【决策】MCP 工具输出转换：`CallToolResult.content` 为 `text`/`image`/`audio`/`resource` 项数组（MCP 规范）；结果作为工具输出，`isError` 为真时作为错误输出；`to_model_output` 把内容项映射为 `content` 类型的模型输出。依据：`content` 输出保留图像与音频项，供支持多模态工具结果的供应商直接消费。
+[Decision] Convert MCP `text`/`image`/`audio`/`resource` `content` into tool output, honoring `isError`. `to_model_output` maps `content` into multimodal model output so capable providers receive images/`audio` directly.
 
 ```rust
 #[non_exhaustive]
@@ -160,11 +162,11 @@ pub struct ToolsOptions {
 }
 ```
 
-【决策】生成的工具为 `ToolKind::Dynamic`（自动模式：`inputSchema` 补齐 `properties: {}` 并加 `additionalProperties: false`，由 `Schema::from_json_schema` 校验）或 `ToolKind::Function`（显式 schema；只包含列出的工具；给出 `output` 时校验 `structuredContent`，缺失则解析第一个文本项为 JSON，校验失败为 `ToolError::Message`）。`isError` 为真时执行器返回 `ToolError::Json(CallToolResult)`，由核心层按错误输出处理；`mcp_to_model_output` 把 `content` 数组映射为 `ToolResultOutput::Content`（`text` → 文本，`image`/`audio` → base64 解码后的文件部件，默认媒体类型 `image/png`/`audio/wav`，其余项以 JSON 文本呈现），非数组输出走 `ToolResultOutput::Json`。工具 `metadata` 为 `{clientName, toolName, title?, annotations?, app?, meta?}`。`x-mcp-header` 绑定仅在现代代且传输声明 `supports_tool_parameter_headers` 时收集；绑定非法的工具被丢弃并经 `on_uncaught_error` 报告。
+[Decision] Automatic tools are dynamic, completing `inputSchema` with empty properties and `additionalProperties: false`, validated by `Schema::from_json_schema`. Explicit schemas create function tools and include only named tools; optional `output` schemas validate structured `content` or JSON from the first `text` item, failing with `ToolError::Message`. Error results become `ToolError::Json(CallToolResult)`. `mcp_to_model_output` maps arrays to `ToolResultOutput::Content`: `text` stays `text`, `image`/`audio` base64 becomes files (default PNG/WAV), other items become JSON `text`. Non-arrays become JSON `output`. Metadata is `{clientName, toolName, title?, annotations?, app?, meta?}`. Collect header bindings only for modern transports supporting them; discard invalidly bound tools and report via `on_uncaught_error`.
 
 ### 2.5 OAuth
 
-【决策】OAuth 模块实现授权服务器元数据发现（RFC 8414、RFC 9728）、动态客户端注册（RFC 7591）、PKCE 授权码流程（RFC 7636）与令牌刷新；`OAuthClientProvider` 由应用实现存储与重定向处理；`McpError::Unauthorized` 表示需要用户完成授权。依据：MCP 授权规范以这些 RFC 为基础，存储与浏览器重定向只有应用才能完成。
+[Decision] OAuth implements authorization/protected-resource metadata discovery (RFC 8414/9728), dynamic registration (7591), PKCE authorization code flow (7636), and refresh. Applications implement storage and browser redirects through `OAuthClientProvider`; `Unauthorized` indicates user authorization is required.
 
 ```rust
 pub trait OAuthClientProvider: Send + Sync {
@@ -184,15 +186,15 @@ pub trait OAuthClientProvider: Send + Sync {
 pub async fn auth(provider: &dyn OAuthClientProvider, http: &dyn HttpTransport, options: AuthOptions) -> Result<AuthResult, McpError>;  // Authorized | Redirect
 ```
 
-【决策】方法返回 `Result`（存储可能失败）；`OAuthTokens`/`OAuthClientInformation` 的密钥字段为 `secrecy::SecretString`，不派生 `Serialize`，持久化须显式调用 `expose_to_json()`。`auth` 的流程：受保护资源元数据（`/.well-known/oauth-protected-resource[path]`，再回退根路径）→ 授权服务器元数据（RFC 8414 路径感知顺序，再 OpenID 配置；OpenID 文档必须宣告 `S256`）→ 无客户端信息时动态注册 → 有授权码则交换、有刷新令牌则刷新（协议错误直接返回，`server_error`/网络错误回退到新授权）→ 否则生成 PKCE `S256` 并重定向；`invalid_client`/`unauthorized_client` 使全部凭据失效后重试一次，`invalid_grant` 使令牌失效后重试一次。授权服务器的所有端点经 `AuthOptions::url_policy`（HTTP 传输传入自身的 `UrlPolicy`）校验，阻断指向内网的元数据。HTTP 传输对 `401` 只运行一次 `auth`（并发的 `401` 等待进行中的流程后按已存令牌重试）；结果为 `Redirect` 时返回 `McpError::Unauthorized`。
+[Decision] Storage methods return `Result`. Secret fields in `OAuthTokens`/`OAuthClientInformation` use `SecretString`, without `Serialize`; persistence requires `expose_to_json()`. Flow: path-aware protected-resource discovery then root fallback; RFC 8414 authorization discovery then OpenID (must advertise `S256`); registration if needed; code exchange or refresh; otherwise PKCE `S256` redirect. Protocol refresh errors propagate, while server/network errors fall back to authorization. Invalid/unauthorized client invalidates all credentials and retries once; invalid grant invalidates tokens and retries once. Validate every endpoint through `AuthOptions::url_policy` to reject internal metadata targets. HTTP runs `auth` once per `401`, coordinating concurrent failures; redirect returns `Unauthorized`.
 
-## 3. 与核心层的关系
+## 3. Relationship to the core
 
-- `McpClient::tools()` 返回普通 `ToolSet`，可与本地工具合并后传给 `generate_text`。
-- 审批、超时、遥测由核心层按工具统一处理；MCP 工具不例外。
-- `ferrin_mcp::fingerprint_app_resource` / `detect_app_resource_drift` 与 `ferrin_tool::fingerprint` 配合用于跨请求一致性检查。
+- `McpClient::tools()` returns an ordinary `ToolSet`, mergeable with local tools for generation.
+- Core tool approval, timeouts, and telemetry apply equally to MCP tools.
+- `fingerprint_app_resource`/`detect_app_resource_drift` combine with tool fingerprints for cross-request consistency.
 
-## 4. 示例
+## 4. Example
 
 ```rust
 use ferrin_mcp::{McpClient, McpClientConfig, ToolsOptions};
@@ -217,23 +219,23 @@ let result = ferrin::generate_text(&model)
 mcp.close().await?;
 ```
 
-## 5. 待验证
+## 5. Verification items
 
-- 【事实】（PV-018，已关闭）stdio 传输在 Windows 上的子进程管道与信号处理由 CI 的 `windows-2025` 作业验证：2026-09-14 首次完整 CI 运行（`ci.yml` run 34797869442）中 `ferrin-mcp` 的 stdio 测试 `missing_commands_fail_to_start`、`negotiates_lists_and_calls_tools_over_stdio`、`server_requests_are_answered_over_stdio`（以 `python` 启动的 fixture 服务器）全部通过。【决策】实现基线：`tokio::process::Command` + `kill_on_drop(true)`、stdin 由单一写入任务串行写出整帧（2026-09-14 依 [ADR 0015](../04-decisions/2026-09-14-0015-mcp-stdio-frame-writer.md) 由“持锁写入”修订），Windows 下通过 `CommandExt::creation_flags` 抑制控制台窗口并拒绝命令与参数中的换行。
-- 【事实】（PV-019）MCP 规范的诱导请求参数为 `{ message: string, requestedSchema: object }`，结果为 `{ action: 'accept' | 'decline' | 'cancel', content?: object }`。【决策】Ferrin 对 `requestedSchema` 不做结构校验， `ElicitationRequest { message: String, requested_schema: JsonValue }` 与 `ElicitResult { action: ElicitAction, content: Option<JsonObject> }` 字段一一对应。
-- 【事实】（PV-030，2026-09-14 关闭）2026-07-28 规范中 `InputRequiredResult`、`inputRequests`、`inputResponses` 的字段定义已从规范仓库的 `schema/2026-07-28/schema.ts` 固定，见 2.2.2 节；`ferrin-mcp` 按此实现并以 mock 传输测试（`tests/suite/client_modern.rs` 的 `input_required_*` 用例）。
+- [Fact] (PV-018, closed) Windows pipes/signals passed in `windows-2025`, first complete CI run 34797869442 on 2026-09-14: `missing_commands_fail_to_start`, `negotiates_lists_and_calls_tools_over_stdio`, and `server_requests_are_answered_over_stdio`, using a Python fixture server. [Decision] Use Tokio Command with `kill_on_drop(true)` and one task writing complete stdin frames (revised from locked writing in [ADR 0015](../04-decisions/2026-09-14-0015-mcp-stdio-frame-writer.md)). Windows creation flags suppress console windows; reject newlines in commands/arguments.
+- [Fact] (PV-019) Elicitation params are `{ message: string, requestedSchema: object }`; results are `{ action: 'accept' | 'decline' | 'cancel', content?: object }`. [Decision] Preserve schema as JSON without structural validation: `ElicitationRequest { message: String, requested_schema: JsonValue }`, `ElicitResult { action: ElicitAction, content: Option<JsonObject> }`.
+- [Fact] (PV-030, closed 2026-09-14) MRTR fields are fixed from the official schema (section 2.2.2), implemented and covered by mock-transport `input_required_*` tests in `tests/suite/client_modern.rs`.
 
-## 6. 实现记录（2026-09-14，ferrin-mcp）
+## 6. Implementation record (2026-09-14, ferrin-mcp)
 
-- 【事实】模块布局见第 2 节的树；最大文件 `protocol/types.rs` 630 行，其余均在 600 行以下。依赖：`ferrin-spec`、`ferrin-schema`、`ferrin-tool`、`ferrin-provider-util`（`reqwest` 特性）、`tokio`（`rt`、`sync`、`time`、`macros`；`stdio` 特性追加 `process`、`io-util`）、`tokio-util`、`futures-util`、`serde`/`serde_json`、`thiserror`、`bytes`、`http`、`url`、`sha2`、`base64`、`rand`、`secrecy`、`tracing`；未用到 `ferrin-message`。特性 `stdio`、`oauth` 默认开启，`cargo hack --each-feature` 通过。
-- 【事实】测试 72 个（`--all-features`；不带特性 59 个）：`json_rpc`、`headers`、`client_modern`（探测、`_meta`、`resultType`、MRTR、能力断言、重试、超时取消、服务端 `ping`/`elicitation/create`、未捕获错误与关闭）、`client_legacy`（回退、禁用探测、`-32022` 中止、不支持的版本）、`resources_prompts`、`tools`、`apps`、`http_transport`（JSON/SSE 响应、会话头、202 与入站流、405、错误体、404/401/500/内容类型、重定向两种模式、现代头、`DELETE` 终止、URL 策略）、`sse_transport`、`stdio`（Python 测试服务器 `tests/fixtures/stdio/echo_server.py`：协商、工具调用、环境变量透传、服务端请求）、`oauth`（`WWW-Authenticate` 解析、发现顺序、PKCE 含 RFC 7636 向量、授权 URL、资源选择、完整流程含注册/交换/刷新/`invalid_grant` 重试、`client_secret_basic`、OpenID 缺 `S256`、传输的 `401` 刷新与未授权）。请求体快照 2 个（`tests/suite/snapshots/`）。客户端逻辑以进程内 mock 传输（`tests/suite/common.rs` 的 `MockTransport`）测试，因为 `FixtureServer` 只能回放固定响应而 JSON-RPC 响应必须回显请求 id。
-- 【事实】为测试长连接给 `ferrin-testing` 增加 `Fixture::hold_open()`（事件流在最后一个事件后保持打开直到连接或服务器关闭）。
-- 【决策】安全：`HttpTransportConfig::url_policy`/`SseTransportConfig::url_policy` 默认 `UrlPolicy::new()`（仅 HTTPS、拒绝内网），`start()` 时校验端点并固定解析地址（DNS pinning），之后每个请求携带 `pinned_addresses`；本地开发需显式 `.url_policy(UrlPolicy::new().allow_http().allow_private_networks())`。响应体上限 `max_response_bytes` 默认 16 MiB，单个 SSE 事件上限 `max_event_bytes` 默认 16 MiB；OAuth 响应体上限 1 MiB。`Debug` 输出对头部脱敏、不打印会话 id 与令牌。
-- 【决策】错误：`McpError::Transport(Box<TransportFailure>)` 装箱以满足 128 字节的错误大小上限；`is_retryable_tool_call()` 对 HTTP 408/409/429/5xx、连接级 `TransportError::is_retryable` 与 `Io` 为真，JSON-RPC 错误恒为假。
-- 【决策】Streamable HTTP：`3xx` 默认报错（`RedirectMode::Error`），`Follow` 只跟随同源 `307`/`308` 且受策略的 `max_redirects` 限制；旧版入站 GET 流断开后按 `ReconnectionOptions`（初始 1000 ms、系数 1.5、上限 30 s、最多 2 次）重连并携带 `last-event-id`，`405` 视为服务端不提供入站流；`close()` 在旧版且有会话时 `DELETE`（`terminate_session_on_close` 默认真），现代代不发送。
-- 【决策】legacy SSE 传输：`start()` 等待首个 `endpoint` 事件并要求与流同源；流结束视为传输关闭（先投递 `Error` 再 `Closed`），之后 `send()` 返回 `McpError::Closed`。
-- 【决策】stdio：`env_clear()` 后仅透传 `DEFAULT_INHERITED_ENV_VARS`（Unix：`HOME`、`LOGNAME`、`PATH`、`SHELL`、`TERM`、`USER`；Windows 见常量）中不以 `()` 开头的值，再叠加 `StdioConfig::env`；stderr 默认继承（`StdioStderr::Null` 可丢弃）；`close()` 先 `start_kill()` 再等待退出。写入路径见 [ADR 0015](../04-decisions/2026-09-14-0015-mcp-stdio-frame-writer.md)。
-- 【决策】服务端请求：`ping` 回 `{}`；`elicitation/create` 调用处理器（无处理器 `-32601`，参数非法 `-32602`，处理器失败 `-32603`）；其余方法（含 `sampling/createMessage`、`roots/list`）回 `-32601`。服务端通知经 `on_notification` 钩子投递，无钩子时以 `tracing::debug!` 记录。
-- 【决策】（2026-09-14，真实凭据验证后新增）由服务器 schema 自动构建的 MCP 工具以 `strict = false` 交给供应商（`ToolBuilder::strict(false)`）；`ToolsOptions::explicit` 提供的类型化 schema 不改动。依据：OpenAI Responses API 的函数工具默认严格校验（要求 `required` 列出全部属性且 `additionalProperties: false`），`@modelcontextprotocol/server-everything` 等服务器的 schema 普遍不满足，未标记时整次调用被拒绝（`Invalid schema for function ... 'required' is required to be supplied`）。
-- 【决策】范围外：`subscriptions/listen`（现代代的列表变更通知）、除 `last-event-id` 外的恢复令牌（`SendOptions` 无 `resumption_token`）、采样与 roots、OAuth 的 `client_secret_jwt`/`private_key_jwt`。
+- [Fact] Layout follows section 2; largest file is `protocol/types.rs` at 630 lines, others below 600. Dependencies: specification, schema, tool, provider utilities (`reqwest`), Tokio `rt`/`sync`/`time`/`macros` (`stdio` adds `process`/`io-util`), `tokio-util`, `futures-util`, `serde`/`serde_json`, `thiserror`, `bytes`, `http`, `url`, `sha2`, `base64`, `rand`, `secrecy`, `tracing`; no `ferrin-message`. Default `stdio`/`oauth` features pass `cargo hack --each-feature`.
+- [Fact] Seventy-two all-feature tests, 59 without features, cover JSON-RPC, `headers`, modern discovery/metadata/results/MRTR/capabilities/retries/timeouts/server requests/errors/close, legacy fallback/version errors, resources/prompts, `tools`, Apps, HTTP JSON/SSE/session/202/405/404/`401`/500/content types/redirects/modern `headers`/`DELETE`/URL policy, legacy SSE, `stdio` negotiation/`tools`/environment/server requests, and OAuth challenge parsing/discovery/PKCE RFC vectors/URLs/resource selection/registration/exchange/refresh/invalid-grant retries/basic auth/missing `S256`/`401` flows. Two request snapshots live in `tests/suite/snapshots/`. Client tests use `MockTransport` in `tests/suite/common.rs` because fixed fixture responses cannot echo dynamic JSON-RPC IDs; `stdio` uses `tests/fixtures/stdio/echo_server.py`.
+- [Fact] Added `Fixture::hold_open()` in `ferrin-testing` so event streams remain open after the last event until connection/server closure.
+- [Decision] HTTP/SSE policies default to HTTPS-only/private-network rejection; validate and pin endpoint addresses at start, then attach pinned addresses to every request. Local development explicitly enables HTTP/private networks. Default body/event limits are 16 MiB; OAuth bodies 1 MiB. `Debug` redacts headers and omits session IDs/tokens.
+- [Decision] Box `McpError::Transport(Box<TransportFailure>)` to meet the 128-byte limit. Retry tool calls for HTTP 408/409/429/5xx, retryable connection failures, and I/O; never JSON-RPC errors.
+- [Decision] Streamable HTTP rejects redirects by default; `Follow` accepts only same-origin `307`/`308` within hop limits. Reconnect legacy inbound GET with 1000 ms initial delay, factor 1.5, 30 s cap, at most 2 retries, and Last-Event-ID; `405` means unavailable. Legacy sessions `DELETE` on close by default; modern clients do not.
+- [Decision] Legacy SSE startup waits for a same-origin `endpoint` event. Stream termination emits `Error` then `Closed`; later sends return `McpError::Closed`.
+- [Decision] stdio clears environment, inherits only allowlisted values not beginning with `()` (Unix `HOME`/`LOGNAME`/`PATH`/`SHELL`/`TERM`/`USER`; Windows in the constant), then overlays configured env. Stderr is inherited unless Null; close starts kill then waits. See [ADR 0015](../04-decisions/2026-09-14-0015-mcp-stdio-frame-writer.md) for writing.
+- [Decision] Server `ping` gets `{}`; elicitation invokes its handler (missing: `-32601`, invalid params: `-32602`, handler failure: `-32603`). Other methods, including sampling/roots, return `-32601`. Notifications go to `on_notification`, otherwise debug logging.
+- [Decision] Added after live validation on 2026-09-14: automatic server-schema tools use `ToolBuilder::strict(false)`; explicit typed schemas are unchanged. OpenAI Responses defaults to strict function schemas requiring all properties in `required` and no extra properties; common MCP schemas, including server-everything, fail these requirements and otherwise reject the whole call.
+- [Decision] Outside scope: modern `subscriptions/listen`, resumption tokens beyond Last-Event-ID (`SendOptions` has no resumption token), sampling/roots, and OAuth `client_secret_jwt`/`private_key_jwt`.
 
