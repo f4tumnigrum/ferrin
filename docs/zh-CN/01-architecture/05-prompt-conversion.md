@@ -38,17 +38,14 @@ pub(crate) struct StandardizedPrompt {
 
 ### 2.1 Ferrin 的转换管线
 
-```
-Vec<Message>
-  │ collect_download_targets(supported_urls)
-  ▼
-DownloadPlan { urls: Vec<(Url, Option<MediaType>)> }
-  │ download_all(plan, download_fn, cancellation)   // 并发，受 max_parallel_downloads 限制
-  ▼
-DownloadedFiles: HashMap<Url, DownloadedFile { bytes, media_type }>
-  │ convert_message(msg, &downloaded, &tools)
-  ▼
-spec::Prompt
+```mermaid
+flowchart TD
+    A["Vec&lt;Message&gt;"] --> B["collect_download_targets<br/>supported_urls"]
+    B --> C["DownloadPlan<br/>URL 与可选媒体类型"]
+    C --> D["download_all<br/>并发下载，受 max_parallel_downloads 限制"]
+    D --> E["DownloadedFiles<br/>字节与媒体类型"]
+    E --> F["convert_message<br/>下载结果与工具定义"]
+    F --> G["spec::Prompt"]
 ```
 
 【决策】下载函数是一个 trait 对象：

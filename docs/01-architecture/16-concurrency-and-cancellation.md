@@ -8,13 +8,13 @@
 
 [Decision] Use `tokio_util::sync::CancellationToken` 0.7.19:
 
-```
-caller token
-  └── call token (child)                 // total timeout attaches here
-        ├── step token (child)           // step timeout
-        │     ├── model-call token       // first-chunk / chunk timeouts re-arm here
-        │     └── tool tokens (child)    // per-tool timeout
-        └── download tokens (child)
+```mermaid
+flowchart TD
+    Caller["Caller cancellation token"] --> Call["Call token<br/>total timeout"]
+    Call --> Step["Step token<br/>step timeout"]
+    Step --> Model["Model-call token<br/>first/chunk timeouts"]
+    Step --> Tools["Tool tokens<br/>per-tool timeout"]
+    Call --> Downloads["Download tokens"]
 ```
 
 - Parent cancellation cancels child tokens. Timeouts wrap operations in `tokio::time::timeout` and cancel the corresponding child.

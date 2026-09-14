@@ -8,24 +8,15 @@
 
 [Decision] Ferrin refines this layering into six Rust crate layers. Crates are Rust's compilation and dependency-resolution units; finer boundaries let adapters and the MCP client depend on lightweight crates without inheriting the core's compile time and dependency surface.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ L5 Integration   ferrin (facade)  ferrin-otel  ferrin-testing   │
-├─────────────────────────────────────────────────────────────────┤
-│ L4 Core          ferrin-core                                    │
-│ generate/stream loop · output · agent ·                         │
-│ middleware · registry · telemetry · modalities                  │
-├─────────────────────────────────────────────────────────────────┤
-│ L3 Providers     ferrin-openai  ferrin-anthropic  ferrin-google │
-│ ferrin-openai-compatible  ferrin-mcp                            │
-├─────────────────────────────────────────────────────────────────┤
-│ L2 Tools         ferrin-provider-util   ferrin-tool             │
-│ http · sse · retry-class · secure-url · settings                │
-├─────────────────────────────────────────────────────────────────┤
-│ L1 Data models   ferrin-message   ferrin-schema                 │
-├─────────────────────────────────────────────────────────────────┤
-│ L0 Specification ferrin-spec                                    │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    L5["L5 Integration<br/>ferrin · ferrin-otel · ferrin-testing"]
+    L4["L4 Core<br/>ferrin-core"]
+    L3["L3 Providers<br/>OpenAI · Anthropic · Google · OpenAI-compatible · MCP"]
+    L2["L2 Tools<br/>provider-util · tool"]
+    L1["L1 Data models<br/>message · schema"]
+    L0["L0 Specification<br/>ferrin-spec"]
+    L5 --> L4 --> L3 --> L2 --> L1 --> L0
 ```
 
 Dependencies flow downward only. Dependencies within a layer are listed in [Crate boundaries and responsibilities](02-crates.md).
@@ -34,50 +25,31 @@ Dependencies flow downward only. Dependencies within a layer are listed in [Crat
 
 ### 2.1 Text generation (one step)
 
-```
-Application
-  │  GenerateText builder (messages, tools, settings)
-  ▼
-ferrin-core::prompt::standardize      ── validate prompt/messages exclusivity and system placement
-  │
-  ▼
-ferrin-core::prompt::convert          ── application Message → spec::Prompt
-  │                                       (URL downloads, media type detection, tool output normalization)
-  ▼
-ferrin-core::prompt::prepare_tools    ── ToolSet → spec::ToolDefinition[] + ToolChoice
-  │
-  ▼
-ferrin-core::retry::with_backoff      ── wrap one model call in the retry policy
-  │
-  ▼
-spec::LanguageModel::do_generate      ── adapter: build request, send, parse
-  │
-  ▼
-ferrin-core::generate_text::step      ── parse tool calls, determine approval, execute tools, build StepResult
-  │
-  ▼
-StopCondition / continuation checks  ── decide whether to enter the next step
-  │
-  ▼
-GenerateTextResult                    ── steps, response.messages, total_usage, output
+```mermaid
+flowchart TD
+    A["Application<br/>GenerateText builder"] --> B["prompt::standardize<br/>validate prompt/messages and system placement"]
+    B --> C["prompt::convert<br/>Message → spec::Prompt<br/>download URLs and normalize content"]
+    C --> D["prompt::prepare_tools<br/>ToolSet → definitions + ToolChoice"]
+    D --> E["retry::with_backoff<br/>apply retry policy"]
+    E --> F["LanguageModel::do_generate<br/>adapter builds, sends, and parses"]
+    F --> G["generate_text::step<br/>parse calls, approvals, execute tools"]
+    G --> H["StopCondition<br/>continuation check"]
+    H --> I["GenerateTextResult<br/>steps · response.messages · total_usage · output"]
 ```
 
 ### 2.2 Streaming generation
 
-```
-do_stream ──► StreamPart stream
-   │
-   ├─ stage 1  model_call_stream    normalize events, parse incremental tool input, repair tool calls
-   ├─ stage 2  execute_tools        run client tools concurrently and inject results
-   ├─ stage 3  step_stitcher        join steps, emit boundaries, check continuation
-   ├─ stage 4  resilient            convert stream failures to Error events; optional stream retry
-   ├─ stage 5  stop_gate            prevent further steps when a stop condition is met
-   ├─ stage 6  user_transforms      application transforms, such as smooth_stream
-   ├─ stage 7  output_transform     partial parsing for structured output
-   └─ stage 8  event_processor      aggregate steps/usage/messages, invoke callbacks and telemetry
-                  │
-                  ▼
-        StreamTextResult { events, completion }
+```mermaid
+flowchart TD
+    S["do_stream<br/>StreamPart stream"] --> P1["Stage 1 · model_call_stream<br/>normalize events and tool input"]
+    P1 --> P2["Stage 2 · execute_tools<br/>run client tools concurrently"]
+    P2 --> P3["Stage 3 · step_stitcher<br/>join steps and check continuation"]
+    P3 --> P4["Stage 4 · resilient<br/>errors and optional stream retry"]
+    P4 --> P5["Stage 5 · stop_gate<br/>block after stop condition"]
+    P5 --> P6["Stage 6 · user_transforms<br/>smooth_stream and custom transforms"]
+    P6 --> P7["Stage 7 · output_transform<br/>partial structured parsing"]
+    P7 --> P8["Stage 8 · event_processor<br/>aggregate results and telemetry"]
+    P8 --> R["StreamTextResult<br/>events + completion"]
 ```
 
 See [Generation loop and streaming](07-generation-loop-and-streaming.md) for stage responsibilities and event types.

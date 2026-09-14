@@ -71,7 +71,7 @@
 
 ## 6. Diagrams
 
-- Use ASCII or Mermaid for architecture diagrams. Use Mermaid only where GitHub rendering is available, and include a textual explanation.
+- Use Mermaid for architecture diagrams and include a textual explanation.
 - Use sequence diagrams for interactions between components (approval round trips, streaming pipelines).
 
 ## 7. Terminology
