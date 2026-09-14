@@ -54,6 +54,8 @@
 
 【事实】（2026-09-14，v0.1.0 发布记录）crates.io 对同一账号发布新 crate 有频率限制（策略见 `https://crates.io/docs/rate-limits`）：首次成功的运行连续上传 5 个 crate 后未再受阻；约 10 分钟后的运行只再上传 1 个（`ferrin-openai-compatible`），第 7 个（`ferrin-testing`）返回 `429 Too Many Requests`，正文为 “You have published too many new crates in a short period of time. Please try again after Mon, 14 Sep 2026 07:01:00 GMT”。该限制只针对新 crate；已存在 crate 的新版本另有更宽的限制。据此 `release.yml` 的发布步骤加入按服务器给出时间等待并重试的循环（见第 3 步）。
 
+【事实】（2026-09-14，v0.1.0 发布完成）加入等待重试后的运行 run 34815430254（tag `v0.1.0`，提交 00e9b61）共 10 次尝试：第 1 次上传 `ferrin-testing` 后被限流，此后每次尝试上传 1 个新 crate 再被限流，服务器给出的放行时间依次为 07:01、07:11、…、08:21 GMT（间隔恒为 10 分钟，`date -u -d` 在 `ubuntu-24.04` 运行器上解析成功，等待 184–595 s），第 10 次上传 `ferrin` 后 15 个 crate 全部在 crates.io 可见，随后创建 GitHub Release `v0.1.0`（发布于 08:21:33Z，说明由 git-cliff 生成），运行总时长约 95 分钟。docs.rs 当日对 15 个 crate 的 0.1.0 全部构建成功（`/crate/<name>/0.1.0/status.json` 的 `doc_status` 为 `true`）。据此推断 crates.io 对新 crate 的限流约为每 10 分钟补充 1 个配额（`https://crates.io/docs/rate-limits` 未公布具体数值）；后续版本只涉及已存在的 crate，不受此限制。
+
 ## 7. 支持策略
 
 - 只对最新次版本发布修复。

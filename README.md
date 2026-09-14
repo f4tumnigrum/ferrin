@@ -3,12 +3,14 @@
 ![Ferrin：AI, in Rust. One API. Multiple providers.](assets/banner.png)
 
 [![ci](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml/badge.svg)](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/ferrin.svg)](https://crates.io/crates/ferrin)
+[![docs.rs](https://docs.rs/ferrin/badge.svg)](https://docs.rs/ferrin)
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#许可)
 
 Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和任意 OpenAI 兼容端点。
 
-项目处于 0.1.0 开发阶段，尚未发布到 crates.io，公共 API 可能变化。当前状态见[项目状态](#项目状态)。
+项目处于 0.1.x 阶段，首个版本 0.1.0 已于 2026-09-14 发布到 crates.io，公共 API 在 1.0 之前可能变化。当前状态见[项目状态](#项目状态)。
 
 ## 特性
 
@@ -25,13 +27,15 @@ Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大�
 
 ## 快速开始
 
-需要 Rust 1.98 及以上。Ferrin 尚未发布，请以 git 依赖引入：
+需要 Rust 1.98 及以上。
 
 ```toml
 [dependencies]
-ferrin = { git = "https://github.com/f4tumnigrum/ferrin", features = ["openai"] }
+ferrin = { version = "0.1", features = ["openai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
+
+要跟随主分支的开发版本，可改为 git 依赖：`ferrin = { git = "https://github.com/f4tumnigrum/ferrin", features = ["openai"] }`。
 
 设置 `OPENAI_API_KEY` 后运行：
 
@@ -305,7 +309,7 @@ verification/              prototypes behind the pending-verification items (sep
 
 ## 项目状态
 
-- 15 个 crate、`xtask` 与七个示例均已实现；全部 crate 为 0.1.0，未发布，未打 tag。
+- 15 个 crate、`xtask` 与七个示例均已实现；全部 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
 - 测试 665 个（其中 10 个为需要真实凭据的在线测试），CI 在 Linux、macOS、Windows 三平台运行 14 个作业，当前全部通过。
 - 真实端点验证：七个示例与全部在线测试在一个第三方 OpenAI 兼容端点上通过。OpenAI 官方端点、Anthropic 与 Google 尚未用真实凭据测试，供应商测试目前基于手工编写的 fixture（待验证事项 PV-031）。
 - 设计文档中 31 项待验证事项已关闭 30 项，详见[待验证事项汇总](docs/05-appendix/02-pending-verification.md)。

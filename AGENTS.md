@@ -10,9 +10,10 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   with approval, agents, structured output, an MCP client, and the embedding,
   image, speech, transcription, reranking and video modalities.
 - All 15 crates under `crates/`, the `xtask` commands and the seven examples
-  are implemented (first complete build: 2026-09-14). Nothing is released
-  yet; every crate is at 0.1.0 with an `Unreleased` changelog section. Work
-  in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
+  are implemented (first complete build: 2026-09-14). Version 0.1.0 of every
+  crate was published to crates.io on 2026-09-14 (tag `v0.1.0`); each
+  changelog has a `[0.1.0]` section and collects further work under
+  `Unreleased`. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
   `ferrin-schema` / `ferrin-message` / `ferrin-provider-util` →
   `ferrin-tool` → provider crates and `ferrin-mcp` → `ferrin-core` →
   `ferrin-otel` / `ferrin-testing` → `ferrin`. Each architecture chapter ends
