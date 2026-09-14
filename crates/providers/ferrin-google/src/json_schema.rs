@@ -1,5 +1,8 @@
 //! Conversion of JSON Schema (draft 7) to the OpenAPI 3.0 schema subset
 //! accepted by the Gemini API (`responseSchema`, function `parameters`).
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;

@@ -11,6 +11,12 @@
 //! execution when asked.
 //!
 //! Design: `docs/01-architecture/06-tool-system.md`, ADR 0012.
+//!
+//! # Attribution
+//!
+//! Portions of this crate are derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified. See the `NOTICE` file in the crate root.
 
 mod builder;
 pub mod callers;

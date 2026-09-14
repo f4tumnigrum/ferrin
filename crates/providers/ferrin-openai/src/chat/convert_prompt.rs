@@ -1,4 +1,7 @@
 //! Conversion of the specification prompt to Chat Completions messages.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use ferrin_provider_util::media_type::resolve_full_media_type;
 use ferrin_provider_util::provider_reference::resolve_provider_reference;

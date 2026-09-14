@@ -23,3 +23,10 @@ All notable changes to this crate are documented here. The format follows
 - `prune::prune` with `PruneOptions` (reasoning, tool-call rules by scope and
   tool, empty message handling), ported from the reference algorithm.
 - `InvalidDataContentError`, `FileSourceError`.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.

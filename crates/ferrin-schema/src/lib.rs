@@ -12,6 +12,12 @@
 //! - [`json`]: JSON parsing with size and depth limits.
 //!
 //! Design: `docs/01-architecture/08-structured-output.md`, ADR 0004.
+//!
+//! # Attribution
+//!
+//! Portions of this crate are derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified. See the `NOTICE` file in the crate root.
 
 pub mod dialect;
 mod error;

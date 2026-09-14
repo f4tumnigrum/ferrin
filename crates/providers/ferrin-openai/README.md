@@ -37,3 +37,7 @@ or API key is needed:
 ```sh
 cargo nextest run -p ferrin-openai --all-features
 ```
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Portions of this crate are derived from the Vercel AI SDK (Apache-2.0); the crate and module documentation carry the attribution.

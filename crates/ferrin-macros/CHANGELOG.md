@@ -12,3 +12,8 @@ All notable changes to this crate are documented here. The format follows
   (`Tool::function::<Input>()` with the doc comment as description); rejects
   reference parameters, explicit lifetimes, generics, `self`, missing return
   types and macro arguments with targeted compile errors.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).

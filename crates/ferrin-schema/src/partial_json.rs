@@ -5,6 +5,10 @@
 //! and drops trailing separators so that any prefix of a valid document
 //! becomes parseable. [`parse_partial`] tries a direct parse first and falls
 //! back to repair.
+//!
+//! Derived from the `fixJson` state machine of the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified; see `NOTICE`.
 
 use std::borrow::Cow;
 

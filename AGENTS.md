@@ -173,6 +173,11 @@ line.
   testing, breaking or not, related ADR or issue.
 - Commit `Cargo.lock`, `insta` snapshots and the `.stderr` snapshots under
   `verification/`; do not commit other local artefacts.
+- The project is licensed under Apache-2.0 only (`license` in the workspace
+  manifest; `LICENSE` and `NOTICE` are copied into every published crate).
+  Code derived from another project is attributed in the root `NOTICE`, in
+  the crate documentation of the affected crate and in the module
+  documentation of the affected file; keep the three in sync (ADR 0017).
 
 ## 8. Security
 

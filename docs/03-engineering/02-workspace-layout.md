@@ -49,12 +49,14 @@ ferrin/
   CONTRIBUTING.md SECURITY.md
   AGENTS.md                  # AI 编码代理与贡献者的操作摘要（以 docs/ 为准）
   CLAUDE.md                  # 仅导入 AGENTS.md（Claude Code 读取）
-  LICENSE-APACHE LICENSE-MIT
+  LICENSE NOTICE             # Apache-2.0 全文与派生代码署名；两者复制到每个发布的 crate 目录
 ```
 
 【事实】2026-09-13 已按此布局建立骨架：15 个 crate（各含 `Cargo.toml`、`src/lib.rs`、`README.md`、`CHANGELOG.md`）、`xtask`、`examples/example-generate-text`、全部配置文件与工作流。骨架在 1.98.1 上通过 `cargo check/clippy/doc/deny/hack/nextest`。
 
 【决策】crate 位于 `crates/` 与 `crates/providers/` 下而非仓库根目录。依据：平铺在仓库根目录的工作区在 crate 数量增长后目录列表难以浏览；Ferrin crate 数量可控但仍按类别分组，供应商适配器单独一级。
+
+【决策】（[ADR 0017](../04-decisions/2026-09-14-0017-apache-2-license-and-attribution.md)）工作区以 Apache-2.0 单许可发布；根目录的 `LICENSE`（许可证全文）与 `NOTICE`（版权与派生代码署名）复制到每个发布的 crate 目录。依据：`cargo package` 只打包 crate 目录内的文件，而随发布附带许可证与声明是 Apache-2.0 第 4 条的要求；副本内容相同，变更时一并同步。
 
 ## 2. 工作区根 `Cargo.toml`
 
@@ -68,7 +70,7 @@ exclude = ["verification"]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.98"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 repository = "https://github.com/f4tumnigrum/ferrin"
 authors = ["Ferrin contributors"]
 

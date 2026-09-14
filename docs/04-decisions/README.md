@@ -20,6 +20,7 @@
 | [0014](2026-09-13-0014-openai-compatible-model-families.md) | `ferrin-openai-compatible` 的模型族与 Responses 模式 | accepted | 2026-09-13 |
 | [0015](2026-09-14-0015-mcp-stdio-frame-writer.md) | MCP stdio 传输以写入任务串行化帧 | accepted | 2026-09-14 |
 | [0016](2026-09-14-0016-inline-encoding-no-spawn-blocking.md) | 编码与序列化在异步任务内直接执行，不使用 `spawn_blocking` | accepted | 2026-09-14 |
+| [0017](2026-09-14-0017-apache-2-license-and-attribution.md) | 许可改为 Apache-2.0 单许可并署名派生代码 | accepted | 2026-09-14 |
 
 ## 编辑性修订
 

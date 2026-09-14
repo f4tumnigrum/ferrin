@@ -62,4 +62,4 @@ references; `ferrin-testing` provides `MockLanguageModel` for tests.
 
 ## License
 
-MIT OR Apache-2.0.
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Portions of this crate are derived from the Vercel AI SDK (Apache-2.0); the crate and module documentation carry the attribution.

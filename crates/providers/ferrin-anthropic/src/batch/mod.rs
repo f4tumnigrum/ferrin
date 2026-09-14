@@ -1,5 +1,8 @@
 //! Message Batches API (`<name>.batch`): text requests executed through the
 //! Messages API.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 pub mod results;
 

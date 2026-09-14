@@ -26,3 +26,10 @@ All notable changes to this crate are documented here. The format follows
   mirroring the provider specification; `TypeValidationError` keeps its
   context boxed so `Result<T, TypeValidationError>` stays below the
   large-error threshold.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.

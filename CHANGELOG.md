@@ -30,3 +30,10 @@ lists releases and cross-crate changes. The format follows
   `example-stream-sse-server` and `example-otel`.
 - Live tests (`#[ignore]`, `test(live_)`) for the facade, `ferrin-openai`
   and `ferrin-openai-compatible`.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0): `LICENSE-MIT`
+  removed, `LICENSE-APACHE` renamed to `LICENSE`, and a `NOTICE` file added
+  attributing the code derived from the Vercel AI SDK; both files are copied
+  into every published crate (ADR 0017).

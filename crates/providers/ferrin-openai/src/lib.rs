@@ -17,6 +17,12 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Attribution
+//!
+//! Portions of this crate are derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated from TypeScript to Rust and
+//! modified. See the `NOTICE` file in the crate root.
 
 pub mod batch;
 pub mod capabilities;

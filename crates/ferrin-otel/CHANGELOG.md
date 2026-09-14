@@ -19,3 +19,8 @@ All notable changes to this crate are documented here. The format follows
   including embedding and rerank operations.
 - `OtelTelemetryBuilder` (`tracer_provider`, `meter_provider`,
   `without_metrics`, `record_tool_content`) and the `semconv` constants.
+
+### Changed
+
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).

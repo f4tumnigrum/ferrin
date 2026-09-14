@@ -54,3 +54,5 @@ All notable changes to this crate are documented here. The format follows
 
 - reqwest is enabled with only the `http2` and `stream` features; multipart
   bodies are encoded by this crate and JSON goes through `serde_json`.
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).

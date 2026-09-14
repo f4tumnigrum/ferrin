@@ -1,4 +1,7 @@
 //! Speech translation model over the realtime WebSocket (`realtime` feature).
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use base64::Engine;
 use bytes::Bytes;

@@ -9,7 +9,7 @@ Ferrin 是一个 Rust 库形态的 AI SDK。调用方是直接依赖 Ferrin crat
 - 工具系统（本地工具、供应商执行工具、动态工具、MCP 工具），包含审批、修复、超时与遥测。
 - 面向长期维护的工程基础设施：多 crate 工作区、统一 lint、fixture 测试、ADR 流程、语义化版本策略。
 
-Ferrin 是独立设计的 Rust 库：接口形态按 Rust 的所有权、类型系统与异步模型确定，不携带历史 API 命名、兼容层、`experimental_` 前缀迁移路径或多规范版本共存机制。
+Ferrin 是独立实现的 Rust 库，设计阶段参考了 Vercel AI SDK 的公开源码与文档，部分代码由其移植而来（署名见仓库根目录的 `NOTICE` 与 README 的「致谢」，许可见 [ADR 0017](../04-decisions/2026-09-14-0017-apache-2-license-and-attribution.md)）。接口形态按 Rust 的所有权、类型系统与异步模型确定，不携带历史 API 命名、兼容层、`experimental_` 前缀迁移路径或多规范版本共存机制。
 
 ## 2. 功能范围
 

@@ -2,6 +2,9 @@
 //!
 //! Objects under the `openaiCompatible` key of a message's or part's
 //! `provider_options` are spread into the wire object.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use ferrin_provider_util::media_type::resolve_full_media_type;
 use ferrin_spec::FileData;

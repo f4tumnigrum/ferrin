@@ -10,6 +10,10 @@ All notable changes to this crate are documented here. The format follows
 - MCP tools built from server-provided schemas are marked `strict = false`
   so providers with strict-by-default function tools (OpenAI Responses)
   accept schemas that do not list every property as required.
+- Licensed under Apache-2.0 only (previously MIT OR Apache-2.0); `LICENSE` and
+  `NOTICE` are included in the package (ADR 0017).
+- Crate and module documentation attribute the code derived from the Vercel
+  AI SDK.
 
 ### Added
 
