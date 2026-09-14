@@ -1,5 +1,7 @@
 # Ferrin
 
+![Ferrin：AI, in Rust. One API. Multiple providers.](assets/banner.png)
+
 [![ci](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml/badge.svg)](https://github.com/f4tumnigrum/ferrin/actions/workflows/ci.yml)
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#许可)
