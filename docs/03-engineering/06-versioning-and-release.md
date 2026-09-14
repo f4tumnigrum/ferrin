@@ -38,7 +38,7 @@
 
 1. 发布 PR：更新 `workspace.package.version`、各 `CHANGELOG.md`（`Unreleased` → 版本段）、`docs/` 中的版本引用；`semver.yml`（以上一发布 tag 为基线）与 `ci.yml` 的 `package` 作业通过。
 2. 合并后打 tag `v0.y.z`。
-3. `release.yml`（环境 `release`，secret `CARGO_REGISTRY_TOKEN`）先校验 tag 与版本、变更日志段，再按 `cargo xtask publish-order` 输出的顺序执行 `cargo publish -p <crate> --locked`；`cargo publish` 自身等待 crates.io 索引可见后返回；已发布的 crate（`cargo info` 可查到该版本）跳过，因此失败后可从中断点重跑。
+3. `release.yml`（环境 `release`，secret `CARGO_REGISTRY_TOKEN`）先校验 tag 与版本、变更日志段，再把 `cargo xtask publish-order` 列出、且 crates.io 上尚无该版本（`cargo info` 查不到）的 crate 以一次 `cargo publish -p <a> -p <b> … --locked` 发布：Cargo 自行按依赖顺序上传，等待每个 crate 在索引可见后再发布其依赖方，并把本次发布集合内的包提供给彼此的验证构建。失败后重跑时已发布的 crate 被跳过，因此可从中断点继续。
 4. 发布 GitHub Release：正文由 `git cliff --latest` 从上一 tag 以来的约定式提交生成，并附根 `CHANGELOG.md`。
 5. docs.rs 构建检查：所有 crate `all-features` 文档构建成功。
 
@@ -47,6 +47,10 @@
 【事实】（2026-09-14）本地无法完整预演发布：本机 `~/.cargo/config.toml` 把 crates.io 替换为镜像源，`cargo package`/`cargo publish --dry-run` 对未发布的工作区内依赖（如 `ferrin-provider-util` → `ferrin-spec`）报“no matching package”，因为 Cargo 1.90 起的多包打包只对 crates.io 源叠加本地包；改用不含镜像配置的临时 `CARGO_HOME` 从仓库目录外调用可绕过：当日以此方式对 15 个可发布 crate 执行 `cargo package --locked -p …`（含从打包源码的验证构建）全部成功，约 6 分钟；`cargo publish --dry-run` 未另行执行（同一打包与验证步骤已覆盖，上传步骤只能在发布时验证）。CI 的 `package` 作业在无镜像的运行器上执行同一检查。
 
 发布顺序（依赖拓扑）：`ferrin-spec` → `ferrin-schema` → `ferrin-message` → `ferrin-provider-util` → `ferrin-tool` → `ferrin-macros` → 供应商 crate、`ferrin-mcp` → `ferrin-core` → `ferrin-otel`、`ferrin-testing` → `ferrin`。
+
+【事实】（2026-09-14，v0.1.0 发布记录）逐个 `cargo publish -p <crate>` 在第 6 个 crate `ferrin-openai-compatible` 失败：其开发依赖 `ferrin-testing`（发布顺序忽略开发依赖，该 crate 排在其后）带版本号，Cargo 打包时到 crates.io 索引解析该依赖，报 “no matching package named `ferrin-testing`”；此前 5 个 crate（`ferrin-macros`、`ferrin-spec`、`ferrin-message`、`ferrin-provider-util`、`ferrin-schema`）已成功上传。同一次发布还确认：crates.io 令牌的 Crates 限定填精确名 `ferrin` 时对其他 14 个 crate 返回 403，账号邮箱未验证时返回 400 “A verified email address is required”。
+
+【决策】（2026-09-14）两项修正：`release.yml` 改为对全部未发布 crate 执行一次多包 `cargo publish`（见第 3 步）；`[workspace.dependencies]` 中的 `ferrin-testing` 改为仅 `path`，不带 `version`。依据：多包发布让 Cargo 用本次发布集合满足验证构建的依赖，与 CI `package` 作业和本地多包 `cargo package` 的行为一致；`ferrin-testing` 在工作区内只作为开发依赖使用，Cargo 打包时会剔除不带版本要求的路径型开发依赖，发布出的清单不再引用它，逐个发布也不会再被它阻塞。`ferrin-testing` 自身仍正常发布，供下游在自己的开发依赖中使用。
 
 ## 7. 支持策略
 
