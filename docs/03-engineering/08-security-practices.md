@@ -55,7 +55,7 @@ Ferrin 处理的不可信输入来源：
 
 ## 6. 依赖安全
 
-- `cargo deny` advisories 每日运行；高危漏洞 72 小时内发布补丁。
+- `cargo deny` advisories 在每个 push 与 PR 上运行，`versions.yml` 每周另跑一次并对发现的漏洞开 issue；仓库启用 Dependabot 漏洞警报与安全更新（见 [CI 与质量门禁](05-ci-and-quality-gates.md)第 8 节）。高危漏洞 72 小时内发布补丁。
 - `unsafe_code = "forbid"`。
 - 依赖来源仅 crates.io。
 - 发布产物由 CI 从 tag 构建；维护者本地不执行 `cargo publish`（发布令牌仅在 CI）。

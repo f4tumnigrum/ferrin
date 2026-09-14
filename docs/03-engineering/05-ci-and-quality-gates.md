@@ -20,7 +20,7 @@ Ferrin 工作流：
 
 PR 合并的必要条件（GitHub 分支保护）：
 
-【事实】（2026-09-14）仓库当前为私有且使用 GitHub Free 方案，分支保护/规则集不可用（API 返回 403 “Upgrade to GitHub Pro or make this repository public”），以下门禁暂由约定执行；仓库公开或升级方案后应在 `main` 上启用必需状态检查（`ci.yml` 全部作业）与至少一名审阅者。
+【事实】（2026-09-14）仓库公开前使用 GitHub Free 方案，分支保护与规则集不可用，以下门禁由约定执行。仓库公开后在 `main` 上启用了规则集 `protect-main`（禁止删除与强推，见第 8 节）；必需状态检查与审阅者要求尚未启用，因为维护者当前直接向 `main` 推送，改为 PR 工作流后再启用（`ci.yml` 全部作业为必需检查）。
 
 1. `cargo fmt --all -- --config imports_granularity=Item --check` 通过。
 2. `cargo clippy --workspace --all-targets --all-features -- -D warnings` 通过（Linux）。
@@ -92,7 +92,7 @@ unknown-git = "deny"
 - `cargo deny check`（含 advisories）在每个 PR 与 push 上运行；`versions.yml` 每周另跑一次 `cargo deny check advisories`，发现漏洞开 issue（与过期依赖 issue 同一工作流）。
 - 【决策】（PV-027）使用 Dependabot（`.github/dependabot.yml`）：cargo 生态每周一、次版本与补丁分组为单个 PR、`verification/` 每月、GitHub Actions 每周分组。依据：GitHub 原生、无需额外应用授权、支持 `Cargo.lock` 更新与分组；Renovate 的额外能力（自动合并、跨仓库预设）当前无需求。
 - GitHub Actions 以 commit SHA 固定版本，由 Dependabot 更新。
-- CI secret 只暴露给 `live-tests.yml` 与 `release.yml`。
+- CI secret 只由 `live-tests.yml`（供应商密钥）、`release.yml`（`CARGO_REGISTRY_TOKEN`）与 `coverage.yml`（`CODECOV_TOKEN`）读取；`pull_request` 触发的作业不需要 secret。
 
 ## 7. 生成文件一致性
 
@@ -101,3 +101,15 @@ unknown-git = "deny"
 - `docs/api/*.json`：`cargo xtask api-snapshot`（rustdoc JSON 公共 API 摘要，用于评审 API 变化）。【事实】（2026-09-14）已实现，`doc` 作业在 `cargo doc` 之后运行 `cargo xtask api-snapshot --check`，摘要与代码不一致时作业失败；改动公共 API 的提交需先重新生成（实现细节见[工作区布局](02-workspace-layout.md)第 6 节）。
 - `crates/providers/*/docs/options-schema.json`：供应商选项 JSON Schema。
 - `insta` 快照。
+
+## 8. 仓库设置
+
+【事实】（2026-09-14，仓库公开当日通过 GitHub API 设置并读回确认）
+
+- 安全功能：私密漏洞报告（`SECURITY.md` 指向的表单）、Dependabot 漏洞警报、Dependabot 安全更新、密钥扫描与推送保护均已启用；非供应商模式与有效性检查在本方案下不可用，保持关闭。CodeQL 代码扫描使用默认设置（`default` 查询集，自动检测语言）。
+- 规则集 `protect-main`（目标为默认分支，无绕过者）：禁止删除分支、禁止强推。重写历史需先停用该规则集。
+- Actions：允许范围为 GitHub 官方、已验证发布者与工作流中固定 SHA 使用的第三方 Action（`EmbarkStudios/cargo-deny-action`、`Swatinem/rust-cache`、`codecov/codecov-action`、`crate-ci/typos`、`dtolnay/rust-toolchain`、`obi1kenobi/cargo-semver-checks-action`、`peter-evans/create-issue-from-file`、`softprops/action-gh-release`、`taiki-e/install-action`）；工作流令牌默认只读；来自 fork 的 PR 工作流对所有外部贡献者都需要审批。新增 Action 时需同步更新允许列表。
+- 合并方式仅 squash，提交标题取 PR 标题、正文取 PR 描述（与 Conventional Commits 一致），合并后自动删除分支，建议更新落后的 PR 分支。
+- 描述与主题已填写；社交预览图、Codecov 令牌、发布令牌与在线测试密钥需在网页端配置。
+
+【决策】规则集不设绕过者、不含必需状态检查。依据：无绕过者时误操作的强推会被拒绝，而有意的历史重写只需临时停用规则集；必需状态检查会拒绝未经 CI 的直接推送，与当前直接向 `main` 推送的工作方式冲突，采用 PR 工作流后再加入。
