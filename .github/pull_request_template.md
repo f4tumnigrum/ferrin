@@ -16,4 +16,4 @@
 - [ ] Public API has rustdoc (`# Errors`, `# Examples` where required)
 - [ ] `CHANGELOG.md` of every touched crate updated
 - [ ] Breaking change? Footer `BREAKING CHANGE:` added and ADR linked
-- [ ] Design docs updated (【事实】/【决策】/【待验证】 labels, appendix in sync)
+- [ ] Both documentation editions updated (`[Fact]`/`[Decision]`/`[Pending verification]` in English, corresponding Chinese labels, appendices in sync)

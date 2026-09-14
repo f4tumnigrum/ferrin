@@ -1,33 +1,35 @@
-# 术语表
+# Glossary
 
-| 术语 | 定义 | Ferrin 对应标识符 |
+**English** | [Chinese](../zh-CN/00-overview/02-glossary.md)
+
+| Term | Definition | Ferrin identifier |
 | --- | --- | --- |
-| Provider（供应商） | 提供模型能力的服务方及其适配器实现，负责将规范层调用转换为具体 API 请求。 | `ferrin_spec::Provider` |
-| Provider 规范 | Provider 适配器必须实现的一组 trait 与数据类型。规范版本变化即适配器契约变化。 | `ferrin_spec::SPEC_VERSION` |
-| 语言模型 | 接收 Prompt 并生成文本、推理、工具调用等内容的模型。 | `ferrin_spec::LanguageModel` |
-| Prompt（规范层） | 发送给语言模型的标准化消息序列，仅包含规范定义的内容部件。 | `ferrin_spec::Prompt` |
-| 应用侧消息 | 应用构造的消息，允许便捷形式（字符串、字节、URL），经标准化转换为规范层 Prompt。 | `ferrin_message::Message` |
-| 内容部件 | 消息中的最小内容单元：文本、文件、推理、工具调用、工具结果、审批请求、自定义内容、来源。 | `*Part` 类型 |
-| 步骤（Step） | 生成循环中的一次模型调用及其后续工具执行。 | `ferrin_core::StepResult` |
-| 停止条件 | 决定生成循环是否在存在工具结果时继续的谓词。 | `ferrin_core::StopCondition` |
-| 工具 | 模型可以调用的函数或供应商内置能力，含输入 Schema、可选执行函数与元数据。 | `ferrin_tool::Tool` |
-| 工具集 | 工具名到工具的有序映射。 | `ferrin_tool::ToolSet` |
-| 供应商执行工具 | 由供应商在其服务端执行的工具（如网页搜索），其结果随模型响应返回。 | `ToolKind::ProviderExecuted` |
-| 供应商定义工具 | 由供应商定义 Schema 但在客户端执行的工具（如计算机操作）。 | `ToolKind::ProviderDefined` |
-| 动态工具 | 运行期才能确定 Schema 的工具（如 MCP 工具），输入输出类型为 JSON 值。 | `ToolKind::Dynamic` |
-| 工具审批 | 工具执行前需要应用或用户确认的机制，产生审批请求与审批响应部件。 | `NeedsApproval`、`ToolApprovalRequestPart` |
-| 延迟结果 | 供应商执行工具在当前响应中未返回结果，需在后续步骤中补齐。 | `supports_deferred_results` |
-| 结构化输出 | 要求模型输出符合 Schema 的 JSON，并解析为类型化值。 | `ferrin_core::Output` |
-| 部分 JSON 修复 | 对流式传输中不完整的 JSON 文本进行补全以得到可解析的中间值。 | `ferrin_schema::partial_json` |
-| 中间件 | 包装语言模型的组件，可改写参数、包装生成与流式调用。 | `ferrin_core::LanguageModelMiddleware` |
-| 注册表 | 以 `provider_id:model_id` 字符串解析模型实例的组件。 | `ferrin_core::ProviderRegistry` |
-| 遥测集成 | 接收生成生命周期回调的可插拔组件。 | `ferrin_core::Telemetry` |
-| 警告 | 供应商或核心在不中断调用的前提下报告的能力缺失、兼容降级或弃用信息。 | `ferrin_spec::Warning` |
-| 用量 | 一次或多次模型调用的 token 统计。 | `ferrin_spec::Usage` |
-| 完成原因 | 模型停止生成的原因，含统一枚举与供应商原始值。 | `ferrin_spec::FinishReason` |
-| 供应商选项 | 按供应商键分组的透传 JSON 对象，用于供应商特有请求参数。 | `ProviderOptions` |
-| 供应商元数据 | 按供应商键分组的透传 JSON 对象，用于供应商特有响应信息。 | `ProviderMetadata` |
-| 供应商引用 | 供应商侧资源标识映射（如上传后的文件 ID）。 | `ProviderReference` |
-| MCP | Model Context Protocol，通过 JSON-RPC 暴露工具、资源与提示的协议。 | `ferrin_mcp` |
-| 取消令牌 | 用于协作式取消异步操作的句柄。 | `tokio_util::sync::CancellationToken` |
-| Fixture | 录制的供应商原始响应（含 SSE 分片），用于离线回放测试。 | `tests/fixtures/` |
+| Provider | A service offering model capabilities and its adapter, which translates specification calls into concrete API requests. | `ferrin_spec::Provider` |
+| Provider specification | Traits and data types that provider adapters must implement. A specification version change changes the adapter contract. | `ferrin_spec::SPEC_VERSION` |
+| Language model | A model that accepts a prompt and generates text, reasoning, tool calls, and other content. | `ferrin_spec::LanguageModel` |
+| Prompt (specification layer) | A normalized message sequence sent to a language model, containing only specification-defined content parts. | `ferrin_spec::Prompt` |
+| Application message | An application-constructed message accepting convenient forms (strings, bytes, URLs), normalized into a specification prompt. | `ferrin_message::Message` |
+| Content part | The smallest content unit in a message: text, file, reasoning, tool call, tool result, approval request, custom content, or source. | `*Part` types |
+| Step | One model call and its subsequent tool execution in the generation loop. | `ferrin_core::StepResult` |
+| Stop condition | A predicate deciding whether the generation loop continues when tool results are present. | `ferrin_core::StopCondition` |
+| Tool | A model-callable function or provider capability with an input schema, optional execution function, and metadata. | `ferrin_tool::Tool` |
+| Tool set | An ordered mapping from tool names to tools. | `ferrin_tool::ToolSet` |
+| Provider-executed tool | A tool executed on the provider's server, such as web search, whose result arrives with the model response. | `ToolKind::ProviderExecuted` |
+| Provider-defined tool | A tool whose schema is defined by the provider but executes on the client, such as computer use. | `ToolKind::ProviderDefined` |
+| Dynamic tool | A tool whose schema is known only at runtime, such as an MCP tool; inputs and outputs are JSON values. | `ToolKind::Dynamic` |
+| Tool approval | Application or user confirmation required before tool execution, represented by approval request and response parts. | `NeedsApproval`, `ToolApprovalRequestPart` |
+| Deferred result | A provider-executed tool result missing from the current response that must arrive in a later step. | `supports_deferred_results` |
+| Structured output | Model output constrained to schema-conforming JSON and parsed into a typed value. | `ferrin_core::Output` |
+| Partial JSON repair | Completing incomplete streaming JSON to obtain a parseable intermediate value. | `ferrin_schema::partial_json` |
+| Middleware | A language-model wrapper that can transform parameters and wrap generation and streaming calls. | `ferrin_core::LanguageModelMiddleware` |
+| Registry | A component resolving model instances from `provider_id:model_id` strings. | `ferrin_core::ProviderRegistry` |
+| Telemetry integration | A pluggable component receiving generation lifecycle callbacks. | `ferrin_core::Telemetry` |
+| Warning | A report of missing capabilities, compatibility fallback, or deprecation from a provider or the core, without interrupting the call. | `ferrin_spec::Warning` |
+| Usage | Token statistics for one or more model calls. | `ferrin_spec::Usage` |
+| Finish reason | Why the model stopped generating, including a normalized enum and the provider's raw value. | `ferrin_spec::FinishReason` |
+| Provider options | Passthrough JSON objects grouped by provider key for provider-specific request parameters. | `ProviderOptions` |
+| Provider metadata | Passthrough JSON objects grouped by provider key for provider-specific response information. | `ProviderMetadata` |
+| Provider reference | A mapping of provider-side resource identifiers, such as uploaded file IDs. | `ProviderReference` |
+| MCP | Model Context Protocol, exposing tools, resources, and prompts over JSON-RPC. | `ferrin_mcp` |
+| Cancellation token | A handle for cooperative cancellation of async operations. | `tokio_util::sync::CancellationToken` |
+| Fixture | A recorded raw provider response, including SSE chunks, used for offline replay tests. | `tests/fixtures/` |

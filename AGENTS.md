@@ -17,7 +17,7 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   `ferrin-schema` / `ferrin-message` / `ferrin-provider-util` →
   `ferrin-tool` → provider crates and `ferrin-mcp` → `ferrin-core` →
   `ferrin-otel` / `ferrin-testing` → `ferrin`. Each architecture chapter ends
-  with dated implementation records (`实现记录`) describing what the code does
+  with dated implementation records (`Implementation record`) describing what the code does
   where it refines the design; read them together with the chapter.
 - The design documents are the single source of truth: `docs/README.md` is
   the index and states the writing conventions; `docs/01-architecture/` holds
@@ -29,16 +29,20 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
 
 ## 2. Language
 
-- Design documents, ADRs and the project `README.md` are written in Chinese
-  (the root README is the user-facing project page, not a design document;
-  crate READMEs are English). Code,
+- English is the primary documentation language: `README.md` and `docs/`.
+  The independent Chinese edition lives in `README.zh-CN.md` and `docs/zh-CN/`.
+  English takes precedence when editions disagree (ADR 0018). Update matching
+  pages in both editions together; preserve ADR/PV IDs, sources, dates and
+  verification limits. Internal chapter links stay within their edition;
+  source code, assets and generated `docs/api/*.json` are shared. Code,
   identifiers, comments, rustdoc, commit messages, CHANGELOG entries, CI and
   configuration files are written in English.
-- Every statement in the design documents carries one label: 【事实】 (a fact
+- Every statement in the English design documents carries one label: `[Fact]` (a fact
   traceable to a source, a specification or a recorded run, with its origin),
-  【决策】 (a decision with its technical rationale), or 【待验证】 (a pending
+  `[Decision]` (a decision with its technical rationale), or `[Pending verification]` (a pending
   item with a `PV-xxx` id registered in
-  `docs/05-appendix/02-pending-verification.md`). Never describe planned
+  `docs/05-appendix/02-pending-verification.md`). Use the corresponding Chinese
+  labels and appendix in the Chinese edition. Never describe planned
   capabilities as implemented or verified.
 - Record only verified official stable versions, and append a verification
   row to section 5 of `docs/03-engineering/01-toolchain-and-dependencies.md`
@@ -203,13 +207,14 @@ line.
 ## 9. Pending-verification workflow
 
 - When a question cannot be settled from the sources or documents, do not
-  guess: write `【待验证】（PV-xxx）` at the point in the source document,
+  guess: write `[Pending verification] (PV-xxx)` in the English source document,
   register the item in the appendix table, and where possible add a
   reproducible prototype under `verification/` (a separate workspace run with
   `just verify`).
-- When closing an item, update the source document (relabel as 【事实】 or
-  【决策】 with the prototype or origin) and the appendix conclusion and status
-  together. `scripts/docs_lint.py` checks ids and registration.
+- When closing an item, update the source document (relabel as `[Fact]` or
+  `[Decision]` with the prototype or origin) and the appendix conclusion and
+  status in both editions together. `scripts/docs_lint.py` checks links,
+  translated-page coverage, pending registration and matching PV statuses.
 - Open item at the time of writing: PV-031 (provider fixtures are
   hand-written; re-record them with `cargo xtask record-fixture` and real
   credentials, then compare the snapshots).

@@ -1,10 +1,12 @@
-# 并发、取消与超时
+# Concurrency, cancellation, and timeouts
 
-## 1. 取消模型
+**English** | [Chinese](../zh-CN/01-architecture/16-concurrency-and-cancellation.md)
 
-【决策】取消信号贯穿调用：应用传入的取消令牌与超时定时器合并后传递给模型调用、下载、工具执行；取消时重试立即终止（`RetryError` 的原因为已取消），流式调用触发 `on_abort` 并发出 `abort` 事件。依据：任何一层吞掉取消都会让上层等待到超时，统一传递是可预测取消的前提。
+## 1. Cancellation model
 
-【决策】Ferrin 使用 `tokio_util::sync::CancellationToken`（0.7.19）作为取消原语：
+[Decision] Combine caller cancellation and timers and pass them to models, downloads, and tools. Cancellation stops retries immediately with a cancelled reason; streaming invokes `on_abort` and emits `abort`. No layer may swallow cancellation and leave its caller waiting for timeout.
+
+[Decision] Use `tokio_util::sync::CancellationToken` 0.7.19:
 
 ```
 caller token
@@ -15,61 +17,61 @@ caller token
         └── download tokens (child)
 ```
 
-- 子令牌在父令牌取消时自动取消；超时通过 `tokio::time::timeout` 包裹并在触发时取消对应子令牌。
-- 取消原因需要区分“调用方取消”与“超时”：核心层在派生令牌旁维护 `CancelReason` 单元格（`OnceLock<CancelReason>`），错误映射时据此产生 `Error::Cancelled` 或 `Error::Timeout { scope }`。
-- 供应商适配器收到 `CallOptions::cancellation`，在发起 HTTP 请求时用 `select!` 监听令牌并中止请求；流式读取中每次 `poll` 检查令牌。
+- Parent cancellation cancels child tokens. Timeouts wrap operations in `tokio::time::timeout` and cancel the corresponding child.
+- Track caller cancellation versus timeout in a companion `OnceLock<CancelReason>` to map errors to `Error::Cancelled` or `Error::Timeout { scope }`.
+- Adapters select on `CallOptions::cancellation` while sending HTTP and check cancellation while polling streams.
 
-依据：`CancellationToken` 支持层级派生与 `Send + Sync + Clone`，是 Tokio 生态的标准取消机制。
+`CancellationToken` supports hierarchical derivation and `Send + Sync + Clone`, matching Tokio conventions.
 
-## 2. 超时实现
+## 2. Timeout implementation
 
-| 超时 | 作用域 | 实现 |
+| Timeout | Scope | Implementation |
 | --- | --- | --- |
-| `total` | 整个调用（含所有步骤与工具） | 调用开始时 `spawn` 定时任务，到期取消 call token |
-| `step` | 单步：模型调用 + 该步工具执行 | 每步开始重置 |
-| `first_chunk` | 流式：从请求发出到第一个内容分片 | 在 `StreamStart` 之后、首个内容事件前生效 |
-| `chunk` | 流式：相邻内容分片间隔 | 每个内容事件到达时重置定时器（`tokio::time::Sleep::reset`） |
-| `tool` / `per_tool` | 单个工具执行 | `timeout(duration, tool_future)`，超时转 `ToolError::Timeout` |
+| `total` | Entire call, including steps and tools | Start a timer task at invocation, cancelling the call token on expiry |
+| `step` | Model call and tools in one `step` | Reset at each `step` |
+| `first_chunk` | Request to first streaming content chunk | Active after `StreamStart` until first content |
+| `chunk` | Between adjacent content chunks | Reset `tokio::time::Sleep` on each content event |
+| `tool` / `per_tool` | Individual `tool` execution | `timeout(duration, tool_future)`, mapped to `ToolError::Timeout` |
 
-【决策】首块与块间超时只对内容分片计时，`stream-start`、`response-metadata` 等元数据事件不重置计时。依据：元数据事件在模型开始生成前就会到达，若计入会让超时失去“模型是否在产出”的含义。
+[Decision] Only content counts for first/inter-chunk timing; metadata such as `stream-start` and `response-metadata` does not reset it, because metadata can arrive before generation begins.
 
-## 3. 并发点
+## 3. Concurrency points
 
-| 位置 | 并发形式 | 上限 |
+| Location | Mechanism | Limit |
 | --- | --- | --- |
-| Prompt 转换中的 URL 下载 | `JoinSet` | `max_parallel_downloads`（默认 8，见 PV-003 决策） |
-| 客户端工具执行 | `JoinSet`，结果经有界 `mpsc` 注入流 | 无上限；每个工具一个任务 |
-| `embed_many` 分块 | `JoinSet` 或串行（按 `supports_parallel_calls`） | `max_parallel_calls` |
-| `generate_image` 多次调用 | `JoinSet` | 由 `n / max_images_per_call` 决定 |
-| MCP 请求 | 单连接多路复用（请求 ID 匹配） | 无上限 |
+| Prompt URL downloads | `JoinSet` | `max_parallel_downloads`, default 8 (PV-003) |
+| Client tools | `JoinSet`, results via bounded `mpsc` | Unlimited by default; one task per tool |
+| Embedding chunks | `JoinSet` or sequential, per model capability | `max_parallel_calls` |
+| Image calls | `JoinSet` | Determined by `n / max_images_per_call` |
+| MCP requests | Request-ID multiplexing on one connection | Unlimited |
 
-【决策】任务通过 `JoinSet` 管理而非裸 `tokio::spawn`。依据：`JoinSet` 在被丢弃时取消全部子任务，保证调用被取消或结果被丢弃时不残留后台任务。
+[Decision] Manage tasks with `JoinSet`, never bare `tokio::spawn`. Dropping it cancels all children, preventing orphan tasks after cancellation or result disposal.
 
-## 4. 背压
+## 4. Backpressure
 
-- 供应商流（`BoxStream<StreamPart>`）是拉取式的：核心层只在消费者 `poll` 时读取 HTTP 响应体，网络缓冲区提供天然背压。
-- 工具结果注入通道容量默认 64；工具任务在通道满时等待，不丢弃结果。
-- `StreamTextResult` 不做内部无界缓冲；应用不消费事件流则管线停止推进（`Completion` 不会完成）。文档在 API 参考中明确“必须消费或调用 `consume()`”。
+- Provider `BoxStream<StreamPart>` is pull-based: core reads response bodies only when consumers `poll`; network buffers supply backpressure.
+- Tool result channels default to 64; full channels make tasks wait without dropping results.
+- `StreamTextResult` has no unbounded internal buffer. Without event consumption, the pipeline stops and `Completion` cannot finish. API documentation requires consuming the stream or calling `consume()`.
 
-## 5. `Send` 与 `'static` 约束
+## 5. Send and static bounds
 
-- 所有公共 Future 与 Stream 均为 `Send`，允许 `tokio::spawn`。
-- 工具执行闭包要求 `'static`（通过 `Arc` 共享状态）；`ToolContext` 中的 `messages` 为 `Arc<[Message]>` 以避免逐任务克隆。
-- 模型对象为 `Arc<dyn Dyn*Model>`，跨任务共享无需克隆内部状态。
+- Public futures/streams are `Send` so applications may spawn them.
+- Tool closures require static ownership, sharing state with `Arc`. `ToolContext.messages` uses `Arc<[Message]>` to avoid per-task copies.
+- Models are shared as `Arc<dyn Dyn*Model>` without cloning internal state.
 
-## 6. 同步原语使用规则
+## 6. Synchronization rules
 
-- 不在持有 `std::sync::Mutex` 守卫时 `.await`；不在持有 `tokio::sync::Mutex` 守卫时跨越长耗时 `.await`（Clippy `await_holding_lock`、`await_holding_invalid_type` 设为 deny，见 `clippy.toml`）。
-- 事件处理器的累积状态由单一任务独占，不使用锁。
-- 只读共享配置使用 `Arc<T>`；需要热替换的配置（如默认注册表）使用 `OnceLock` 一次性设置，不使用 `RwLock`。
+- Never await with a standard mutex guard, or hold an async mutex across long awaits. Clippy `await_holding_lock` and `await_holding_invalid_type` are deny-level in `clippy.toml`.
+- One task owns event aggregation state, without locks.
+- Read-only configuration uses Arc. Shared configuration such as default registries is set once with `OnceLock`, without `RwLock` or hot replacement.
 
-## 7. 阻塞操作
+## 7. Blocking operations
 
-- 【决策】（2026-09-14 修订，[ADR 0016](../04-decisions/2026-09-14-0016-inline-encoding-no-spawn-blocking.md)；原决策为“大文件的 base64 编码、大型 JSON 序列化（> 1 MiB）在 `spawn_blocking` 中执行；阈值常量集中在 `ferrin_core::limits`”）base64 编码与 JSON 序列化在调用方的异步任务内直接执行，核心层与供应商 crate 不使用 `tokio::task::spawn_blocking`/`block_in_place`；`ferrin_core::limits` 不再包含编码阈值常量。依据见 ADR。
-- 文件读取（应用侧 `FileSource::Path` 便捷构造）使用 `tokio::fs`。
+- [Decision] Revised 2026-09-14 in [ADR 0016](../04-decisions/2026-09-14-0016-inline-encoding-no-spawn-blocking.md): perform base64/JSON encoding in the caller's async task, without core/provider `spawn_blocking` or `block_in_place`, and remove encoding thresholds from core limits. This replaces the earlier >1 MiB blocking-pool policy; see the ADR rationale.
+- Read application `FileSource::Path` files with `tokio::fs`.
 
-## 8. 待验证
+## 8. Verification items
 
-- 【事实】（PV-020，`verification/pv020-sleep-reset`，release 构建）每个分片执行一次 `Sleep::poll` + `reset` 的开销为 73 ns（`Instant::now()` 为 17 ns），每秒数百至数千分片时占用可忽略。
-- 【决策】`chunk` 超时保持 `Sleep::reset` 方案，不采用固定间隔轮询。
-- 【决策】通道容量默认 64 与并发下载上限 8 已由 PV-006、PV-003 的结论确定，见[生成循环与流式](07-generation-loop-and-streaming.md)第 5 节与 [Prompt 转换](05-prompt-conversion.md)第 7 节。
+- [Fact] (PV-020, `verification/pv020-sleep-reset`, release) Per-chunk Sleep poll/`reset` costs 73 ns, versus 17 ns for Instant::now, negligible at hundreds/thousands of chunks per second.
+- [Decision] Keep resettable Sleep for `chunk` timeouts rather than fixed-interval polling.
+- [Decision] Channel capacity 64 and download concurrency 8 follow PV-006/PV-003; see [Generation loop](07-generation-loop-and-streaming.md), section 5, and [Prompt conversion](05-prompt-conversion.md), section 7.

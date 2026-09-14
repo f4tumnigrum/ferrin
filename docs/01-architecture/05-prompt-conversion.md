@@ -1,19 +1,21 @@
-# Prompt 标准化与消息转换
+# Prompt normalization and message conversion
 
-本文档描述应用侧输入如何变为规范层 `Prompt`，位于 `ferrin-core::prompt`。
+**English** | [Chinese](../zh-CN/01-architecture/05-prompt-conversion.md)
 
-## 1. 标准化（`standardize`）
+This document describes conversion of application input into specification `Prompt`, implemented in `ferrin-core::prompt`.
 
-【决策】标准化规则：
+## 1. Normalization (`standardize`)
 
-- `prompt` 与 `messages` 互斥，二者皆无或皆有时报 `InvalidPrompt` 错误。
-- `prompt` 为字符串时转换为单条用户消息；为消息数组时等价于 `messages`。
-- `system` 字段（可为字符串或带 `provider_options` 的系统消息）被置于消息序列最前。
-- 默认不允许 `messages` 中出现 `system` 角色消息；`allow_system_in_messages(true)` 时放行。
-- `messages` 为空数组时报错。
-- 消息结构校验失败时报 `InvalidPrompt` 错误。
+[Decision] Normalization rules:
 
-【决策】Ferrin 构建器提供 `.system(...)`、`.prompt(text)`、`.messages(vec)` 三个入口，并在 `IntoFuture` 触发时执行标准化；`prompt` 与 `messages` 同时设置视为调用错误（`Error::InvalidPrompt`）而非静默合并。`allow_system_in_messages(bool)` 保留为显式开关，默认关闭。
+- `prompt` and `messages` are mutually exclusive. Supplying both or neither returns `InvalidPrompt`.
+- A string `prompt` becomes one user message; an array of `messages` is equivalent to `messages`.
+- `system`, a string or `system` message with `provider_options`, is prepended to the sequence.
+- System-role `messages` in `messages` are rejected unless `allow_system_in_messages(true)` is set.
+- An empty `messages` array is an error.
+- Invalid message structure returns `InvalidPrompt`.
+
+[Decision] Builders expose `.system(...)`, `.prompt(text)`, and `.messages(vec)`; normalization runs when `IntoFuture` executes. Setting both `prompt` and `messages` is `Error::InvalidPrompt`, without silent merging. `allow_system_in_messages(bool)` remains an explicit switch, off by default.
 
 ```rust
 pub(crate) struct StandardizedPrompt {
@@ -22,26 +24,26 @@ pub(crate) struct StandardizedPrompt {
 }
 ```
 
-## 2. 转换（`convert`）
+## 2. Conversion (`convert`)
 
-【决策】转换步骤：
+[Decision] Conversion steps:
 
-1. 收集所有用户消息中的文件/图像部件的 URL 与媒体类型，与模型的 `supported_urls` 匹配；不匹配的 URL 通过下载器并发下载（默认下载器只下载模型不支持的 URL）。
-2. 下载得到的字节与媒体类型（响应头优先，其次魔数探测）内联为 `data` 形式。
-3. `image` 部件归一化为 `file` 部件；未提供媒体类型时通过魔数探测，探测失败时 `image` 默认为 `image/*`，`file` 必须有媒体类型。
-4. `data:` URL 被解析为字节与媒体类型。
-5. 助手消息中的 `tool-result` 部件保留（供应商执行结果）；工具消息中的 `tool-approval-response` 在发送给模型前被剥离（审批响应只用于核心层重放）。
-6. 工具结果输出经 `create_tool_model_output` 规范化：若工具定义了 `to_model_output`，调用之；否则字符串输出转为 `text`，其他 JSON 转为 `json`，错误转为 `error-text`/`error-json`。
-7. 后续步骤中每次都对完整消息序列重新转换（下载结果在同一调用内缓存）。
+1. Collect URLs and media types from user file/image parts and match the model's `supported_urls`. Download unmatched URLs concurrently; the default downloader fetches only URLs the model cannot handle.
+2. Inline downloaded bytes and media types as `data`, preferring response headers over magic-byte detection.
+3. Normalize `image` to `file`; detect unspecified media types from magic bytes. If detection fails, images default to `image/*`; files require a media type.
+4. Parse `data:` URLs into bytes and media types.
+5. Preserve assistant `tool-result` parts (provider-executed results). Strip tool-message `tool-approval-response` before sending to the model; these responses serve only core replay.
+6. Normalize tool output with `create_tool_model_output`: call the tool's `to_model_output` if present; otherwise map strings to `text`, other JSON to `json`, and errors to `error-text`/`error-json`.
+7. Reconvert the complete message sequence on every later step, caching downloads within the invocation.
 
-### 2.1 Ferrin 的转换管线
+### 2.1 Ferrin conversion pipeline
 
 ```
 Vec<Message>
   │ collect_download_targets(supported_urls)
   ▼
 DownloadPlan { urls: Vec<(Url, Option<MediaType>)> }
-  │ download_all(plan, download_fn, cancellation)   // 并发，受 max_parallel_downloads 限制
+  │ download_all(plan, download_fn, cancellation)   // concurrent, bounded by max_parallel_downloads
   ▼
 DownloadedFiles: HashMap<Url, DownloadedFile { bytes, media_type }>
   │ convert_message(msg, &downloaded, &tools)
@@ -49,7 +51,7 @@ DownloadedFiles: HashMap<Url, DownloadedFile { bytes, media_type }>
 spec::Prompt
 ```
 
-【决策】下载函数是一个 trait 对象：
+[Decision] The download function is a trait object:
 
 ```rust
 pub trait DownloadFn: Send + Sync {
@@ -61,54 +63,54 @@ pub trait DownloadFn: Send + Sync {
 }
 ```
 
-返回 `None` 表示保留 URL 由供应商自行拉取。默认实现 `DefaultDownloader` 只下载 `is_url_supported_by_model == false` 的项，经 `ferrin_provider_util::secure_url::fetch` 执行（HTTPS、私网拒绝、100 MiB 上限，见 [HTTP 传输与安全](14-http-and-security.md)）。依据：下载器作为 trait 让应用可以替换为带缓存或代理的实现；默认只下载模型不支持的 URL，避免为供应商本可直接拉取的资源支付带宽。
+Returning `None` preserves the URL for the provider to fetch. `DefaultDownloader` downloads only items with `is_url_supported_by_model == false`, using `ferrin_provider_util::secure_url::fetch` (HTTPS, private network rejection, 100 MiB limit; see [HTTP transport and security](14-http-and-security.md)). A trait lets applications substitute caching or proxying; avoiding unnecessary downloads saves bandwidth when providers can fetch directly.
 
-### 2.2 媒体类型探测
+### 2.2 Media type detection
 
-【决策】媒体类型探测依赖自维护的魔数签名表识别常见图像、音频、视频与 PDF 格式，不引入 `infer` 一类通用库。依据：需要识别的格式集合很小且固定，签名表可完整测试；通用库会带来与供应商支持列表无关的格式与依赖。
+[Decision] Maintain a small magic-signature table for common image, audio, video, and PDF formats instead of adding a general library such as `infer`. The required format set is small, fixed, and fully testable; a general library adds unrelated formats and dependencies.
 
-【决策】`ferrin_provider_util::media_type::detect(bytes) -> Option<MediaType>` 实现同一签名表（PNG、JPEG、GIF、WebP、BMP、TIFF、AVIF、HEIC、MP3、WAV、OGG、FLAC、AAC、MP4、WebM 等）；不引入 `infer` crate。依据：探测范围有限且需要与供应商接受的媒体类型列表保持一致，自维护表更容易审计。
+[Decision] `ferrin_provider_util::media_type::detect(bytes) -> Option<MediaType>` uses this table (PNG, JPEG, GIF, WebP, BMP, TIFF, AVIF, HEIC, MP3, WAV, OGG, FLAC, AAC, MP4, WebM, etc.), without `infer`. Keeping detection aligned with provider-supported types makes a local table easier to audit.
 
-【事实】2026-09-13 实现的函数名为 `detect_media_type(bytes)`（依次查图像、PDF、音频（不含 `audio/mp4`）、视频表）、`detect_media_type_for(bytes, top_level)`（按 `image`/`audio`/`video`/`application` 选表，`audio/mp4` 仅在此路径下返回，以避免 MP4 容器在音频与视频之间的歧义）与 `detect_media_type_base64(text, top_level)`（只解码探测所需的前缀）；音频探测前跳过 ID3 标签（最长 128 KiB）。另有 `media_type_to_extension`（`audio/mpeg` → `mp3` 等）与 `resolve_full_media_type(media_type, inline_bytes)`（`image/*` 或 `image` 形式的部分媒体类型经探测补全，失败返回 `UnsupportedFunctionalityError`）。
+[Fact] The 2026-09-13 implementation names are `detect_media_type(bytes)` (`image`, PDF, `audio` excluding `audio/mp4`, then `video`), `detect_media_type_for(bytes, top_level)` (select `image`/`audio`/`video`/`application`; only this path returns `audio/mp4`, avoiding MP4 `audio`/`video` ambiguity), and `detect_media_type_base64(text, top_level)` (decode only the required prefix). Audio detection skips ID3 tags up to 128 KiB. Additional helpers are `media_type_to_extension` (`audio/mpeg` → `mp3`, etc.) and `resolve_full_media_type(media_type, inline_bytes)`, which completes partial types such as `image/*` or `image` by detection, returning `UnsupportedFunctionalityError` on failure.
 
-### 2.3 供应商引用
+### 2.3 Provider references
 
-【决策】文件部件的 `data` 可以是供应商引用；适配器以 `resolve_provider_reference` 查找自身供应商键，缺失时返回 `NoSuchProviderReference` 错误。依据：引用由 Files API 上传产生，只对上传它的供应商有意义，跨供应商使用是调用方错误而非可恢复情形。
+[Decision] File `data` may be a provider reference. Adapters resolve their own key with `resolve_provider_reference`, returning `NoSuchProviderReference` if missing. Files API references belong to the uploading provider; using them elsewhere is a caller error, not recoverable failure.
 
-转换阶段原样透传 `FileSource::Reference`，不做校验；适配器负责解析。
+Conversion passes `FileSource::Reference` through unchanged; adapters validate and resolve it.
 
-## 3. 工具准备（`prepare_tools`、`prepare_tool_choice`）
+## 3. Tool preparation (`prepare_tools`, `prepare_tool_choice`)
 
-【决策】工具准备规则：
+[Decision] Tool preparation rules:
 
-- 工具集为空或经 `active_tools` 过滤后为空时，`tools` 与 `tool_choice` 皆为 `None`。
-- 函数工具与动态工具转换为函数工具定义（`name`、`description`、`input_schema`、`strict`、`input_examples`、`provider_options`）；`description` 可以是接受工具上下文的函数，异步解析。
-- 供应商定义/执行工具转换为供应商工具定义（`id`、`name`、`args`）。
-- `tool_order` 决定发送顺序：列出的在前按给定顺序，其余按名称字母序。
-- `tool_choice` 为 `auto`/`none`/`required` 或指定工具名；指向不在活动集合中的工具的调用在解析阶段标记为无效（见[工具系统](06-tool-system.md)）。
+- If the tool set is empty, including after `active_tools` filtering, both `tools` and `tool_choice` are `None`.
+- Function and dynamic tools become function definitions (`name`, `description`, `input_schema`, `strict`, `input_examples`, `provider_options`). Descriptions may be async functions receiving tool context.
+- Provider-defined/executed tools become provider definitions (`id`, `name`, `args`).
+- `tool_order` places named tools first in the supplied order, then other tools alphabetically.
+- `tool_choice` is `auto`, `none`, `required`, or a named tool. Calls to tools outside the active set are marked invalid during parsing (see [Tool system](06-tool-system.md)).
 
-【决策】Ferrin 的 `prepare_tools` 输出 `PreparedTools { definitions: Vec<ToolDefinition>, tool_choice: Option<ToolChoice>, name_mapping: ToolNameMapping }`。`name_mapping` 用于工具名不合法（供应商限制字符集）时的双向重命名，该逻辑位于 `ferrin_provider_util::tool_name_mapping`，由适配器调用；核心层只保证 `ToolName` 非空且不含空白。
+[Decision] `prepare_tools` returns `PreparedTools { definitions: Vec<ToolDefinition>, tool_choice: Option<ToolChoice>, name_mapping: ToolNameMapping }`. Adapters use `name_mapping` from `ferrin_provider_util::tool_name_mapping` for reversible renaming when provider character restrictions reject a name. The core only requires nonempty `ToolName` values without whitespace.
 
-## 4. 调用设置校验（`call_options`）
+## 4. Call settings validation (`call_options`)
 
-【事实】供应商 API 对采样参数有类型与范围约束：最大输出令牌为 ≥1 的整数，temperature、top-p、top-k、presence/frequency penalty 为数值，seed 为整数，停止序列为字符串数组。
+[Fact] Provider sampling parameters have type/range constraints: maximum output tokens is an integer ≥1; temperature, top-p, top-k, and presence/frequency penalties are numeric; seed is an integer; stop sequences are string arrays.
 
-【决策】Rust 类型系统吸收大部分校验（`u32`、`f64`、`Vec<String>`）；保留运行时检查的只有 `max_output_tokens >= 1` 与浮点数非 NaN/非无穷。校验失败返回 `Error::InvalidArgument { argument, message }`。
+[Decision] Rust types (`u32`, `f64`, `Vec<String>`) handle most validation. Runtime checks require only `max_output_tokens >= 1` and finite floating-point values. Failures return `Error::InvalidArgument { argument, message }`.
 
-## 5. 响应消息组装（`response_messages`）
+## 5. Response message assembly (`response_messages`)
 
-【决策】响应消息组装把一步的内容转换为应发送回模型的消息：
+[Decision] Convert a step's content into messages for subsequent model calls:
 
-- 助手消息包含 `text`（跳过空文本）、`reasoning`、`file`、`custom`、`source`（可选）、`tool-call`、供应商执行的 `tool-result`、`tool-approval-request`。
-- 客户端工具结果与错误组成一条工具消息，输出经 `create_tool_model_output` 规范化；错误结果为 `error-text`/`error-json`。
-- 被拒绝的审批产生 `execution-denied` 输出。
-- 全部内容为空时不生成消息。
+- Assistant messages include nonempty `text`, `reasoning`, `file`, `custom`, optional `source`, `tool-call`, provider-executed `tool-result`, and `tool-approval-request`.
+- Client tool results and errors form one tool message, normalized through `create_tool_model_output`; errors use `error-text`/`error-json`.
+- Denied approval produces `execution-denied` output.
+- Emit no message if all content is empty.
 
-Ferrin 的 `StepResult::response_messages()` 与 `GenerateTextResult::response_messages()` 返回 `Vec<Message>`，可直接追加到应用维护的对话历史。
+`StepResult::response_messages()` and `GenerateTextResult::response_messages()` return `Vec<Message>` suitable for appending directly to application conversation history.
 
-## 6. 消息裁剪
+## 6. Message pruning
 
-【决策】`ferrin_message::prune` 按规则删除推理、工具调用或空消息以控制上下文长度，参数为 `reasoning`（全部 / 最后一条消息之前 / 不删）、`tool_calls`（全部 / 最后 N 条消息之前 / 限定工具）与是否保留空消息，供 `prepare_step` 回调中使用。依据：长对话中推理与工具调用记录占据大部分上下文，而模型只需要最近几轮的细节；按规则裁剪比按令牌截断更能保留语义完整的消息。
+[Decision] `ferrin_message::prune` removes `reasoning`, tool calls, or empty messages to control context length. Options are `reasoning` (all / before last message / none), `tool_calls` (all / before last N messages / selected tools), and whether to retain empty messages. Use it in `prepare_step`. Reasoning and tool history dominate long contexts; rule-based pruning keeps messages semantically intact better than token truncation while retaining recent details.
 
 ```rust
 pub fn prune(messages: Vec<Message>, options: &PruneOptions) -> Vec<Message>;
@@ -120,16 +122,16 @@ PruneOptions::new()
     .keep_empty_messages();                                // default removes them
 ```
 
-【事实】2026-09-13 实现：`before-last-N` 规则保留末尾 N 条消息中引用的 `tool_call_id`/`approval_id` 在全部消息中的出现；限定工具的规则只删除已知属于这些工具的部件，且把无法关联到工具调用的审批响应一并删除。`PruneScope::BeforeLastMessages(0)` 视同 `All`。
+[Fact] Implementation on 2026-09-13: `before-last-N` preserves every occurrence of `tool_call_id`/`approval_id` referenced within the last N messages. Selected-tool rules remove only parts known to belong to those tools, also removing approval responses that cannot be linked to a tool call. `PruneScope::BeforeLastMessages(0)` is equivalent to `All`.
 
-## 7. 待验证
+## 7. Verification items
 
-- 【事实】（PV-002）`verification/pv002-data-url` 以 14 个用例比较了三种 `data:` URL 解析：朴素的逗号切分（`split(',')` 取前两段，媒体类型取 `header.split(';')[0].split(':')[1]`，不解析 `;base64` 标志、不做百分号解码、载荷含逗号时截断、`data:;base64,` 得到空媒体类型）、Ferrin 自实现的 RFC 2397 解析器与 `data-url` 0.3.2。对 `;base64` 且无逗号的常规输入三者结果一致；对非 base64 载荷（`data:text/plain,hello%20world`）朴素解析会把百分号编码文本当作 base64 处理，自实现解析器与 `data-url` 则正确解码。
-- 【决策】`ferrin-message` 自行实现 RFC 2397 解析（首个逗号切分、`;base64` 大小写不敏感、非 base64 载荷百分号解码、空媒体类型默认 `text/plain;charset=US-ASCII`、base64 解码忽略空白且填充可选），不引入 `data-url` crate。依据：自实现约 60 行并可与 `Error::InvalidDataContent` 精确对应；`data-url` 面向 WHATWG Fetch 语义（附带片段处理与宽松 MIME 解析），多出的行为无需求，且它对缺失填充/空白的处理与自实现一致，无额外收益。
-- 【决策】（PV-003）并发下载上限默认 8，作为 `DownloadOptions::max_parallel` 可配置项。依据：不设上限时多图 prompt 会对单一源同时发起数十个连接；8 与常见 HTTP/1.1 每主机连接数上限同量级，足以覆盖多图 prompt（通常 ≤ 10 张）同时避免对单一源发起数十个并发连接。该值在实现阶段的 `benches/download.rs` 中持续跟踪，不再作为待验证项。
+- [Fact] (PV-002) `verification/pv002-data-url` compares 14 cases across naive comma splitting (`split(',')`, taking the first two segments and media type from `header.split(';')[0].split(':')[1]`, ignoring `;base64`, percent decoding, and extra payload commas, with an empty media type for `data:;base64,`), Ferrin's RFC 2397 parser, and `data-url` 0.3.2. All agree for ordinary base64 payloads without commas. For `data:text/plain,hello%20world`, the naive parser treats percent-encoded text as base64; Ferrin and `data-url` decode it correctly.
+- [Decision] Implement RFC 2397 in `ferrin-message`: split at the first comma, match `;base64` case-insensitively, percent-decode non-base64 payloads, default an empty media type to `text/plain;charset=US-ASCII`, and tolerate whitespace and optional base64 padding. Do not add `data-url`: the roughly 60-line implementation maps precisely to `Error::InvalidDataContent`; WHATWG Fetch semantics such as fragment handling and permissive MIME parsing add no needed behavior, and whitespace/padding handling is already equivalent.
+- [Decision] (PV-003) Default concurrent downloads to 8, configurable through `DownloadOptions::max_parallel`. This is comparable to common HTTP/1.1 per-host limits and accommodates typical multi-image prompts (usually ≤10 images) without dozens of connections to one origin. Track it in implementation-stage `benches/download.rs`; it is no longer pending verification.
 
-## 8. 实现记录（2026-09-13）
+## 8. Implementation record (2026-09-13)
 
-- 【事实】`ferrin_core::prompt::Instructions { content, provider_options }`（re-export 为 `ferrin_core::Instructions`）表示 `system` 输入，实现 `From<&str>`、`From<String>`；`standardize()` 把它转换为序列最前的系统消息。
-- 【决策】`DefaultDownloader::try_default()` 惰性构造：构建器不在配置阶段创建 HTTP 传输，只有当 prompt 中出现模型不支持的 URL 且调用方未提供 `download` 时才构造默认传输并下载。依据：无需下载的调用不应触碰 TLS 与连接池初始化，也不应因传输构造失败而报错。
-- 【事实】`prepare_tools` 对每个工具先以 `tools_context` 校验上下文 schema（失败为 `Error::InvalidArgument { argument: "tools_context" }`），再解析动态描述并生成 `ToolDefinition`；`active_tools` 过滤与 `tool_order` 排序在此处应用。批处理的文本请求复用同一函数。
+- [Fact] `ferrin_core::prompt::Instructions { content, provider_options }`, re-exported as `ferrin_core::Instructions`, represents `system` input and implements `From<&str>`/`From<String>`. `standardize()` converts it to the first `system` message.
+- [Decision] Construct `DefaultDownloader::try_default()` lazily, only when the prompt has an unsupported URL and the caller provided no `download`. Calls needing no downloads should not initialize TLS or connection pools or fail because transport construction failed.
+- [Fact] `prepare_tools` first validates each tool's context schema against `tools_context` (failure: `Error::InvalidArgument { argument: "tools_context" }`), resolves dynamic descriptions, and generates `ToolDefinition`. It applies `active_tools` filtering and `tool_order` sorting. Batch text requests reuse this function.

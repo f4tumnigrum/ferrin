@@ -1,7 +1,9 @@
 # Contributing to Ferrin
 
-The engineering rules live in `docs/03-engineering/`. This file is the short
-version.
+The primary [engineering rules](docs/03-engineering/09-documentation-standards.md)
+are in English. The independent [Chinese edition](docs/zh-CN/README.md) has the
+same chapter structure. English takes precedence when editions disagree.
+This file is the short version.
 
 ## Setup
 
@@ -25,9 +27,12 @@ just check-all
 - New public API needs rustdoc with `# Errors` / `# Examples` sections.
 - Architectural changes need an ADR in `docs/04-decisions/` (see
   `docs/03-engineering/07-adr-process.md`).
-- Every statement added to the design docs carries one of the labels 【事实】 /
-  【决策】 / 【待验证】; pending items get a `PV-xxx` id and are tracked in
-  `docs/05-appendix/02-pending-verification.md` (`scripts/docs_lint.py` checks this).
+- Update matching English and Chinese pages together, keeping internal chapter
+  links within each edition and preserving sources, dates, ADR/PV IDs and status.
+  Use `[Fact]`, `[Decision]` or `[Pending verification]` in English and the
+  corresponding Chinese labels in the Chinese edition. Register pending IDs in
+  each edition's appendix. Run `just docs-lint` and `just typos` for documentation
+  changes (ADR 0018).
 
 ## Tests
 

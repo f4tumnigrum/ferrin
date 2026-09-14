@@ -1,33 +1,35 @@
-# 0012: 工具类型化策略
+# 0012: Tool typing strategy
 
-- 状态：accepted
-- 日期：2026-09-13
-- 相关：[工具系统](../01-architecture/06-tool-system.md)第 1.1 节
+**English** | [Chinese](../zh-CN/04-decisions/2026-09-13-0012-tool-typing-strategy.md)
 
-## 背景
+- Status: accepted
+- Date: 2026-09-13
+- Related: [Tool system](../01-architecture/06-tool-system.md), section 1.1
 
-【事实】TypeScript 可以用映射类型与联合类型把工具集的输入输出类型零成本地推导到工具调用、工具结果与流事件类型；Rust 没有映射类型，等价表达需要为每个工具集手写枚举或使用宏。
+## Context
 
-Rust 中等价表达需要为每个工具集生成枚举（宏）或使用 trait 对象与 `Any` 向下转型。
+[Fact] TypeScript mapped/union types derive tool-set input/output types at no runtime cost; Rust needs per-set enums or macros.
 
-## 决策
+Rust alternatives require generated enums or `Any`-based trait-object downcasts.
 
-1. 工具在定义时类型化：`Tool::function::<I>()` 要求 `I: DeserializeOwned + JsonSchema`，执行闭包接收 `I`、返回 `Serialize` 类型。
-2. 工具调用与结果在步骤结果和流事件中以 JSON 值流转；提供类型化提取辅助（`tool_result_as::<T>(name)`）。
-3. `#[ferrin::tool]` 宏作为可选便利层生成定义代码，不改变运行时表示。
+## Decision
 
-## 依据
+1. Type definitions with `Tool::function::<I>()`, DeserializeOwned/JsonSchema input, and serializable output.
+2. Carry calls/results as JSON in steps/events, with typed extraction helpers.
+3. The optional tool macro generates definitions without changing runtime representation.
 
-- 输入校验与输出序列化在定义边界完成，保证安全性。
-- 避免为工具集生成枚举带来的编译时间与 API 复杂度。
-- 与动态工具（MCP）统一表示，简化核心循环。
+## Rationale
 
-## 备选方案
+- Validate/serialize at definition boundaries.
+- Avoid per-set enum compilation/API complexity.
+- Share one representation with dynamic MCP tools.
 
-- 宏生成工具集枚举：类型化结果，但每个工具集一套类型，组合（`merge`）困难。
-- `Box<dyn Any>` 输出 + 向下转型：运行时失败风险，不可序列化。
+## Alternatives
 
-## 影响
+- Generated tool-set enums make merging difficult.
+- Any outputs risk downcast failure and cannot serialize.
 
-- 应用在读取工具结果时需指定类型；错误的类型在运行时返回 `Err`。
-- `ToolSet` 可自由合并本地与远端工具。
+## Consequences
+
+- Callers specify extraction types; mismatches return errors at runtime.
+- `ToolSet` freely merges local and remote tools.

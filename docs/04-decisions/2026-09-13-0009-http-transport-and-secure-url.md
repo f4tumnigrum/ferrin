@@ -1,34 +1,36 @@
-# 0009: HTTP 传输抽象与安全 URL 策略
+# 0009: HTTP transport and secure URLs
 
-- 状态：accepted
-- 日期：2026-09-13
-- 相关：[HTTP 传输与安全](../01-architecture/14-http-and-security.md)、[安全规范](../03-engineering/08-security-practices.md)
+**English** | [Chinese](../zh-CN/04-decisions/2026-09-13-0009-http-transport-and-secure-url.md)
 
-## 背景
+- Status: accepted
+- Date: 2026-09-13
+- Related: [HTTP security](../01-architecture/14-http-and-security.md), [Security practices](../03-engineering/08-security-practices.md)
 
-【事实】SDK 会按应用传入的 URL 下载文件并连接 MCP 端点，若不加限制即构成 SSRF（服务端请求伪造）面：需要限制 HTTPS、拒绝私网与本地地址、对重定向逐跳重校验、固定 DNS 解析结果、限制下载大小，并以 lint 保证所有出站请求经由受审计入口。
+## Context
 
-【事实】把传输抽象为 trait（默认实现基于 reqwest）后，测试可以注入录制回放传输而不依赖网络，应用也可以替换为代理或特殊运行时的实现。
+[Fact] File downloads and MCP endpoints expose SSRF risk unless HTTPS, private/local rejection, redirect validation, DNS pinning, size limits, and audited entry points are enforced.
 
-## 决策
+[Fact] Injectable transport traits enable replay tests and application proxies/custom environments.
 
-1. 定义 `HttpTransport` trait，默认实现基于 reqwest 0.13.5 + rustls；禁用自动重定向。
-2. 自实现 SSE 解码器。
-3. `secure_url` 模块实现 `UrlPolicy`、`validate_url`、`fetch`（DNS 解析后全部地址校验、`resolve_to_addrs` 固定、手动重定向、体积上限）。
-4. Clippy `disallowed-methods` 禁止在受审计模块外直接使用 reqwest 与 `std::env::var`。
+## Decision
 
-## 依据
+1. `HttpTransport` defaults to reqwest 0.13.5/rustls with automatic redirects disabled.
+2. Implement SSE decoding locally.
+3. Implement `UrlPolicy`/`validate_url`/`fetch` with all-address validation, pinning, manual redirects, and size limits.
+4. Ban direct reqwest/environment reads outside audited modules through Clippy.
 
-- trait 形态支持测试注入、代理与自定义运行时。
-- 自实现 SSE 便于加入分片时间戳与体积限制，且避免依赖长期未更新的 crate。
-- Clippy `disallowed-methods` 在编译期强制，比评审约定可靠。
+## Rationale
 
-## 备选方案
+- Traits support test/proxy/runtime substitution.
+- Local SSE supports timestamps/limits without stale dependencies.
+- Compile-time enforcement is stronger than review conventions alone.
 
-- 直接暴露 `reqwest::Client`：把第三方类型固定进公共 API，测试与替换困难。
-- 使用 `eventsource-stream`/`reqwest-eventsource`：缺少所需的计时与限制钩子。
+## Alternatives
 
-## 影响
+- Direct reqwest clients couple public APIs and complicate replacement/testing.
+- Existing EventSource wrappers lack needed timing/limit hooks.
 
-- 【事实】（PV-015）reqwest 0.13.5 保留 `resolve_to_addrs` 与 `redirect::Policy::none()`，每目标客户端构建成本约 58 µs（`verification/pv015-reqwest`）；feature 名为 `rustls`（0.13 起），默认证书校验器为 `rustls-platform-verifier`。
-- 供应商 crate 只能通过 `ferrin_provider_util::http` 发请求。
+## Consequences
+
+- [Fact] PV-015 verified reqwest pinning/no-redirect APIs and ~58 µs client construction; `rustls` is the 0.13 feature and system verification is default.
+- Providers send only through provider utility HTTP.

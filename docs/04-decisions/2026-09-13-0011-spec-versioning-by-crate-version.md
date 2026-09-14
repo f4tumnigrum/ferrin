@@ -1,29 +1,31 @@
-# 0011: 以 crate 版本表达规范版本
+# 0011: Specification versioning through crate versions
 
-- 状态：accepted
-- 日期：2026-09-13
-- 相关：[Provider 规范层](../01-architecture/04-provider-spec.md)第 1 节、[版本与发布](../03-engineering/06-versioning-and-release.md)第 8 节
+**English** | [Chinese](../zh-CN/04-decisions/2026-09-13-0011-spec-versioning-by-crate-version.md)
 
-## 背景
+- Status: accepted
+- Date: 2026-09-13
+- Related: [Provider specification](../01-architecture/04-provider-spec.md), section 1; [Versioning](../03-engineering/06-versioning-and-release.md), section 8
 
-【事实】动态类型语言中的 SDK 通常给规范接口加版本字段，由核心层在运行时把旧版本实例升级为新版本，使不同规范版本的适配器可共存；在 Rust 中 trait 变更由编译器检查，crate 的语义化版本已经表达了兼容性。
+## Context
 
-## 决策
+[Fact] Dynamic SDKs need runtime version upgrades for adapter coexistence; Rust checks changed traits at compile time and Cargo SemVer already expresses compatibility.
 
-1. 不设运行时规范版本字段与升级适配层。
-2. `ferrin-spec` 的每个破坏性发布即一次规范升级；供应商 crate 通过 Cargo 版本约束绑定；`SPEC_VERSION` 常量只用于诊断。
-3. `0.y` 阶段全部 crate 同版本联动发布。
+## Decision
 
-## 依据
+1. No runtime specification fields or upgrade adapters.
+2. Breaking spec releases are specification upgrades, bound through Cargo; `SPEC_VERSION` is diagnostic only.
+3. Release all crates at one version during `0.y`.
 
-- Rust 编译期类型检查保证适配器与核心使用同一规范；运行时版本字段只在无编译期检查的语言中必要。
-- 简化核心层：无多版本分支。
+## Rationale
 
-## 备选方案
+- Compile-time checks enforce compatible contracts without runtime version markers.
+- The core needs no multi-version branches.
 
-- 保留 `spec_version()` 方法与升级适配：增加复杂度，收益只在允许旧适配器与新核心混用时体现，而 Cargo 的版本解析已能表达该约束。
+## Alternatives
 
-## 影响
+- spec_version and upgrade adapters add complexity already handled by Cargo constraints.
 
-- 规范破坏性变更需要同批次更新全部第一方供应商 crate；第三方适配器需随之升级。
-- 规范变更评审门槛提高（两名批准 + ADR）。
+## Consequences
+
+- Update all first-party adapters together; third-party adapters must follow upgrades.
+- Specification changes need two approvals and an ADR.

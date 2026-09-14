@@ -1,8 +1,10 @@
-# API 参考与示例
+# API reference and examples
 
-本文档列出 `ferrin` 门面 crate 暴露的公共 API 及典型用法。签名为目标形态，实现时以 rustdoc 为准；rustdoc 与本文档不一致时必须同步修订本文档。
+**English** | [Chinese](../zh-CN/02-api/02-api-reference.md)
 
-## 1. 供应商与模型
+This document lists facade APIs and typical usage. Signatures describe the target shape; implemented rustdoc is authoritative, and this document must be updated when they differ.
+
+## 1. Providers and models
 
 ```rust
 use ferrin::openai::{create_openai, OpenAiSettings};
@@ -82,7 +84,7 @@ impl<O> GenerateText<O> {
 }
 ```
 
-示例：多步工具循环。
+Example: multi-step tool loop.
 
 ```rust
 use ferrin::prelude::*;
@@ -144,7 +146,7 @@ impl<O> Completion<O> {
 }
 ```
 
-示例：转发事件到 SSE，同时等待最终结果。
+Example: forward SSE events while waiting for the final result.
 
 ```rust
 let stream = ferrin::stream_text(&claude)
@@ -167,7 +169,7 @@ forward.await??;
 println!("total tokens: {:?}", final_result.total_usage.output.total);
 ```
 
-## 4. 消息构造
+## 4. Message construction
 
 ```rust
 let messages = vec![
@@ -185,7 +187,7 @@ let mut history = messages;
 history.extend(result.response_messages());
 ```
 
-## 5. 工具审批
+## 5. Tool approval
 
 ```rust
 let tools = ToolSet::new().insert(
@@ -216,15 +218,15 @@ let second = ferrin::generate_text(&gpt)
     .await?;
 ```
 
-## 6. 结构化输出
+## 6. Structured output
 
-见[结构化输出](../01-architecture/08-structured-output.md)第 6 节示例。
+See [Structured output](../01-architecture/08-structured-output.md), section 6.
 
 ## 7. Agent
 
-见 [Agent](../01-architecture/09-agent.md)第 3 节示例。
+See [Agent](../01-architecture/09-agent.md), section 3.
 
-## 8. 其他模态
+## 8. Other modalities
 
 ```rust
 let embeddings = ferrin::embed_many(openai.embedding("text-embedding-3-small"), texts)
@@ -271,17 +273,17 @@ while let Some(event) = session.next_event().await {
 session.close().await?;
 ```
 
-（2026-09-13）各函数的实际签名见[其他模态](../01-architecture/11-other-modalities.md)第 13 节：`embed_many` 接受任意 `IntoIterator<Item: Into<String>>`；`generate_image` 结果为 `GenerateImageResult { images, .. }`，`image.images[0].media_type` 非可选；`transcribe` 的音频参数为 `impl Into<AudioInput>`（`Bytes`、`Vec<u8>`、`Url`）；`rerank` 结果无 `usage`；`upload_file` 的数据参数为 `impl Into<UploadData>`。
+(2026-09-13) See [Other modalities](../01-architecture/11-other-modalities.md), section 13, for actual signatures: `embed_many` accepts any IntoIterator of string-convertible items; image generation returns GenerateImageResult with required per-image media_type; transcription accepts `Into<AudioInput>` (`Bytes`, `Vec<u8>`, `Url`); `rerank` has no `usage`; `upload_file` accepts `Into<UploadData>`.
 
-## 9. 中间件与注册表
+## 9. Middleware and registry
 
-见[中间件与注册表](../01-architecture/10-middleware-and-registry.md)第 3 节示例。
+See [Middleware and registry](../01-architecture/10-middleware-and-registry.md), section 3.
 
 ## 10. MCP
 
-见 [MCP 集成](../01-architecture/15-mcp.md)第 4 节示例。
+See [MCP integration](../01-architecture/15-mcp.md), section 4.
 
-## 11. 错误处理
+## 11. Error handling
 
 ```rust
 match ferrin::generate_text(&gpt).prompt("hi").await {
@@ -295,7 +297,7 @@ match ferrin::generate_text(&gpt).prompt("hi").await {
 }
 ```
 
-## 12. 测试辅助（`ferrin-testing`）
+## 12. Testing utilities (ferrin-testing)
 
 ```rust
 use ferrin_testing::{MockLanguageModel, simulate_stream};
@@ -315,22 +317,22 @@ let result = ferrin::generate_text(&model).prompt("hi").await?;
 assert_eq!(result.text(), "hello");
 ```
 
-`MockLanguageModel` 记录每次调用的 `CallOptions` 快照（`model.calls()`），供断言请求内容。
+`MockLanguageModel` records `CallOptions` snapshots through `model.calls()` for request assertions.
 
-## 13. 稳定性标注
+## 13. Stability annotations
 
-| 模块 | `0.y` 阶段稳定性 |
+| Module | Stability during `0.y` |
 | --- | --- |
-| `generate_text`、`stream_text`、消息、工具、结构化输出、错误 | 核心，变更需 ADR |
-| Agent、中间件、注册表、遥测 | 核心 |
-| `embed`、`generate_image`、`generate_speech`、`transcribe`、`rerank`、`upload_file` | 核心 |
-| `generate_video`、批处理、实时会话、语音翻译、`stream_transcribe` | 对应的供应商 API 仍在演进；Ferrin 文档标注 `# Stability: evolving`，允许在次版本中调整 |
+| Text generation/streaming, messages, tools, structured output, errors | Core; changes require an ADR |
+| Agents, middleware, registry, telemetry | Core |
+| Embeddings, images, speech, transcription, reranking, file upload | Core |
+| Video, batches, realtime, speech translation, streaming transcription | Provider APIs still evolve; documented as Stability: evolving, with minor-version changes allowed |
 | `ferrin-mcp` | evolving |
 | `Sandbox` | evolving |
 
-## 14. 实现记录（2026-09-14，`ferrin` 门面）
+## 14. Implementation record (2026-09-14, ferrin facade)
 
-- 【事实】crate 根 re-export `ferrin-core` 的全部公共模块（`agent`、`batch`、`embed`、`generate_text`、`stream_text`、`output`、`middleware`、`registry`、`telemetry`、`retry`、`timeout`、各模态模块等）与入口项（`generate_text`、`stream_text`、`embed`、`embed_many`、`generate_image`、`generate_speech`、`transcribe`、`rerank`、`upload_file`、`step_count`、`has_tool_call`、`Error`、`Output`、`Agent`、`ToolLoopAgent`、`TelemetryOptions` 等；`realtime` 模块与 `realtime_session` 受 feature `realtime` 控制）。下层 crate 以模块别名暴露：`ferrin::spec`、`ferrin::message`、`ferrin::schema`、`ferrin::tool`、`ferrin::provider_util`；另 re-export `serde`、`serde_json`、`schemars`（供 `#[serde(crate = "ferrin::serde")]`、`#[schemars(crate = "ferrin::schemars")]` 与 `json!` 使用）。
-- 【事实】供应商 crate 既在 crate 根（`ferrin::openai`、`ferrin::anthropic`、`ferrin::google`、`ferrin::openai_compatible`，与第 1 节示例一致）也在 `ferrin::providers::*` 下（与[Crate 划分](../01-architecture/02-crates.md)第 5 节一致）以模块别名暴露；`ferrin::mcp`、`ferrin::otel` 同理，各受同名 feature 控制。`#[ferrin::tool]` 属性宏（feature `macros`，默认开）与模块 `ferrin::tool` 同名共存（宏命名空间与类型命名空间互不冲突）。
-- 【决策】`ferrin::prelude` 的内容：入口函数与结果类型（上表）、`Message`/`UserPart`/`AssistantPart`/`MessagesExt`/`ToolApprovalResponse`/`Role`、`Tool`/`ToolSet`/`ToolContext`/`ToolError`/`NeedsApproval`/`Schema`/`JsonSchema`、常用规范类型（`LanguageModel`、`LanguageModelRef`、`EmbeddingModel`、`ImageModel`、`ToolChoice`、`ReasoningEffort`、`FinishReason(Kind)`、`Usage`、`JsonValue`/`JsonObject`、`Headers`、`ProviderOptions`、`ImageSize`、`ProviderError`、`StreamPart`、`GenerateResult`、`Content`）、`serde::{Deserialize, Serialize}`、`serde_json::json`、`futures_util::StreamExt`（消费 `text_stream()` 等流）与 `tool` 宏。依据：第 2 节示例只 `use ferrin::prelude::*;` 即可编译；派生宏展开引用 `serde`/`schemars` 路径，使用方需直接依赖这两个 crate 或加 `crate = "ferrin::…"` 属性（rustdoc 与 README 已说明）。
-- 【事实】测试（`crates/ferrin/tests/suite/`）：prelude 下的 `generate_text`/`stream_text`/工具循环（`MockLanguageModel`）、各 feature 的供应商与扩展 re-export、`#[ferrin::tool]` 展开（异步/同步、带上下文、文档描述、参数 doc 注释进入 schema）、`trybuild` 用例（`tests/ui/pass/` 1 个、`tests/ui/fail/` 7 个：引用参数、嵌套引用、显式生命周期、泛型、无输入参数、无返回类型、宏参数）。`trybuild` 首次运行需构建独立项目，`.config/nextest.toml` 为该用例设置 180 s 的慢测试周期。
+- [Fact] The root re-exports all public core modules (`agent`, `batch`, `embed`, `generate_text`, `stream_text`, `output`, `middleware`, `registry`, `telemetry`, `retry`, `timeout`, modalities) and entry points/types including generation, embeddings, images, speech, transcription, reranking, uploads, `step_count`, `has_tool_call`, `Error`, `Output`, `Agent`, `ToolLoopAgent`, and `TelemetryOptions`. Realtime module/session are feature-gated. Lower crates are aliased as spec/message/schema/tool/provider_util. Re-export `serde`, `serde_json`, and `schemars` for derive crate attributes and `json!`.
+- [Fact] Providers are aliased both at root (openai, anthropic, google, openai_compatible) and under providers, consistent with [Crate boundaries](../01-architecture/02-crates.md), section 5. MCP/OTel use matching feature gates. The default-enabled `macros` feature exports `#[ferrin::tool]`, coexisting with the tool module in separate namespaces.
+- [Decision] Prelude includes entry points/results, `Message`/`UserPart`/`AssistantPart`/`MessagesExt`/`ToolApprovalResponse`/`Role`, `Tool`/`ToolSet`/`ToolContext`/`ToolError`/`NeedsApproval`/`Schema`/`JsonSchema`, common specification model traits/references, `ToolChoice`, `ReasoningEffort`, FinishReason/Kind, `Usage`, JSON aliases, `Headers`, `ProviderOptions`, `ImageSize`, `ProviderError`, `StreamPart`, `GenerateResult`, `Content`, `serde` derives, json!, StreamExt, and the `tool` macro. This compiles section 2 with one prelude import. Derives still require direct `serde`/`schemars` dependencies or explicit ferrin crate-path attributes, as documented in rustdoc/README.
+- [Fact] Facade suite tests cover prelude generation/streaming/tool loops using mocks, feature re-exports, macro expansion (async/sync/context/docs/field schema descriptions), and `trybuild` (one pass, seven failures: references, nested references, lifetimes, generics, no input, no return, macro arguments). Initial `trybuild` compiles a separate project; nextest gives it a 180 s slow-test period.

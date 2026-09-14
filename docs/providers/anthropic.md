@@ -1,82 +1,84 @@
-# Anthropic（`ferrin-anthropic`）
+# Anthropic (`ferrin-anthropic`)
 
-`ferrin-anthropic` 是 Anthropic 的供应商适配器 crate（L3，见[crate 划分](../01-architecture/02-crates.md)）。本文记录 2026-09-13 实现的能力、设置、供应商选项与元数据、限制以及 fixture 清单；实现结构见[Provider 适配器实现指南第 10 节](../01-architecture/17-provider-implementation-guide.md#10-实现记录2026-09-13ferrin-anthropic)。
+**English** | [Chinese](../zh-CN/providers/anthropic.md)
 
-供应商 ID 形如 `<name>.<family>`，`name` 默认 `anthropic`（`AnthropicSettings::name` 可覆盖）；`provider_options` 与 `provider_metadata` 始终读取/写入 `anthropic` 键，`name` 与之不同时同时读取 `name` 键（后者覆盖前者）并把结果级元数据复制到 `name` 键下。
+`ferrin-anthropic` is the L3 Anthropic adapter ([Crates](../01-architecture/02-crates.md)). This guide records the 2026-09-13 implementation; see [implementation guide section 10](../01-architecture/17-provider-implementation-guide.md#10-implementation-record-2026-09-13-ferrin-anthropic).
 
-## 能力矩阵
+IDs use `<name>.<family>`, default `anthropic`. Read standard options then custom-`name` overrides; write result metadata to both keys when different.
 
-| 能力 | 状态 | 说明 |
+## Capability matrix
+
+| Capability | Status | Notes |
 | --- | --- | --- |
-| 语言模型：Messages（生成/流式） | 已实现 | `AnthropicMessagesLanguageModel`，`POST /messages`；`AnthropicProvider::messages`（别名 `chat`）与 `Provider::language_model` 返回此族。源码 `src/messages.rs`、`src/request/`、`src/output/`、`src/stream.rs`。 |
-| 工具调用 / 供应商工具 | 已实现 | 函数工具（`strict`、`cacheControl`、`deferLoading`、`allowedCallers`、`eagerInputStreaming`、`input_examples`）、`ToolChoice` 全部变体；供应商工具 `anthropic.bash_*`、`anthropic.computer_*`、`anthropic.text_editor_*`、`anthropic.memory_20250818`、`anthropic.web_search_*`、`anthropic.web_fetch_*`、`anthropic.code_execution_*`、`anthropic.tool_search_regex_20251119`、`anthropic.tool_search_bm25_20251119`、`anthropic.advisor_20260301`（工厂 `AnthropicTools`，源码 `src/tools.rs`；ID 与线格式的对应表见 `src/prepare_tools.rs`）。 |
-| 结构化输出 | 已实现 | 支持 `output_config.format` 的模型（`structuredOutputMode: auto`/`outputFormat`）写入 `{type: json_schema, schema}`，schema 经 `json_schema::sanitize_json_schema` 收紧；其余模型或 `structuredOutputMode: jsonTool` 回退为名为 `json` 的函数工具（`tool_choice: {type: any, disable_parallel_tool_use: true}`），响应中的 `json` 工具调用映射为文本，`tool_use` 停止原因映射为 `stop`。 |
-| 推理 | 已实现 | `ReasoningEffort` 映射为扩展思考：支持自适应思考的模型写入 `thinking: {type: adaptive, display: summarized}` 与 `output_config.effort`（`xhigh` 在不支持时降为 `max` 并警告），其余模型按 `map_reasoning_to_budget` 写入 `thinking: {type: enabled, budget_tokens}`；`ReasoningEffort::None` 写入 `{type: disabled}`。响应的 `thinking`/`redacted_thinking` 块映射为推理部件。 |
-| 引用 | 已实现 | 文档 `citations.enabled`、Web 搜索与 Web 抓取的引用映射为 `Source::Document`/`Source::Url`；文本部件保留原始 Web 引用于元数据。 |
-| 嵌入 / 图像 / 语音 / 转写 / 重排 / 视频 / 实时 | 无 | Anthropic 无对应 API；`Provider::embedding_model`、`image_model` 返回 `NoSuchModelError`，其余模态沿用 `Provider` 的默认实现。 |
-| 文件 | 部分 | `AnthropicFiles::upload_file`（multipart `POST /files`，beta `files-api-2025-04-14`）；元数据、下载、删除未实现（`supports_*` 返回 `false`）。 |
-| 技能 | 已实现 | `AnthropicSkills::upload_skill`（multipart `POST /skills`，`files[]`，beta `skills-2025-10-02`）；响应含 `latest_version` 时追加 `GET /skills/{id}/versions/{version}` 读取名称与描述。 |
-| 批处理 | 已实现 | `AnthropicBatch`：`POST /messages/batches`（每个请求为一个 Messages 请求体）、状态、结果（`results_url` 的 JSONL 流）、取消、列表（`limit`、`after_id`）。只接受 `BatchRequest::Text`。 |
+| Messages generation/streaming | Implemented | `AnthropicMessagesLanguageModel`, `POST /messages`; messages/`chat` alias and default Provider family. Sources: messages.rs, request/, output/, stream.rs. |
+| Tools | Implemented | Function `strict`/`cacheControl`/`deferLoading`/`allowedCallers`/`eagerInputStreaming`/`input_examples`, all choices. Provider bash/computer/text_editor families, memory_20250818, web_search/web_fetch/code_execution families, tool_search_regex_20251119, tool_search_bm25_20251119, advisor_20260301. Factories in tools.rs, wire mapping in prepare_tools.rs. |
+| Structured output | Implemented | Native `output_config.format` on capable models with auto/`outputFormat`, sanitized schema; otherwise jsonTool fallback with any choice and parallel disabled. Synthetic calls become text and `tool_use` finish becomes `stop`. |
+| Reasoning | Implemented | Adaptive models use adaptive/summarized `thinking` and `output_config.effort`, downgrading unsupported `xhigh` to `max` with warning. Others use token budgets; None disables `thinking`. Thinking/redacted blocks become reasoning parts. |
+| Citations | Implemented | Document and web search/fetch citations become document/URL sources; retain raw web citations in text metadata. |
+| Embeddings/images/speech/transcription/reranking/video/realtime | Unavailable | No corresponding API; embedding/image return `NoSuchModelError`, others use `Provider` defaults. |
+| Files | Partial | Multipart upload with `files-api-2025-04-14`; metadata/download/delete unsupported. |
+| Skills | Implemented | Multipart /skills with `files[]` and `skills-2025-10-02`; `latest_version` triggers a version GET for name/description. |
+| Batches | Implemented | Messages batches, status, `results_url` JSONL, cancel, list with `limit`/`after_id`; text only. |
 
-## 设置与环境变量
+## Settings and environment variables
 
-【事实】`create_anthropic(AnthropicSettings)`（`src/lib.rs`）：
+[Fact] `create_anthropic(AnthropicSettings)`, `src/lib.rs`:
 
-| 设置 | 环境变量 | 行为 |
+| Setting | Environment | Behavior |
 | --- | --- | --- |
-| `base_url` | `ANTHROPIC_BASE_URL` | 默认 `https://api.anthropic.com/v1`；只有 origin 的 URL 追加 `/v1`，尾部斜杠被去除；无效 URL 时 `create_anthropic` 立即失败。 |
-| `api_key` | `ANTHROPIC_API_KEY` | 写入 `x-api-key`；首次请求时读取，缺失时该请求以 `ProviderError::LoadApiKey` 失败。 |
-| `auth_token` | `ANTHROPIC_AUTH_TOKEN` | 写入 `authorization: Bearer <token>`；与 `api_key` 同时设置返回 `InvalidArgument`；环境变量只在 `ANTHROPIC_API_KEY` 缺失时生效。 |
-| `headers` | 无 | 附加到每个请求；调用级 `headers` 覆盖同名头；两处的 `anthropic-beta` 与请求推导出的 beta 合并。 |
-| `name` | 无 | 供应商 ID 前缀、附加选项键与文件/技能引用键（默认 `anthropic`）。 |
-| `transport` / `id_generator` | 无 | 默认共享的 `reqwest` 传输与随机 ID 生成器（来源 ID）。 |
+| `base_url` | `ANTHROPIC_BASE_URL` | Default `https://api.anthropic.com/v1`; add `/v1` to bare origins, trim slashes, reject invalid URLs immediately. |
+| `api_key` | `ANTHROPIC_API_KEY` | Lazy `x-api-key`; missing credentials return LoadApiKey. |
+| `auth_token` | `ANTHROPIC_AUTH_TOKEN` | Bearer auth; explicit key and token together are invalid. Environment token applies only without key. |
+| `headers` | None | Call `headers` override; merge beta flags from both and request inference. |
+| `name` | None | ID prefix, extra options key, file/skill references; default `anthropic`. |
+| `transport` / `id_generator` | None | Shared `reqwest` and random source IDs. |
 
-【事实】每个请求携带 `anthropic-version: 2023-06-01`，`user-agent` 追加 `ferrin-anthropic/<crate 版本>`（`config::USER_AGENT`）；`anthropic-beta` 为去重、小写、排序后以逗号连接的 beta 列表，为空时不发送。
+[Fact] Send anthropic-version 2023-06-01 and append `ferrin-anthropic/<version>`. Beta headers are lowercased/deduplicated/sorted/comma-joined and omitted when empty.
 
-【事实】`AnthropicConfig` 另有两项供兼容端点调整的字段：`supports_strict_tools`（默认 `true`，为 `false` 时忽略函数工具的 `strict` 并警告）与 `supports_native_structured_output`（默认 `true`，为 `false` 时结构化输出一律回退为 `json` 工具）。
+[Fact] `supports_strict_tools` and `supports_native_structured_output` default `true`; disabling them warns/ignores `strict` or forces `json`-tool fallback respectively.
 
-## 供应商选项（`provider_options["anthropic"]`）
+## Provider options (provider_options["anthropic"])
 
-选项键为 camelCase，未知键或非法枚举值返回 `ProviderError::InvalidArgument`。完整 schema 见 `src/options.rs`。
+CamelCase keys; unknown keys/invalid enum values return InvalidArgument. See `src/options.rs` for schemas.
 
-【事实】语言模型：`sendReasoning`、`structuredOutputMode`（`outputFormat`/`jsonTool`/`auto`）、`thinking {type: adaptive | enabled | disabled, budgetTokens, display: omitted | summarized | updates, blockBinding {prefixMismatchBehavior: error | drop_block}}`、`disableParallelToolUse`、`cacheControl {type: ephemeral, ttl: 5m | 1h}`、`metadata {userId}`、`mcpServers [{type: url, name, url, authorizationToken, toolConfiguration {enabled, allowedTools}}]`、`container {id, skills [{type: anthropic, skillId, version} | {type: custom, providerReference, version}]}`、`toolStreaming`、`effort`（`low`/`medium`/`high`/`xhigh`/`max`）、`taskBudget {type: tokens, total ≥ 20000, remaining}`、`speed`（`fast`/`standard`）、`serviceTier`（`auto`/`standard_only`）、`inferenceGeo`（`us`/`global`）、`fallbacks`（`"default"` 或模型对象数组）、`anthropicBeta [..]`、`contextManagement {edits: [clear_tool_uses_20250919 | clear_thinking_20251015 | compact_20260112]}`。
+[Fact] Model options: `sendReasoning`; `structuredOutputMode` `outputFormat`/`jsonTool`/`auto`; thinking type adaptive/enabled/disabled, budgetTokens, display omitted/summarized/updates, blockBinding prefixMismatchBehavior error/drop_block; `disableParallelToolUse`; cacheControl ephemeral with ttl 5m/1h; metadata userId; mcpServers URL/name/auth/toolConfiguration enabled/allowedTools; container id/skills with anthropic skillId or custom providerReference and version; `toolStreaming`; `effort` `low`/`medium`/`high`/`xhigh`/`max`; taskBudget tokens with total ≥20000 and remaining; `speed` `fast`/`standard`; `serviceTier` `auto`/`standard_only`; `inferenceGeo` `us`/`global`; `fallbacks` default or model array; anthropicBeta; contextManagement edits clear_tool_uses_20250919/clear_thinking_20251015/compact_20260112.
 
-【事实】部件与消息级选项：文件部件 `containerUpload`、`citations {enabled}`、`title`、`context`；系统消息 `clearAt`、`effort`、`toolChanges [{type, toolName}]`（非首条系统消息内联发送，各自追加 `mid-conversation-*` beta）；推理部件 `signature`/`redactedData`；工具调用部件 `caller`、`type: mcp-tool-use` 与 `serverName`；消息与部件级 `cacheControl`（最多 4 个断点，超出或落在不支持的位置时警告并忽略）。函数工具选项：`cacheControl`、`deferLoading`、`allowedCallers`、`eagerInputStreaming`。批处理：批次级 `anthropicBeta`。
+[Fact] Part/message options: files `containerUpload`/citations.enabled/`title`/`context`; system `clearAt`/`effort`/toolChanges type/toolName, inline noninitial systems with mid-conversation beta flags; reasoning `signature`/`redactedData`; calls `caller`/type mcp-tool-use/`serverName`; `cacheControl` at message/part levels, maximum four breakpoints, warning on excess/unsupported positions. Function options: `cacheControl`/`deferLoading`/`allowedCallers`/`eagerInputStreaming`. Batch-level `anthropicBeta`.
 
-【事实】选项触发的 beta：`mcpServers`→`mcp-client-2025-04-04`；`container`→`code-execution-2025-08-25`、`skills-2025-10-02`、`files-api-2025-04-14`；`contextManagement`→`context-management-2025-06-27`（含 `compact_20260112` 时另加 `compact-2026-01-12`）；`taskBudget`→`task-budgets-2026-03-13`；`speed: fast`→`fast-mode-2026-02-01`；`thinking.display: updates`→`thinking-display-updates-2026-08-18`；`thinking.blockBinding`→`thinking-binding-controls-2026-08-01`；`fallbacks: "default"`→`server-side-fallback-2026-07-01`，模型数组→`server-side-fallback-2026-06-01`；PDF 文档→`pdfs-2024-09-25`；文件引用→`files-api-2025-04-14`；带 `strict` 或位于支持结构化输出模型上的函数工具→`structured-outputs-2025-11-13`；`allowedCallers`/`input_examples`→`advanced-tool-use-2025-11-20`；供应商工具按类型追加各自的 beta（`src/prepare_tools.rs`）。
+[Fact] Beta mappings: MCP servers → `mcp-client-2025-04-04`; `container` → `code-execution-2025-08-25`, `skills-2025-10-02`, `files-api-2025-04-14`; context management → `context-management-2025-06-27` plus `compact-2026-01-12` when relevant; `taskBudget` → `task-budgets-2026-03-13`; fast → `fast-mode-2026-02-01`; thinking updates → `thinking-display-updates-2026-08-18`; binding → `thinking-binding-controls-2026-08-01`; default/model-array fallback → `server-side-fallback-2026-07-01`/2026-06-01; PDF → `pdfs-2024-09-25`; references → files API; `strict` or structured-capable function tools → `structured-outputs-2025-11-13`; callers/examples → `advanced-tool-use-2025-11-20`. Provider tool beta mapping is in prepare_tools.rs.
 
-## 供应商元数据（`provider_metadata["anthropic"]`）
+## Provider metadata (provider_metadata["anthropic"])
 
-【事实】结果级：`usage`（原始用量对象）、`stopSequence`、`stopDetails`、`inputTransformations`、`iterations`（无则 `null`）、`container {id, expiresAt, skills}`（无则 `null`）、`contextManagement {appliedEdits}`（无则 `null`）；`name` 非 `anthropic` 时同一对象复制到 `name` 键。
+[Fact] Result fields: raw `usage`, `stopSequence`, `stopDetails`, `inputTransformations`, `iterations` (`null` if missing), container id/expiresAt/skills (`null` if missing), contextManagement appliedEdits (`null` if missing). Copy to custom-`name` metadata when configured.
 
-【事实】部件级：文本部件 `citations`（Web 引用原文）；推理部件 `signature` 或 `redactedData`；工具调用部件 `caller {type, toolId}`，MCP 调用 `{type: mcp-tool-use, serverName}`；来源 `citedText`、`encryptedIndex`（Web 引用）、`startPageNumber`/`endPageNumber` 或 `startCharIndex`/`endCharIndex`（文档引用）、`pageAge`（Web 搜索结果）；压缩块映射为带 `{type: compaction}` 的文本部件；`container_upload` 块映射为 `anthropic.container_upload` 自定义部件。
+[Fact] Parts: raw web `citations`, reasoning signatures/`redactedData`, caller type/toolId, MCP type/serverName, source `citedText`/`encryptedIndex`/page or character ranges/`pageAge`. Compaction becomes text with compaction metadata; container uploads become `anthropic.container_upload` custom parts.
 
-【事实】用量：`input.total = input_tokens + cache_creation_input_tokens + cache_read_input_tokens`，`input.no_cache = input_tokens`，`output.reasoning` 取自 `output_tokens_details.thinking_tokens`；响应含 `iterations` 时按轮次汇总（压缩轮次计入，advisor 轮次不计入，fallback 轮次替代原轮次）。批处理状态 `requestCounts`、`archivedAt`、`cancelInitiatedAt`、`endedAt`、`resultsUrl`；失败项 `requestId`。文件 `filename`、`mimeType`、`sizeBytes`、`createdAt`、`downloadable`；技能 `source`、`createdAt`、`updatedAt`。
+[Fact] Input total sums ordinary/cache-write/cache-read tokens; no_cache is input_tokens; reasoning comes from thinking_tokens. Iteration usage includes compaction, excludes advisor, and substitutes fallback rounds. Batch metadata: `requestCounts`/`archivedAt`/`cancelInitiatedAt`/`endedAt`/`resultsUrl`, failed `requestId`. Files: `filename`/`mimeType`/`sizeBytes`/`createdAt`/`downloadable`. Skills: `source`/`createdAt`/`updatedAt`.
 
-## 已知限制与警告
+## Known limitations and warnings
 
-- 【事实】`frequencyPenalty`、`presencePenalty`、`seed` 产生 `unsupported` 警告并被丢弃；`temperature` 限制在 `[0, 1]`（越界时钳制并警告）；`temperature` 与 `topP` 同时设置时丢弃 `topP`；启用扩展思考或模型不接受采样参数时丢弃 `temperature`、`topK`、`topP` 并警告。
-- 【事实】`maxOutputTokens` 缺省为模型上限（`src/capabilities.rs`：Sonnet 4.x/Haiku 4.5 为 64000，Opus 4.x 为 32000，Sonnet 4.6/Opus 4.6 及以后为 128000，Claude 3 Haiku 与旧代为 4096）；启用预算式思考时 `max_tokens = maxOutputTokens + budget_tokens`；超过上限时截断并警告；未知的 `claude-*` ID 按最新能力处理并警告，非 Claude ID 按保守默认值（4096、无结构化输出）处理。
-- 【事实】文件部件：图像接受字节、URL 与文件引用；`application/pdf` 与 `text/plain` 接受字节、URL、文本与文件引用；其他媒体类型返回 `UnsupportedFunctionality`；引用键非 `name` 时返回 `NoSuchProviderReference`；`containerUpload: true` 只对文件引用生效。助手消息中的文件、推理文件与自定义部件产生警告并被忽略。
-- 【事实】`sendReasoning: false` 时提示中的推理部件被丢弃并警告；缺少 `signature`/`redactedData` 的推理部件同样被丢弃并警告；最后一条助手消息的文本去除尾部空白。
-- 【事实】`ToolResultOutput::ExecutionDenied` 以 `is_error: true` 与文本 `Tool call execution denied.` 发送；供应商执行的调用与结果按工具类型映射为 `server_tool_use`/`mcp_tool_use` 与对应的 `*_tool_result` 块，未知的供应商执行工具产生警告。
-- 【事实】`web_search_20260209`/`web_fetch_20260209` 与代码执行工具同用时，工具调用标记为动态；`container.skills` 缺少代码执行工具时警告 `code execution tool is required when using skills`。
-- 【决策】流式调用中 `StreamPart::Error` 是终止部件：错误之前未关闭的部件先收到 end 部件，错误之后不再产出 `Finish`。依据：见实现指南第 9 节。
-- 【决策】服务器在产出任何输出之前返回的 `error` 事件使 `do_stream` 以 `ProviderError::ApiCall` 失败，状态码由错误类型推断：`api_error`→500、`overloaded_error`→529、`rate_limit_error`→429（以上可重试）、`request_too_large`→413、`authentication_error`→401、`permission_error`→403、`not_found_error`→404、`billing_error`/`invalid_request_error`→400，其余 500；HTTP 错误响应保留服务器状态码。依据：见实现指南第 10 节。
-- 【事实】批处理：请求 ID 须匹配 `^[A-Za-z0-9_-]{1,64}$` 且互不重复，否则 `InvalidArgument`；`BatchRequest::Image`、请求级 `anthropicBeta`、`speed`、`fallbacks` 中的 `speed`、别名后的供应商工具名与 `json` 工具回退返回 `UnsupportedFunctionality`；`webhookUrl` 产生警告；进行中或已归档的批次读取结果返回 `InvalidArgument`，缺少 `results_url` 返回 `InvalidResponseData`；`results_url` 与 `base_url` 不同源时不携带凭据。
-- 【事实】同一流中收到不同 `message_start` ID 时产出 `InvalidResponseData` 错误部件并结束流。
+- [Fact] Drop penalties/`seed` with warnings; clamp `temperature` to 0–1, drop `topP` when `temperature` also set, and drop `temperature`/`topK`/`topP` for thinking or nonsampling models.
+- [Fact] Output defaults: Sonnet 4.x/Haiku 4.5 64000, Opus 4.x 32000, Sonnet/Opus 4.6+ 128000, Claude 3 Haiku/older 4096. Add thinking budget then clip with warning. Unknown claude IDs use latest capabilities with warnings; non-Claude IDs use 4096/no structured output.
+- [Fact] Images accept bytes/URL/references; PDF/plain text also accept inline text; others unsupported. Reference keys must match `name`; containerUpload requires references. Assistant files/reasoning files/custom parts warn and are skipped.
+- [Fact] sendReasoning false or missing `signature`/`redactedData` drops reasoning with warnings. Trim trailing text whitespace in the final assistant message.
+- [Fact] Denials send is_error true with `Tool call execution denied.` Map provider calls/results to server/mcp tool blocks by kind; warn on unknown kinds.
+- [Fact] New web-search/fetch tools used with code execution mark calls dynamic; skills without code execution warn that it is required.
+- [Decision] Stream errors close open parts and terminate without `Finish`; see implementation guide section 9.
+- [Decision] Early errors fail `do_stream` as ApiCall: `api_error` 500, overloaded 529, rate_limit 429 (retryable); `request_too_large` 413, authentication 401, permission 403, not_found 404, billing/invalid_request 400, otherwise 500. HTTP responses retain server status.
+- [Fact] Batch IDs match `^[A-Za-z0-9_-]{1,64}$` and are unique. Images, per-request beta, `speed`, fallback `speed`, renamed provider tools, and JSON-tool fallback are unsupported; webhooks warn. Running/archived results are invalid; missing `results_url` is `InvalidResponseData`. Cross-origin results URLs receive no credentials.
+- [Fact] Different `message_start` IDs within one stream cause terminal `InvalidResponseData`.
 
-## Fixture 清单
+## Fixture inventory
 
-fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 `tests/suite/*.rs` 通过 `ferrin_testing::FixtureServer` 回放；流式用例以 `-stream` 后缀命名，`.chunks.txt` 每行一个 `event:`/`data:` 事件。
+Fixtures under `crates/providers/ferrin-anthropic/tests/fixtures/<area>` replay through FixtureServer; streaming cases use `-stream` with event/data lines.
 
-| 区域 | 用例 | 覆盖 |
+| Area | Cases | Coverage |
 | --- | --- | --- |
-| `messages` | `text-basic`、`tool-call`、`reasoning`、`web-search`、`citations`、`json-tool`、`error-400`、`error-429`、`text-basic-stream`、`tool-call-stream`、`reasoning-stream`、`code-execution-stream`、`json-tool-stream`、`error-early-stream`、`error-late-stream` | 文本与缓存用量、工具调用、思考与签名、Web 搜索结果与引用来源、文档引用、`json` 工具回退、错误映射、流式契约、代码执行与容器元数据、早期与晚期错误事件 |
-| `files` | `upload` | multipart 上传、beta 头、元数据 |
-| `skills` | `upload`、`upload-no-version`、`version` | multipart `files[]`、版本读取、元数据 |
-| `batch` | `create`、`status-in-progress`、`cancel`、`list`、`results.jsonl` | 请求体、状态与计数映射、结果流（成功/错误/取消/过期/未知）、取消与分页 |
+| `messages` | `text-basic`, `tool-call`, `reasoning`, `web-search`, `citations`, `json-tool`, `error-400`, `error-429`, `text-basic-stream`, `tool-call-stream`, `reasoning-stream`, `code-execution-stream`, `json-tool-stream`, `error-early-stream`, `error-late-stream` | Text/cache/tools/thinking/signatures/web/document `citations`/JSON fallback/errors/contracts/code execution/container metadata |
+| `files` | `upload` | Multipart/beta/metadata |
+| `skills` | `upload`, `upload-no-version`, `version` | Multipart/`version` lookup/metadata |
+| `batch` | `create`, `status-in-progress`, `cancel`, `list`, `results.jsonl` | Requests/state/counts/success/error/`cancel`/expiry/unknown results/paging |
 
-请求体、提示转换、工具线格式与流式部件序列以 `insta` 快照记录于 `tests/suite/snapshots/`；测试共 58 个。
+Insta snapshots in tests/suite/snapshots cover requests, prompts, tool wire shapes, and stream parts; 58 tests.
 
-【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
+[Pending verification] (PV-031) Handwritten official-schema fixtures still need real-response recording.
