@@ -40,6 +40,9 @@ impl TestProvider {
         let server = FixtureServer::start().await.unwrap();
         let base_url = server.url().join("v1beta").unwrap();
         let settings = GoogleSettings {
+            url_policy: ferrin_provider_util::secure_url::UrlPolicy::new()
+                .allow_http()
+                .trust_origin(&base_url),
             base_url: Some(base_url),
             api_key: Some(SecretString::from(TEST_API_KEY.to_owned())),
             id_generator: Some(Arc::new(SequentialIdGenerator::new("id"))),

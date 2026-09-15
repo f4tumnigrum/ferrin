@@ -60,6 +60,7 @@ use std::sync::Arc;
 
 use ferrin_provider_util::IdGenerator;
 use ferrin_provider_util::SharedTransport;
+use ferrin_provider_util::secure_url::UrlPolicy;
 use ferrin_spec::BatchRef;
 use ferrin_spec::EmbeddingModelRef;
 use ferrin_spec::FilesRef;
@@ -107,6 +108,8 @@ pub struct GoogleSettings {
     /// Provider name used in provider ids and as the additional option key
     /// (default `google`).
     pub name: Option<String>,
+    /// Security policy for server-provided URLs (HTTPS and public networks by default).
+    pub url_policy: UrlPolicy,
     /// HTTP transport (default: the shared `reqwest` transport).
     pub transport: Option<SharedTransport>,
     /// Generator for synthetic ids (tool calls without an id, sources).
@@ -149,6 +152,7 @@ pub fn create_google(settings: GoogleSettings) -> Result<GoogleProvider, Provide
     );
     config.api_key = settings.api_key;
     config.headers = settings.headers;
+    config.url_policy = settings.url_policy;
     if let Some(id_generator) = settings.id_generator {
         config.id_generator = id_generator;
     }

@@ -8,6 +8,7 @@ use ferrin_provider_util::IdGenerator;
 use ferrin_provider_util::PrefixedIdGenerator;
 use ferrin_provider_util::SharedTransport;
 use ferrin_provider_util::base_url::join_path;
+use ferrin_provider_util::secure_url::UrlPolicy;
 use ferrin_provider_util::settings::ApiKeyConfig;
 use ferrin_provider_util::settings::load_api_key;
 use ferrin_spec::Headers;
@@ -74,6 +75,8 @@ pub struct AnthropicConfig {
     pub credential: Option<Credential>,
     /// Extra headers sent with every request.
     pub headers: Headers,
+    /// Security policy for server-provided URLs (HTTPS and public networks by default).
+    pub url_policy: UrlPolicy,
     /// HTTP transport.
     pub transport: SharedTransport,
     /// Generator for synthetic ids (sources).
@@ -126,6 +129,7 @@ impl AnthropicConfig {
             base_url,
             credential: None,
             headers: Headers::new(),
+            url_policy: UrlPolicy::default(),
             transport,
             id_generator: Arc::new(PrefixedIdGenerator::default()),
             supports_strict_tools: true,

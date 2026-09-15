@@ -90,3 +90,5 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 【事实】 供应商定义工具的别名在强制选择中转换为供应商名称，非流式、流式与预填充工具调用均恢复注册时的名称。回归：`tests/suite/tools.rs::provider_tool_aliases_roundtrip_through_choices_and_calls`（2026-09-15）。
 
 【事实】 每个请求的所有提示部件与工具定义共享四个缓存断点的上限，超出部分被移除并产生警告。回归：`tests/suite/messages_request.rs::cache_breakpoint_limit_is_shared_across_prompt_and_tools`（2026-09-15）。
+
+【事实】 批次结果 URL 经过 `url_policy` 校验：默认只允许 HTTPS 与公网地址，固定解析后的地址，拒绝重定向，流式响应字节数受 `max_body_bytes` 限制。凭据与调用方头仅发送到配置的同源地址或明确的 `credentialed_origins`。本地测试端点需要显式 `allow_http().trust_origin(...)`。来源：`src/batch/`、`tests/suite/security.rs`（2026-09-15）。

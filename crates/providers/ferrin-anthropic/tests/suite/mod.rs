@@ -7,6 +7,7 @@ mod messages_request;
 mod messages_stream;
 mod prompt;
 mod provider;
+mod security;
 mod skills;
 mod tools;
 mod unit;

@@ -31,6 +31,7 @@
         "base_url: Url",
         "api_key: Option<SecretString>",
         "headers: Headers",
+        "url_policy: UrlPolicy",
         "transport: SharedTransport",
         "id_generator: Arc<dyn IdGenerator>"
       ],
@@ -203,6 +204,7 @@
         "api_key: Option<SecretString>",
         "headers: Headers",
         "name: Option<String>",
+        "url_policy: UrlPolicy",
         "transport: Option<SharedTransport>",
         "id_generator: Option<Arc<dyn IdGenerator>>"
       ],
@@ -839,6 +841,7 @@
         "base_url: Url",
         "api_key: Option<SecretString>",
         "headers: Headers",
+        "url_policy: UrlPolicy",
         "transport: SharedTransport",
         "id_generator: Arc<dyn IdGenerator>"
       ],

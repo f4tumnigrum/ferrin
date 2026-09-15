@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Validate and pin server-provided upload URLs, restrict cross-origin headers, and bound finalization responses.
+
 - Preserve executable-code calls and results when replaying provider-executed tools.
 
 - Preserve unconstrained boolean schemas and reject unrepresentable false schemas.

@@ -57,6 +57,7 @@ use std::sync::Arc;
 
 use ferrin_provider_util::IdGenerator;
 use ferrin_provider_util::SharedTransport;
+use ferrin_provider_util::secure_url::UrlPolicy;
 use ferrin_provider_util::settings::load_optional_setting;
 use ferrin_spec::BatchRef;
 use ferrin_spec::EmbeddingModelRef;
@@ -103,6 +104,8 @@ pub struct AnthropicSettings {
     pub headers: Headers,
     /// Provider name used in provider ids (default `anthropic`).
     pub name: Option<String>,
+    /// Security policy for server-provided URLs (HTTPS and public networks by default).
+    pub url_policy: UrlPolicy,
     /// HTTP transport (default: the shared `reqwest` transport).
     pub transport: Option<SharedTransport>,
     /// Generator for synthetic ids (citation sources).
@@ -159,6 +162,7 @@ pub fn create_anthropic(settings: AnthropicSettings) -> Result<AnthropicProvider
         .map(Credential::ApiKey)
         .or(settings.auth_token.map(Credential::AuthToken));
     config.headers = settings.headers;
+    config.url_policy = settings.url_policy;
     if let Some(id_generator) = settings.id_generator {
         config.id_generator = id_generator;
     }
