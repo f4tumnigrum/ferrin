@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-16
+
+### Changed
+
+- Coordinate workspace version 0.1.2 and synchronize the packaged attribution notice; no public API changes.
+
 ## [0.1.1] - 2026-09-15
 
 ### Changed

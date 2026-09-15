@@ -41,7 +41,7 @@
 1. 发布 PR：更新 `workspace.package.version`、各 `CHANGELOG.md`（`Unreleased` → 版本段）、`docs/` 中的版本引用；`semver.yml`（以上一发布 tag 为基线）与 `ci.yml` 的 `package` 作业通过。
 2. 合并后打 tag `v0.y.z`。
 3. `release.yml`（环境 `release`，secret `CARGO_REGISTRY_TOKEN`）先校验 tag 与版本、变更日志段，再把 `cargo xtask publish-order` 列出、且 crates.io 上尚无该版本（`cargo info` 查不到）的 crate 以一次 `cargo publish -p <a> -p <b> … --locked` 发布：Cargo 自行按依赖顺序上传，等待每个 crate 在索引可见后再发布其依赖方，并把本次发布集合内的包提供给彼此的验证构建。遇到 crates.io 对新 crate 的发布频率限制（HTTP 429，响应正文给出可重试时间）时，工作流等待到该时间后对仍未发布的 crate 重试，最多 40 轮。失败后重跑时已发布的 crate 被跳过，因此可从中断点继续。
-4. 发布 GitHub Release：正文由 `git cliff --latest` 从上一 tag 以来的约定式提交生成，并附根 `CHANGELOG.md`。
+4. 发布 GitHub Release：正文提取自根变更日志的带日期版本段，并附完整根 `CHANGELOG.md`。
 5. docs.rs 构建检查：所有 crate `all-features` 文档构建成功。
 
 【决策】（2026-09-14）首个版本用 crates.io API token（`CARGO_REGISTRY_TOKEN`）发布，工作流权限只保留 `contents: write`。依据：crates.io 的 Trusted Publishing 需要 crate 已存在并在 crates.io 上配置 GitHub 仓库为可信发布者，首次发布无法使用；首个版本发布后可改为 `rust-lang/crates-io-auth-action`（需 `id-token: write`），届时更新本节。
@@ -83,3 +83,11 @@
 【事实】准备提交 `6b6d88b` 通过 [CI run 34944988012](https://github.com/f4tumnigrum/ferrin/actions/runs/34944988012) 的全部 14 个作业，包括三种平台上的测试与包验证。该运行早于本次带日期的发布文档修改，并未验证 0.1.1 的注册表上传或 docs.rs 构建。
 
 【事实】[发布运行 34946615509](https://github.com/f4tumnigrum/ferrin/actions/runs/34946615509) 已在提交 `a7cad68f` 的 `v0.1.1` 标签上完成；该提交已通过 [CI run 34946103620](https://github.com/f4tumnigrum/ferrin/actions/runs/34946103620) 的全部 14 个作业。crates.io 官方 API 确认全部 15 个 0.1.1 版本已上架且未 yank，所有 docs.rs `status.json` 均返回 `doc_status: true`（2026-09-15 验证）。[GitHub Release](https://github.com/f4tumnigrum/ferrin/releases/tag/v0.1.1) 于 `2026-09-15T08:26:28Z` 发布，并包含上述兼容性说明。
+
+## 10. 0.1.2 发布（2026-09-16）
+
+【事实】工作区清单、锁文件、API 快照与全部 16 个 crate 的变更日志准备版本 0.1.2（来源：发布文件）。`ferrin-policy` 首次参与发布。这些准备不代表注册表上传或 docs.rs 构建成功。
+
+【决策】维护者授权在修复能力约束、工具选择同步和诊断脱敏问题后发布 0.1.2。新增模型中间件与策略 feature API 均为增量接口，没有新增供应商规范字段。
+
+【决策】默认分支历史移除 Claude 联合作者署名，已有发布标签保持不变。这些标签属于原始历史，因此发布说明从根变更日志的带日期版本段提取，不再依赖祖先关系推断上一标签。

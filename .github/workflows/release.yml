@@ -19,9 +19,6 @@ jobs:
         with:
           toolchain: 1.98.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - uses: taiki-e/install-action@3f74d7c16a4242f1c95561e98edc25d36adb4375 # v2.87.12
-        with:
-          tool: git-cliff
       - name: Verify the tag matches the workspace version and every changelog has a section for it
         run: |
           set -euo pipefail
@@ -83,8 +80,17 @@ jobs:
           exit 1
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      - name: Render release notes from the conventional commits since the previous tag
-        run: git cliff --config cliff.toml --latest --strip all > RELEASE_NOTES.md
+      - name: Extract the release notes from the dated root changelog
+        run: |
+          python3 - "${GITHUB_REF_NAME#v}" <<'EOF'
+          import pathlib, re, sys
+          version = re.escape(sys.argv[1])
+          changelog = pathlib.Path("CHANGELOG.md").read_text()
+          section = re.search(rf"^## \[{version}\].*?$(.*?)(?=^## |\Z)", changelog, re.M | re.S)
+          if section is None:
+              sys.exit("root changelog has no section for this release")
+          pathlib.Path("RELEASE_NOTES.md").write_text(section.group(1).strip() + "\n")
+          EOF
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           body_path: RELEASE_NOTES.md

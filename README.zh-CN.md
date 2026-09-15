@@ -12,7 +12,7 @@
 
 Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和任意 OpenAI 兼容端点。
 
-当前检出版本包含 0.1.1 发布内容，[变更日志日期为 2026-09-15](CHANGELOG.md#011---2026-09-15)。**0.1.1 包含破坏性 API 变化：**Schema 变换接口现返回 `Result`。本次明确保留 0.1.1 版本号，但这些接口不兼容 0.1.0；迁移说明见 [ADR 0019](docs/zh-CN/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。注册表发布状态另见[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#9-011-发布2026-09-15)。当前状态见[项目状态](#项目状态)。
+当前检出准备发布 0.1.2，[发布说明日期为 2026-09-16](CHANGELOG.md#012---2026-09-16)，新增模型中间件和策略化工具审批，并补齐执行边界与诊断信息保护。从 0.1.0 升级的调用方仍须遵循 0.1.1 引入的 Schema API 迁移，见 [ADR 0019](docs/zh-CN/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。注册表发布结果单独记录于[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#10-012-发布2026-09-16)。
 
 ## 特性
 
@@ -315,9 +315,9 @@ verification/              prototypes behind the pending-verification items (sep
 ## 项目状态
 
 - 16 个 crate、`xtask` 与七个示例均已实现（`ferrin-policy` 于 2026-09-15 新增，尚未发布）；其余 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
-- 测试 665 个（其中 10 个为需要真实凭据的在线测试），CI 在 Linux、macOS、Windows 三平台运行 14 个作业，当前全部通过。
+- 2026-09-16 本机运行通过 810 个测试，跳过 10 个需要真实凭据的在线测试。跨平台 CI 与注册表发布结果在发布记录中另行验证。
 - 真实端点验证：七个示例与全部在线测试在一个第三方 OpenAI 兼容端点上通过。OpenAI 官方端点、Anthropic 与 Google 尚未用真实凭据测试，供应商测试目前基于手工编写的 fixture（待验证事项 PV-031）。
-- 设计文档中 31 项待验证事项已关闭 30 项，详见[待验证事项汇总](docs/zh-CN/05-appendix/02-pending-verification.md)。
+- 设计文档中 32 项待验证事项已关闭 30 项，详见[待验证事项汇总](docs/zh-CN/05-appendix/02-pending-verification.md)。
 
 ## 开发
 

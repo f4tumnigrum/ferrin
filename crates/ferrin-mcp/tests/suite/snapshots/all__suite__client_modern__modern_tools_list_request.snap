@@ -8,7 +8,7 @@ expression: request.params
     "io.modelcontextprotocol/clientCapabilities": {},
     "io.modelcontextprotocol/clientInfo": {
       "name": "ferrin-mcp-client",
-      "version": "0.1.1"
+      "version": "0.1.2"
     }
   }
 }

@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-16
+
 ### Fixed
 
 - Enforce capability restrictions through the core execution boundary, including streamed calls.

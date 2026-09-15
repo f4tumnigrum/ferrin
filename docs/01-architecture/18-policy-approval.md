@@ -72,7 +72,7 @@ pub trait PolicyClient: Send + Sync + 'static {
 }
 ```
 
-and `to_input(|call, ctx| ..)` replaces it, for example to drop the messages. Evaluation errors deny the call with the reason `policy evaluation failed`; `on_error(FailureMode::FallThrough)` returns `None` instead. Decisions are logged at `debug`, failures at `warn`, with the tool name and path only.
+and `to_input(|call, ctx| ..)` replaces it, for example to drop the messages. Evaluation errors deny the call with the reason `policy evaluation failed`; `on_error(FailureMode::FallThrough)` returns `None` instead. Decisions are logged at `debug`, failures at `warn`, with the tool name, path and decision type only; reasons and error payloads are omitted.
 
 [Decision] `with_default(policy, status)` returns `status` for calls the inner policy leaves undecided, so that tools without a `needs_approval` declaration (for example tools bridged from an MCP server) do not execute silently. `shadow(policy)` evaluates the inner policy, reports every decision through `on_decision(|call, status| ..)` and returns `None` until `enforcement(Enforcement::Enforce)` is set; a rollout switches from observing to enforcing without rewiring.
 

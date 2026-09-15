@@ -6,6 +6,8 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-16
+
 ### Added
 
 - `ferrin-policy`: policy-based tool approval with OPA-style decision

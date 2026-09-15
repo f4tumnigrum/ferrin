@@ -72,7 +72,7 @@ pub trait PolicyClient: Send + Sync + 'static {
 }
 ```
 
-`to_input(|call, ctx| ..)` 可替换它，例如去掉消息。评估错误以原因 `policy evaluation failed` 拒绝调用；`on_error(FailureMode::FallThrough)` 则改为返回 `None`。决策以 `debug` 级别、失败以 `warn` 级别记录日志，只含工具名与路径。
+`to_input(|call, ctx| ..)` 可替换它，例如去掉消息。评估错误以原因 `policy evaluation failed` 拒绝调用；`on_error(FailureMode::FallThrough)` 则改为返回 `None`。决策以 `debug` 级别、失败以 `warn` 级别记录日志，只含工具名、路径和决策类型，不包含原因或错误载荷。
 
 【决策】`with_default(policy, status)` 对内层策略未决定的调用返回 `status`，使没有 `needs_approval` 声明的工具（例如从 MCP 服务器桥接的工具）不会静默执行。`shadow(policy)` 评估内层策略，通过 `on_decision(|call, status| ..)` 上报每个决策，在设置 `enforcement(Enforcement::Enforce)` 之前一律返回 `None`；上线时从观察切换到执行无需改动接线。
 

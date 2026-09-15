@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-16
+
 ### Fixed
 
 - Apply middleware tool restrictions and normalized tool choices to local execution in both generation loops, with isolated state for concurrent calls and retries.
