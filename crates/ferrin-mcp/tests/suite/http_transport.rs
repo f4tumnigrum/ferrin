@@ -439,3 +439,21 @@ async fn the_url_policy_rejects_disallowed_endpoints() {
         .unwrap_err();
     assert!(error.to_string().contains("not been started"));
 }
+
+#[tokio::test]
+async fn debug_redacts_initial_and_server_updated_session_ids() {
+    let initial = "SYNTHETIC_INITIAL_SESSION_SECRET";
+    let updated = "SYNTHETIC_UPDATED_SESSION_SECRET";
+    let harness = Harness::start(|config| config.session_id(initial)).await;
+    assert!(!format!("{:?}", harness.transport).contains(initial));
+    harness.server.mount_once(
+        Method::POST,
+        "/mcp",
+        Fixture::json(&response_json(1, json!({}))).with_header("mcp-session-id", updated),
+    );
+    harness.send(request(1, "ping")).await.unwrap();
+    assert_eq!(harness.transport.session_id().as_deref(), Some(updated));
+    let debug = format!("{:?}", harness.transport);
+    assert!(!debug.contains(initial));
+    assert!(!debug.contains(updated));
+}

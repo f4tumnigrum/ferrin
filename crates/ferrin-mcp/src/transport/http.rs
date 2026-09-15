@@ -54,7 +54,7 @@ fn is_initialize(message: &JsonRpcMessage) -> bool {
     message.method() == Some("initialize")
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct State {
     started: bool,
     closed: bool,
@@ -63,6 +63,26 @@ struct State {
     protocol_version: Option<String>,
     last_event_id: Option<String>,
     inbound_started: bool,
+}
+
+impl std::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("started", &self.started)
+            .field("closed", &self.closed)
+            .field("pinned", &self.pinned)
+            .field(
+                "session_id",
+                &self.session_id.as_ref().map(|_| "<redacted>"),
+            )
+            .field("protocol_version", &self.protocol_version)
+            .field(
+                "last_event_id",
+                &self.last_event_id.as_ref().map(|_| "<redacted>"),
+            )
+            .field("inbound_started", &self.inbound_started)
+            .finish()
+    }
 }
 
 struct Inner {
