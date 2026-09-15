@@ -485,6 +485,13 @@ impl HttpTransport {
     }
 }
 
+impl Drop for HttpTransport {
+    fn drop(&mut self) {
+        self.inner.cancellation.cancel();
+        lock(&self.inner.tasks).abort_all();
+    }
+}
+
 impl McpTransport for HttpTransport {
     fn start(&self) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {

@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Release client and built-in transport tasks when their final public handle is dropped.
+
 ## [0.1.0] - 2026-09-14
 
 ### Changed

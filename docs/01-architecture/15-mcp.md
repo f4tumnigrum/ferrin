@@ -239,3 +239,5 @@ mcp.close().await?;
 - [Decision] Added after live validation on 2026-09-14: automatic server-schema tools use `ToolBuilder::strict(false)`; explicit typed schemas are unchanged. OpenAI Responses defaults to strict function schemas requiring all properties in `required` and no extra properties; common MCP schemas, including server-everything, fail these requirements and otherwise reject the whole call.
 - [Decision] Outside scope: modern `subscriptions/listen`, resumption tokens beyond Last-Event-ID (`SendOptions` has no resumption token), sampling/roots, and OAuth `client_secret_jwt`/`private_key_jwt`.
 
+
+[Decision] 2026-09-15 client task ownership belongs to public client handles, separately from state shared by dispatch and server-request futures, so dropping the final handle aborts the dispatcher and its handlers. Built-in transport destructors cancel their streams and abort owned tasks, breaking internal task/state cycles; explicit close retains protocol session termination. Failed startup closes its transport (regression coverage: `crates/ferrin-mcp/tests/suite/client_lifecycle.rs`).

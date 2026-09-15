@@ -238,3 +238,5 @@ mcp.close().await?;
 - 【决策】服务端请求：`ping` 回 `{}`；`elicitation/create` 调用处理器（无处理器 `-32601`，参数非法 `-32602`，处理器失败 `-32603`）；其余方法（含 `sampling/createMessage`、`roots/list`）回 `-32601`。服务端通知经 `on_notification` 钩子投递，无钩子时以 `tracing::debug!` 记录。
 - 【决策】（2026-09-14，真实凭据验证后新增）由服务器 schema 自动构建的 MCP 工具以 `strict = false` 交给供应商（`ToolBuilder::strict(false)`）；`ToolsOptions::explicit` 提供的类型化 schema 不改动。依据：OpenAI Responses API 的函数工具默认严格校验（要求 `required` 列出全部属性且 `additionalProperties: false`），`@modelcontextprotocol/server-everything` 等服务器的 schema 普遍不满足，未标记时整次调用被拒绝（`Invalid schema for function ... 'required' is required to be supplied`）。
 - 【决策】范围外：`subscriptions/listen`（现代代的列表变更通知）、除 `last-event-id` 外的恢复令牌（`SendOptions` 无 `resumption_token`）、采样与 roots、OAuth 的 `client_secret_jwt`/`private_key_jwt`。
+
+【决策】2026-09-15 客户端任务由公开客户端句柄持有，与分发和服务端请求 future 共享的状态分离，最后一个句柄被丢弃即中止分发器及其处理器。内置传输的析构函数取消流并中止所属任务，打破任务与状态的循环引用；显式 close 仍负责协议会话终止。启动失败会关闭传输（回归覆盖：`crates/ferrin-mcp/tests/suite/client_lifecycle.rs`）。
