@@ -200,9 +200,11 @@ impl<T> ArrayOutput<T> {
     }
 
     fn wrapper_schema(&self) -> JsonValue {
+        let mut element = self.element.json_schema().clone();
+        super::local_refs::relocate(&mut element, "#/properties/elements/items");
         let mut elements = json!({
             "type": "array",
-            "items": self.element.json_schema().clone(),
+            "items": element,
         });
         if let Some(min) = self.min_items {
             elements["minItems"] = json!(min);

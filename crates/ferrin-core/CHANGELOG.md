@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Array output keeps local schema references valid after wrapping nested and
+  recursive element schemas.
+
 - Realtime tools honor static and dynamic approval requirements before execution,
   leaving guarded calls for explicit application handling.
 - Apply telemetry recording flags to nested step/end payloads, response bodies and error payloads/causes and warning descriptions while preserving error classifications and original application results.

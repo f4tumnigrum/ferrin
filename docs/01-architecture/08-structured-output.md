@@ -30,6 +30,8 @@ impl Output<JsonValue> { pub fn json() -> Self; pub fn json_with_schema(schema: 
 
 `.output(Output<T>)` changes the result of a `GenerateText<O>` builder to `GenerateTextResult<T>`.
 
+[Fact] Array output preserves local references when nesting the element schema beneath `properties.elements.items`: root/pointer references are relocated, named anchors and separate `$id` scopes retain their meaning, and literal values such as `const` are untouched (2026-09-15, `tests/suite/output.rs`).
+
 ## 2. Parsing conditions
 
 [Decision] Parse only if the final step's finish reason is `stop`, or is not `tool-calls` and text is nonempty. Otherwise return `NoOutputGenerated`. Parsing failures are `NoObjectGenerated`, carrying text, response, usage, finish reason, and cause. Steps ending in tool calls lack a final answer and should not produce spurious parse failures.

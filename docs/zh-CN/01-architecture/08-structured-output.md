@@ -30,6 +30,8 @@ impl Output<JsonValue> { pub fn json() -> Self; pub fn json_with_schema(schema: 
 
 `GenerateText<O>` 构建器的 `.output(Output<T>)` 把结果类型改为 `GenerateTextResult<T>`。
 
+【事实】 数组输出将元素 Schema 嵌入 `properties.elements.items` 时保留本地引用语义：重定位根和指针引用，保留命名锚点及独立 `$id` 作用域，不改写 `const` 等字面量（2026-09-15，`tests/suite/output.rs`）。
+
 ## 2. 解析条件
 
 【决策】结构化输出只在最后一步满足以下条件时解析：完成原因为 `stop`，或完成原因不是 `tool-calls` 且文本非空。不满足时返回 `NoOutputGenerated` 错误；解析失败返回 `NoObjectGenerated` 错误（携带文本、响应、用量、完成原因与原因）。依据：以工具调用结束的步骤不含最终答案，对其解析只会产生误报。

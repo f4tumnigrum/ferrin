@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 
 use crate::error::Error;
 
+mod local_refs;
 mod strategies;
 
 pub use strategies::ArrayOutput;
