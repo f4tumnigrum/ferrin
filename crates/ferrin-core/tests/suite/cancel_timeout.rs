@@ -90,3 +90,84 @@ async fn step_timeout_fires_per_step() {
         "{error:?}"
     );
 }
+
+struct ToolDropGuard(Arc<std::sync::atomic::AtomicBool>);
+impl Drop for ToolDropGuard {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn cancelling_pending_tools_wakes_and_drops_execution_in_both_loops() {
+    for streaming in [false, true] {
+        let started = Arc::new(tokio::sync::Notify::new());
+        let dropped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let notify = Arc::clone(&started);
+        let guard = Arc::clone(&dropped);
+        let tool = ferrin_tool::Tool::function_with_schema(ferrin_tool::Schema::empty_object())
+            .execute(
+                move |_: ferrin_spec::JsonValue, _: ferrin_tool::ToolContext| {
+                    let notify = Arc::clone(&notify);
+                    let guard = ToolDropGuard(Arc::clone(&guard));
+                    async move {
+                        let _guard = guard;
+                        notify.notify_one();
+                        std::future::pending::<
+                                Result<ferrin_spec::JsonValue, ferrin_tool::ToolError>,
+                            >()
+                            .await
+                    }
+                },
+            )
+            .build();
+        let tools = ferrin_tool::ToolSet::new().insert("pending", tool).unwrap();
+        let model = mock()
+            .generate(super::common::tool_call_result(
+                "call",
+                "pending",
+                &serde_json::json!({}),
+            ))
+            .stream(vec![
+                ferrin_spec::StreamPart::stream_start(),
+                ferrin_spec::StreamPart::ToolCall(ferrin_spec::ToolCall::new(
+                    "call", "pending", "{}",
+                )),
+                ferrin_spec::StreamPart::finish(
+                    ferrin_spec::FinishReason::tool_calls(),
+                    ferrin_spec::Usage::default(),
+                ),
+            ])
+            .build_shared();
+        let token = CancellationToken::new();
+        let call = async {
+            if streaming {
+                ferrin_core::stream_text(model)
+                    .prompt("hi")
+                    .tools(tools)
+                    .cancellation(token.clone())
+                    .await
+                    .unwrap()
+                    .consume()
+                    .await
+            } else {
+                generate_text(model)
+                    .prompt("hi")
+                    .tools(tools)
+                    .cancellation(token.clone())
+                    .await
+            }
+        };
+        let cancel = async {
+            started.notified().await;
+            token.cancel();
+        };
+        let (outcome, ()) =
+            tokio::join!(tokio::time::timeout(Duration::from_secs(1), call), cancel);
+        let error = outcome
+            .expect("cancellation must wake the pending tool")
+            .unwrap_err();
+        assert!(error.is_cancelled(), "{error:?}");
+        assert!(dropped.load(std::sync::atomic::Ordering::SeqCst));
+    }
+}

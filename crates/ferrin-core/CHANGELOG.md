@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Register cancellation wakeups while tools are pending so cancellation promptly drops execution and ends both generation loops.
+
 - Validate every approved tool context before replay starts and propagate context validation errors throughout tool execution.
 
 - Deduplicate approval responses by approval and tool-call IDs before execution, rejecting conflicting decisions.

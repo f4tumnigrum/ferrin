@@ -75,3 +75,5 @@ flowchart TD
 - [Fact] (PV-020, `verification/pv020-sleep-reset`, release) Per-chunk Sleep poll/`reset` costs 73 ns, versus 17 ns for Instant::now, negligible at hundreds/thousands of chunks per second.
 - [Decision] Keep resettable Sleep for `chunk` timeouts rather than fixed-interval polling.
 - [Decision] Channel capacity 64 and download concurrency 8 follow PV-006/PV-003; see [Generation loop](07-generation-loop-and-streaming.md), section 5, and [Prompt conversion](05-prompt-conversion.md), section 7.
+
+[Decision] A pending tool output stream polls an owned cancellation future on every poll, registering its waker even without a tool timeout. Cancellation wakes the executor and drops the pending tool future when the call terminates.

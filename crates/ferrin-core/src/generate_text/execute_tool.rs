@@ -38,6 +38,8 @@ pin_project! {
         deadline: Option<Sleep>,
         timeout: Option<Duration>,
         cancellation: tokio_util::sync::CancellationToken,
+        #[pin]
+        cancelled: tokio_util::sync::WaitForCancellationFutureOwned,
         done: bool,
     }
 }
@@ -58,6 +60,7 @@ pub(crate) fn execute_tool(
         inner,
         deadline: timeout.map(tokio::time::sleep),
         timeout,
+        cancelled: cancellation.clone().cancelled_owned(),
         cancellation,
         done: false,
     }
@@ -81,7 +84,7 @@ impl Stream for ToolExecution {
                 Err(ToolError::message("tool has no execute function")),
             );
         };
-        if this.cancellation.is_cancelled() {
+        if this.cancelled.as_mut().poll(cx).is_ready() {
             return finish(this.done, Err(ToolError::Cancelled));
         }
         if let Some(deadline) = this.deadline.as_mut().as_pin_mut()
