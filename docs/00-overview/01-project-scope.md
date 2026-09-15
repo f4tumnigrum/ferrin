@@ -28,6 +28,7 @@ Ferrin is an independently implemented Rust library. Its design draws on the Ver
 | Embeddings, images, speech, transcription, reranking, video, files, skills, batches, realtime | `ferrin-core` |
 | MCP client | `ferrin-mcp` |
 | OpenTelemetry export | `ferrin-otel` |
+| Policy-based tool approval (OPA REST Data API, embedded Rego) | `ferrin-policy` |
 | Testing utilities | `ferrin-testing` |
 | Provider adapters | `ferrin-openai`, `ferrin-anthropic`, `ferrin-openai-compatible`, `ferrin-google` |
 

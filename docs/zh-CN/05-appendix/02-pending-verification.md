@@ -39,6 +39,7 @@
 | PV-029 | 本机工具链更新到 1.98.1 | 工具链 §1 | `1.98.1-aarch64-apple-darwin` 已安装并被 `rust-toolchain.toml` 选中；全部门禁在其上运行 | closed |
 | PV-030 | MCP 2026-07-28 的 `InputRequiredResult`/`inputRequests`/`inputResponses` 字段定义 | MCP §2.2.2、§5 | 2026-09-14 依据规范仓库 `schema/2026-07-28/schema.ts` 固定：`Result.resultType: "complete" \| "input_required"`；`InputRequiredResult { inputRequests?: { [key]: CreateMessageRequest \| ListRootsRequest \| ElicitRequest }, requestState?: string }`；客户端以 `params.inputResponses: { [key]: InputResponse }` 与 `params.requestState` 重试原请求。`ferrin-mcp` 已按此实现（仅处理 `elicitation/create` 输入请求） | closed |
 | PV-031 | `ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible`、`ferrin-google` 手工编写的 fixture 与真实 API 响应的一致性 | 测试规范 §10、`docs/providers/openai.md`、`docs/providers/anthropic.md`、`docs/providers/openai-compatible.md`、`docs/providers/google.md` | fixture 依据供应商公开 API 文档的响应 schema 手工编写；`cargo xtask record-fixture` 已于 2026-09-14 实现（场景文件 `*.scenario.json`，见工作区布局 §6），需用真实凭据重新录制并比对快照 | open |
+| PV-032 | `ferrin-policy` 的 `rego` feature 在 Windows MSVC 上的构建 | 策略化工具审批 §2.3、工具链 §5 | `regorus` 的 `std` feature 启用带 `error` feature 的 `msvc_spectre_libs`，其构建脚本在缺少 Spectre 缓解版 CRT 库时 panic（crate 源码 0.1.3，2026-09-15）。由下一次 CI 运行的 `test (windows-2025)` 作业裁定；回退方案是从 regorus feature 中去掉 `std`。 | open |
 
 ## 环境事实记录
 

@@ -25,6 +25,7 @@ See the [ADR process](../03-engineering/07-adr-process.md).
 | [0017](2026-09-14-0017-apache-2-license-and-attribution.md) | Apache-2.0 licensing and attribution | accepted | 2026-09-14 |
 | [0018](2026-09-14-0018-english-primary-documentation.md) | English as the primary documentation edition | accepted | 2026-09-14 |
 | [0019](2026-09-15-0019-fallible-schema-transforms.md) | Fallible provider schema transforms | accepted | 2026-09-15 |
+| [0020](2026-09-15-0020-policy-based-tool-approval.md) | Policy-based tool approval crate and embedded Rego engine | accepted | 2026-09-15 |
 
 ## Editorial revisions
 

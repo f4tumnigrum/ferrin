@@ -27,6 +27,8 @@ google = ["dep:ferrin-google"]
 openai-compatible = ["dep:ferrin-openai-compatible"]
 mcp = ["dep:ferrin-mcp"]
 otel = ["dep:ferrin-otel"]
+policy = ["dep:ferrin-policy"]
+policy-rego = ["policy", "ferrin-policy/rego"]
 realtime = ["ferrin-core/realtime"]
 
 [dependencies]
@@ -43,6 +45,7 @@ ferrin-google = { workspace = true, optional = true }
 ferrin-openai-compatible = { workspace = true, optional = true }
 ferrin-mcp = { workspace = true, optional = true }
 ferrin-otel = { workspace = true, optional = true }
+ferrin-policy = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 futures-util = { workspace = true }

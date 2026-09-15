@@ -1,0 +1,48 @@
+[package]
+name = "ferrin-policy"
+description = "Ferrin policy-based tool approval: OPA-style decision documents, HTTP policy server client, embedded Rego evaluation, capability middleware."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "llm", "sdk", "opa", "policy"]
+categories = ["api-bindings", "asynchronous"]
+
+[lib]
+name = "ferrin_policy"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# In-process Rego evaluation through regorus.
+rego = ["dep:regorus"]
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-core = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+bytes = { workspace = true }
+http = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true }
+regorus = { workspace = true, optional = true }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+ferrin-tool = { workspace = true }
+ferrin-message = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

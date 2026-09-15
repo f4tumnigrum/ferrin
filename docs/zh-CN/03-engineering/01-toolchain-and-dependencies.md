@@ -60,6 +60,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | `indexmap` | 2.14.2 | 有序工具集 | tool |
 | `regex` | 1.13.1 | `smooth_stream` 自定义切分、推理标签提取 | core |
 | `unicode-segmentation` | 1.13.3 | 词边界切分 | core |
+| `regorus` | 0.12.0 | `ferrin-policy` feature `rego` 背后的 Rego 解释器（默认 feature `full-opa`、`arc`、`rvm`；许可 `MIT AND Apache-2.0 AND BSD-3-Clause`）。【事实】间接引入 `anyhow`、`lazy_static`、`num-bigint`、`spin` 与 `jsonschema` 0.49（crate 清单，2026-09-15）；`ferrin-policy` 自身不使用它们。 | policy（feature `rego`） |
 | `tracing` | 0.1.44 | 日志与 span | 全部 |
 | `arc-swap` | 1.9.2 | 【决策】不引入（PV-024）：全局默认注册表用 `OnceLock` 一次性设置（ADR 0008），无热替换需求；中间件与注册表均为不可变值 | — |
 | `opentelemetry` | 0.32.0 | OTel API | otel |
@@ -123,6 +124,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-15 | Ferrin 0.1.1，crates.io 官方版本 API 与 docs.rs 状态端点 | 【事实】全部 15 个版本已上架且未 yank，15 个文档构建均成功；见[发布验证](06-versioning-and-release.md#9-011-发布2026-09-15) | 发布验证 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
+- 【事实】2026-09-15：`regorus` 0.12.0 为 crates.io `max_stable_version`（`cargo info regorus --registry crates-io`）；许可 `MIT AND Apache-2.0 AND BSD-3-Clause`，各部分均在 deny 允许列表内；未声明 `rust-version`；`Engine: Clone`，提供 `add_policy`、`add_data`、`set_input`、`eval_rule`（crate 源码）。其 `std` feature 启用带 `error` feature 的 `msvc_spectre_libs` 0.1，该构建脚本在 MSVC 上缺少 Spectre 缓解版 CRT 库时 panic（PV-032）。已加入工作区依赖 `regorus = "0.12"`。
 
 ## 6. 已核实的 API 事实
 

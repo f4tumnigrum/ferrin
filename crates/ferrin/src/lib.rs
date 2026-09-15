@@ -3,9 +3,9 @@
 //! This facade crate re-exports the public API of `ferrin-core` at the crate
 //! root, the lower layers as modules ([`spec`], [`message`], [`schema`],
 //! [`mod@tool`], [`provider_util`]) and, behind features, the first-party
-//! provider crates ([`providers`]), the MCP client ([`mcp`]) and the
-//! OpenTelemetry bridge ([`otel`]). [`prelude`] gathers the items most
-//! programs need.
+//! provider crates ([`providers`]), the MCP client ([`mcp`]), the
+//! OpenTelemetry bridge ([`otel`]) and policy-based tool approval
+//! ([`policy`]). [`prelude`] gathers the items most programs need.
 //!
 //! Entry points are documented in `docs/02-api/02-api-reference.md`.
 //!
@@ -45,6 +45,8 @@ pub use ferrin_macros::tool;
 pub use ferrin_mcp as mcp;
 #[cfg(feature = "otel")]
 pub use ferrin_otel as otel;
+#[cfg(feature = "policy")]
+pub use ferrin_policy as policy;
 
 // ---- ferrin-core modules ----
 pub use ferrin_core::agent;

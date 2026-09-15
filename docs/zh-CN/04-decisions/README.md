@@ -25,6 +25,7 @@
 | [0017](2026-09-14-0017-apache-2-license-and-attribution.md) | 许可改为 Apache-2.0 单许可并署名派生代码 | accepted | 2026-09-14 |
 | [0018](2026-09-14-0018-english-primary-documentation.md) | 英文作为文档主版本 | accepted | 2026-09-14 |
 | [0019](2026-09-15-0019-fallible-schema-transforms.md) | 可失败的供应商 Schema 转换 | accepted | 2026-09-15 |
+| [0020](2026-09-15-0020-policy-based-tool-approval.md) | 策略化工具审批 crate 与内嵌 Rego 引擎 | accepted | 2026-09-15 |
 
 ## 编辑性修订
 

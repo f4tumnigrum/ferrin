@@ -9,17 +9,18 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
 - Ferrin is an AI SDK for Rust applications: text generation, streaming, tools
   with approval, agents, structured output, an MCP client, and the embedding,
   image, speech, transcription, reranking and video modalities.
-- All 15 crates under `crates/`, the `xtask` commands and the seven examples
+- All 16 crates under `crates/`, the `xtask` commands and the seven examples
   are implemented (first complete build: 2026-09-14). Version 0.1.0 of every
   crate was published to crates.io on 2026-09-14 (tag `v0.1.0`); each
   changelog has dated `[0.1.0]` and `[0.1.1]` sections, with an empty
-  `Unreleased` section for subsequent changes. The current release version is
+  `Unreleased` section for subsequent changes (`ferrin-policy`, added
+  2026-09-15, is not yet published and has only an `Unreleased` section). The current release version is
   0.1.1, explicitly retained despite breaking schema API changes (ADR 0019);
   this is an exception to compatible patch versioning. Registry publication
   status is recorded separately after verification. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
   `ferrin-schema` / `ferrin-message` / `ferrin-provider-util` →
   `ferrin-tool` → provider crates and `ferrin-mcp` → `ferrin-core` →
-  `ferrin-otel` / `ferrin-testing` → `ferrin`. Each architecture chapter ends
+  `ferrin-otel` / `ferrin-policy` / `ferrin-testing` → `ferrin`. Each architecture chapter ends
   with dated implementation records (`Implementation record`) describing what the code does
   where it refines the design; read them together with the chapter.
 - The design documents are the single source of truth: `docs/README.md` is

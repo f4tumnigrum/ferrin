@@ -304,6 +304,11 @@
       "source": "ferrin_core::output"
     },
     {
+      "path": "ferrin::policy",
+      "kind": "use",
+      "source": "ferrin_policy"
+    },
+    {
       "path": "ferrin::prelude",
       "kind": "module"
     },

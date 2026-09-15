@@ -28,6 +28,7 @@ Ferrin 是独立实现的 Rust 库，设计阶段参考了 Vercel AI SDK 的公�
 | 嵌入、图像、语音、转写、重排、视频、文件、技能、批处理、实时 | `ferrin-core` |
 | MCP 客户端 | `ferrin-mcp` |
 | OpenTelemetry 导出 | `ferrin-otel` |
+| 策略化工具审批（OPA REST Data API、内嵌 Rego） | `ferrin-policy` |
 | 测试辅助 | `ferrin-testing` |
 | 供应商适配器 | `ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible`、`ferrin-google` |
 

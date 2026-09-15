@@ -1,0 +1,368 @@
+{
+  "crate": "ferrin-policy",
+  "version": "0.1.1",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_policy::CapabilityInputFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&CallOptions, &MiddlewareContext<'_>) -> JsonValue + Send + Sync>",
+      "source": "capability::CapabilityInputFn"
+    },
+    {
+      "path": "ferrin_policy::CapabilityMiddleware",
+      "kind": "struct",
+      "signature": "struct<C>",
+      "source": "capability::CapabilityMiddleware",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn on_error(self, mode: FailureMode) -> Self",
+        "fn path(&self) -> &str",
+        "fn to_input(self, f: impl Fn(&CallOptions, &MiddlewareContext<'_>) -> JsonValue + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl<C: PolicyClient> LanguageModelMiddleware for CapabilityMiddleware<C>",
+        "impl<C> Debug for CapabilityMiddleware<C>"
+      ]
+    },
+    {
+      "path": "ferrin_policy::DEFAULT_MAX_RESPONSE_BYTES",
+      "kind": "constant",
+      "signature": "const: u64",
+      "source": "http::DEFAULT_MAX_RESPONSE_BYTES"
+    },
+    {
+      "path": "ferrin_policy::Enforcement",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "shadow::Enforcement",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Observe",
+        "Enforce"
+      ],
+      "traits": [
+        "impl Clone for Enforcement",
+        "impl Copy for Enforcement",
+        "impl Debug for Enforcement",
+        "impl Default for Enforcement",
+        "impl Eq for Enforcement",
+        "impl PartialEq for Enforcement",
+        "impl StructuralPartialEq for Enforcement"
+      ]
+    },
+    {
+      "path": "ferrin_policy::FailureMode",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "approval::FailureMode",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Deny",
+        "FallThrough"
+      ],
+      "traits": [
+        "impl Clone for FailureMode",
+        "impl Copy for FailureMode",
+        "impl Debug for FailureMode",
+        "impl Default for FailureMode",
+        "impl Eq for FailureMode",
+        "impl PartialEq for FailureMode",
+        "impl StructuralPartialEq for FailureMode"
+      ]
+    },
+    {
+      "path": "ferrin_policy::HttpPolicyClient",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "http::HttpPolicyClient",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn base_url(&self) -> &Url",
+        "fn builder(base_url: Url) -> HttpPolicyClientBuilder",
+        "fn new(base_url: Url) -> Result<Self, PolicyError>"
+      ],
+      "traits": [
+        "impl Debug for HttpPolicyClient",
+        "impl PolicyClient for HttpPolicyClient"
+      ]
+    },
+    {
+      "path": "ferrin_policy::HttpPolicyClientBuilder",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "http::HttpPolicyClientBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> Result<HttpPolicyClient, PolicyError>",
+        "fn header(self, name: &str, value: &str) -> Self",
+        "fn headers(self, headers: Headers) -> Self",
+        "fn max_response_bytes(self, max_response_bytes: u64) -> Self",
+        "fn timeout(self, timeout: Duration) -> Self",
+        "fn transport(self, transport: SharedTransport) -> Self",
+        "fn url_policy(self, policy: UrlPolicy) -> Self"
+      ],
+      "traits": [
+        "impl Debug for HttpPolicyClientBuilder"
+      ]
+    },
+    {
+      "path": "ferrin_policy::OnDecisionFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync>",
+      "source": "shadow::OnDecisionFn"
+    },
+    {
+      "path": "ferrin_policy::PolicyApproval",
+      "kind": "struct",
+      "signature": "struct<C>",
+      "source": "approval::PolicyApproval",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn client(&self) -> &C",
+        "fn on_error(self, mode: FailureMode) -> Self",
+        "fn path(&self) -> &str",
+        "fn to_input(self, f: impl Fn(&ParsedToolCall, &ApprovalContext<'_>) -> JsonValue + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl<C: PolicyClient> ApprovalPolicy for PolicyApproval<C>",
+        "impl<C> Debug for PolicyApproval<C>"
+      ]
+    },
+    {
+      "path": "ferrin_policy::PolicyClient",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "client::PolicyClient",
+      "methods": [
+        "fn evaluate<'a>(&'a self, path: &'a str, input: JsonValue) -> BoxFuture<'a, Result<JsonValue, PolicyError>>"
+      ]
+    },
+    {
+      "path": "ferrin_policy::PolicyClientFn",
+      "kind": "struct",
+      "signature": "struct<F>",
+      "source": "client::PolicyClientFn",
+      "fields": [
+        "/* private */"
+      ],
+      "traits": [
+        "impl<F> Debug for PolicyClientFn<F>",
+        "impl<F> PolicyClient for PolicyClientFn<F> where F: Fn(&str, JsonValue) -> Result<JsonValue, PolicyError> + Send + Sync + 'static"
+      ]
+    },
+    {
+      "path": "ferrin_policy::PolicyDecision",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "decision::PolicyDecision",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Allow { reason: Option<String> }",
+        "Deny { reason: Option<String> }",
+        "RequiresApproval { reason: Option<String> }",
+        "NotApplicable"
+      ],
+      "methods": [
+        "fn allow() -> Self",
+        "fn deny() -> Self",
+        "fn into_approval(self) -> Option<ApprovalStatus>",
+        "fn normalize(raw: &JsonValue) -> Self",
+        "fn reason(&self) -> Option<&str>",
+        "fn requires_approval() -> Self",
+        "fn with_reason(self, reason: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for PolicyDecision",
+        "impl Debug for PolicyDecision",
+        "impl Eq for PolicyDecision",
+        "impl PartialEq for PolicyDecision",
+        "impl Serialize for PolicyDecision",
+        "impl StructuralPartialEq for PolicyDecision",
+        "impl<'de> Deserialize<'de> for PolicyDecision"
+      ]
+    },
+    {
+      "path": "ferrin_policy::PolicyError",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "error::PolicyError",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "InvalidPath { path: String, message: String }",
+        "InvalidUrl { message: String }",
+        "InvalidInput { message: String }",
+        "Transport { host: String, message: String }",
+        "Status { status: StatusCode, body: String }",
+        "InvalidResponse { message: String }",
+        "Engine { message: String }"
+      ],
+      "traits": [
+        "impl Clone for PolicyError",
+        "impl Debug for PolicyError",
+        "impl Display for PolicyError",
+        "impl Eq for PolicyError",
+        "impl Error for PolicyError",
+        "impl PartialEq for PolicyError",
+        "impl StructuralPartialEq for PolicyError"
+      ]
+    },
+    {
+      "path": "ferrin_policy::RegoPolicyClient",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "rego::RegoPolicyClient",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn builder() -> RegoPolicyClientBuilder",
+        "fn from_policy(name: impl Into<String>, source: impl Into<String>) -> Result<Self, PolicyError>",
+        "fn packages(&self) -> &[String]"
+      ],
+      "traits": [
+        "impl Debug for RegoPolicyClient",
+        "impl PolicyClient for RegoPolicyClient"
+      ]
+    },
+    {
+      "path": "ferrin_policy::RegoPolicyClientBuilder",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "rego::RegoPolicyClientBuilder",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn build(self) -> Result<RegoPolicyClient, PolicyError>",
+        "fn data(self, data: JsonValue) -> Self",
+        "fn policy(self, name: impl Into<String>, source: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for RegoPolicyClientBuilder",
+        "impl Default for RegoPolicyClientBuilder"
+      ]
+    },
+    {
+      "path": "ferrin_policy::Shadow",
+      "kind": "struct",
+      "signature": "struct<P>",
+      "source": "shadow::Shadow",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn enforcement(self, enforcement: Enforcement) -> Self",
+        "fn on_decision(self, f: impl Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync + 'static) -> Self"
+      ],
+      "traits": [
+        "impl<P: ApprovalPolicy> ApprovalPolicy for Shadow<P>",
+        "impl<P> Debug for Shadow<P>"
+      ]
+    },
+    {
+      "path": "ferrin_policy::SharedPolicyClient",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn PolicyClient>",
+      "source": "client::SharedPolicyClient"
+    },
+    {
+      "path": "ferrin_policy::ToInputFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&ParsedToolCall, &ApprovalContext<'_>) -> JsonValue + Send + Sync>",
+      "source": "approval::ToInputFn"
+    },
+    {
+      "path": "ferrin_policy::UNRECOGNIZED_DECISION",
+      "kind": "constant",
+      "signature": "const: &str",
+      "source": "decision::UNRECOGNIZED_DECISION"
+    },
+    {
+      "path": "ferrin_policy::WithDefault",
+      "kind": "struct",
+      "signature": "struct<P>",
+      "source": "approval::WithDefault",
+      "fields": [
+        "/* private fields */"
+      ],
+      "traits": [
+        "impl<P: ApprovalPolicy> ApprovalPolicy for WithDefault<P>",
+        "impl<P> Debug for WithDefault<P>"
+      ]
+    },
+    {
+      "path": "ferrin_policy::capability_middleware",
+      "kind": "function",
+      "signature": "fn capability_middleware<C: PolicyClient>(client: C, path: impl Into<String>) -> CapabilityMiddleware<C>",
+      "source": "capability::capability_middleware"
+    },
+    {
+      "path": "ferrin_policy::default_capability_input",
+      "kind": "function",
+      "signature": "fn default_capability_input(options: &CallOptions, ctx: &MiddlewareContext<'_>) -> JsonValue",
+      "source": "capability::default_capability_input",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_policy::default_input",
+      "kind": "function",
+      "signature": "fn default_input(call: &ParsedToolCall, ctx: &ApprovalContext<'_>) -> JsonValue",
+      "source": "approval::default_input",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_policy::parse_allowlist",
+      "kind": "function",
+      "signature": "fn parse_allowlist(raw: &JsonValue) -> Option<BTreeSet<String>>",
+      "source": "capability::parse_allowlist",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_policy::policy_approval",
+      "kind": "function",
+      "signature": "fn policy_approval<C: PolicyClient>(client: C, path: impl Into<String>) -> PolicyApproval<C>",
+      "source": "approval::policy_approval"
+    },
+    {
+      "path": "ferrin_policy::policy_client",
+      "kind": "function",
+      "signature": "fn policy_client<F>(f: F) -> PolicyClientFn<F> where F: Fn(&str, JsonValue) -> Result<JsonValue, PolicyError> + Send + Sync + 'static",
+      "source": "client::policy_client"
+    },
+    {
+      "path": "ferrin_policy::shadow",
+      "kind": "function",
+      "signature": "fn shadow<P: ApprovalPolicy>(policy: P) -> Shadow<P>",
+      "source": "shadow::shadow"
+    },
+    {
+      "path": "ferrin_policy::with_default",
+      "kind": "function",
+      "signature": "fn with_default<P: ApprovalPolicy>(policy: P, default: ApprovalStatus) -> WithDefault<P>",
+      "source": "approval::with_default"
+    }
+  ]
+}

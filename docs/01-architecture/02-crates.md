@@ -22,6 +22,7 @@
 | `ferrin-mcp` | L3 | MCP client: Streamable HTTP, SSE, and stdio transports, OAuth, tool bridging, resources, prompts, elicitation. | `ferrin-spec`, `ferrin-schema`, `ferrin-tool`, `ferrin-provider-util` (`ferrin-message` was not needed in the 2026-09-14 implementation; see [MCP integration](15-mcp.md), section 6) |
 | `ferrin-core` | L4 | Prompt normalization/conversion, text generation loop, streaming, structured output, agents, middleware, registry, retries/timeouts, telemetry interfaces, other modalities, core errors. | All L0–L2 crates |
 | `ferrin-otel` | L5 | OpenTelemetry implementation of `Telemetry`, following GenAI semantic conventions. | `ferrin-core`, `ferrin-spec`, `ferrin-tool` (2026-09-14 implementation: `opentelemetry_sdk` is test-only; see [Observability](13-observability.md), section 9) |
+| `ferrin-policy` | L5 | Policy-based tool approval: `PolicyClient`, decision normalization, `policy_approval`, shadow mode, capability middleware, OPA REST client, embedded Rego (feature `rego`). | `ferrin-core`, `ferrin-spec`, `ferrin-provider-util` (added 2026-09-15; see [Policy-based tool approval](18-policy-approval.md), ADR 0020) |
 | `ferrin-testing` | L5 | Mock models, simulated streams, fixture replay, deterministic IDs/clocks, HTTP recording/replay. | `ferrin-core`, `ferrin-provider-util` |
 | `ferrin-macros` | L5 | Procedural macro: `#[ferrin::tool]`. | None (generated code references `::ferrin::tool::*`, so use through the facade only; implemented 2026-09-14, see [Tool system](06-tool-system.md), section 1.1) |
 | `ferrin` | L5 | Facade: re-export the `ferrin-core` public API and `prelude`; enable providers and extensions through features. | All |
@@ -50,6 +51,7 @@ flowchart TD
     tool --> core
     util --> core
     core --> otel[ferrin-otel]
+    core --> policy[ferrin-policy]
     core --> testing[ferrin-testing]
     core --> facade[ferrin facade]
     openai --> facade
@@ -58,6 +60,7 @@ flowchart TD
     google --> facade
     mcp --> facade
     otel --> facade
+    policy --> facade
 ```
 
 [Decision] `ferrin-mcp` does not depend on `ferrin-core`. MCP tools enter tool sets as dynamic tools and need only `ferrin-tool` and `ferrin-provider-util`, without core loop types. This also allows standalone MCP use outside generation.
@@ -201,6 +204,22 @@ ferrin-openai/
     suite/                 // integration tests (wiremock replay)
 ```
 
+### 4.4 `ferrin-policy`
+
+```
+src/
+  lib.rs                 // re-exports
+  client.rs              // PolicyClient, policy_client, SharedPolicyClient
+  decision.rs            // PolicyDecision::normalize, into_approval
+  approval.rs            // policy_approval, FailureMode, with_default, default_input
+  shadow.rs              // shadow, Enforcement
+  capability.rs          // capability_middleware, parse_allowlist
+  http.rs                // HttpPolicyClient (OPA REST Data API)
+  rego.rs                // RegoPolicyClient (feature `rego`, regorus)
+  path.rs                // policy path normalization
+  error.rs               // PolicyError
+```
+
 ## 5. Feature gates
 
 | Crate | Feature | Effect | Default |
@@ -213,7 +232,8 @@ ferrin-openai/
 | `ferrin-core` | `video` | Compile `video` generation APIs (polling/webhooks) | On |
 | `ferrin-mcp` | `stdio` | Subprocess `stdio` transport | On |
 | `ferrin-mcp` | `oauth` | OAuth authorization flow | On |
-| `ferrin` | `openai`, `anthropic`, `google`, `openai-compatible`, `mcp`, `otel`, `macros`, `realtime` | Enable corresponding crates and re-export under `ferrin::providers::*` and at the crate root (`ferrin::openai`, etc.); `realtime` forwards `ferrin-core/realtime` (implemented 2026-09-14; see [API reference](../02-api/02-api-reference.md), section 14) | `macros` on; others off |
+| `ferrin-policy` | `rego` | `RegoPolicyClient`: in-process Rego evaluation with `regorus` | Off |
+| `ferrin` | `openai`, `anthropic`, `google`, `openai-compatible`, `mcp`, `otel`, `policy`, `policy-rego`, `macros`, `realtime` | Enable corresponding crates and re-export under `ferrin::providers::*` and at the crate root (`ferrin::openai`, etc.); `realtime` forwards `ferrin-core/realtime` (implemented 2026-09-14; see [API reference](../02-api/02-api-reference.md), section 14) | `macros` on; others off |
 
 [Decision] Optional features between workspace crates must not change existing public type shapes or signatures; they only add APIs. Cargo feature unification can otherwise create untested combinations. A small, strictly additive feature set lets users trim dependencies without changing contracts.
 

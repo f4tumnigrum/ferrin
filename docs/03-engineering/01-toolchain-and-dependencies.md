@@ -60,6 +60,7 @@ Versions come from crates.io API `max_stable_version` on 2026-09-13. These are w
 | `indexmap` | 2.14.2 | Ordered tool sets | tool |
 | `regex` | 1.13.1 | Custom smoothing segmentation and reasoning tags | core |
 | `unicode-segmentation` | 1.13.3 | Word boundaries | core |
+| `regorus` | 0.12.0 | Rego interpreter behind the `ferrin-policy` feature `rego` (default features `full-opa`, `arc`, `rvm`; license `MIT AND Apache-2.0 AND BSD-3-Clause`). [Fact] Pulls `anyhow`, `lazy_static`, `num-bigint`, `spin` and `jsonschema` 0.49 transitively (crate manifest, 2026-09-15); `ferrin-policy` itself uses none of them. | policy (feature `rego`) |
 | `tracing` | 0.1.44 | Logs and spans | All |
 | `arc-swap` | 1.9.2 | [Decision] Not adopted (PV-024): default registry uses one-time `OnceLock` (ADR 0008), with immutable middleware/registries and no hot replacement | — |
 | `opentelemetry` | 0.32.0 | OTel API | otel |
@@ -123,6 +124,7 @@ Append a row for every version check:
 | 2026-09-15 | Ferrin 0.1.1, official crates.io version API and docs.rs status endpoints | [Fact] All 15 versions are published and unyanked; all 15 documentation builds report success. See [release verification](06-versioning-and-release.md#9-release-011-2026-09-15) | Publication verification |
 
 check-versions compares manifest dependencies with crates.io and reports outdated entries; weekly CI opens an issue (see [CI and quality gates](05-ci-and-quality-gates.md)).
+- [Fact] 2026-09-15: `regorus` 0.12.0 is the crates.io `max_stable_version` (`cargo info regorus --registry crates-io`); license `MIT AND Apache-2.0 AND BSD-3-Clause`, every part on the deny allow list; no `rust-version` declared; `Engine: Clone` with `add_policy`, `add_data`, `set_input`, `eval_rule` (crate source). Its `std` feature enables `msvc_spectre_libs` 0.1 with the `error` feature, whose build script panics on MSVC when the Spectre-mitigated CRT libraries are missing (PV-032). Added as workspace dependency `regorus = "0.12"`.
 
 ## 6. Verified API facts
 

@@ -11,6 +11,8 @@ All notable changes to this crate are documented here. The format follows
   (`EmbeddingModelMiddleware`, `ImageModelMiddleware`, `ProviderMiddleware`,
   `wrap_embedding_model`, `wrap_image_model`, `wrap_provider`) at the crate
   root and in the prelude.
+- Features `policy` and `policy-rego`: re-export `ferrin-policy` as
+  `ferrin::policy`, optionally with the embedded Rego engine.
 
 ## [0.1.1] - 2026-09-15
 

@@ -6,7 +6,7 @@ This product includes software derived from the Vercel AI SDK
 under the Apache License, Version 2.0. The derived portions were
 translated from TypeScript to Rust and modified. They are found in the
 crates ferrin-spec, ferrin-schema, ferrin-message, ferrin-tool,
-ferrin-core, ferrin-mcp, ferrin-openai, ferrin-anthropic,
+ferrin-core, ferrin-mcp, ferrin-policy, ferrin-openai, ferrin-anthropic,
 ferrin-openai-compatible and ferrin-google; the crate documentation of
 these crates and the module documentation of the closest translations
 carry a notice.

@@ -218,6 +218,24 @@ let second = ferrin::generate_text(&gpt)
     .await?;
 ```
 
+策略化审批（feature `policy`，crate `ferrin-policy`；见[策略化工具审批](../01-architecture/18-policy-approval.md)）：
+
+```rust
+use ferrin::policy::{HttpPolicyClient, policy_approval, shadow, Enforcement};
+
+let opa = HttpPolicyClient::builder(url::Url::parse("https://policy.internal.example/")?)
+    .header("authorization", "Bearer <token>")
+    .build()?;
+let policy = shadow(policy_approval(opa, "ferrin/tools/decision"))
+    .enforcement(Enforcement::Enforce);
+
+let result = ferrin::generate_text(&gpt)
+    .prompt("Delete temp.log")
+    .tools(tools)
+    .tool_approval(policy)
+    .await?;
+```
+
 ## 6. 结构化输出
 
 见[结构化输出](../01-architecture/08-structured-output.md)第 6 节示例。
@@ -328,6 +346,7 @@ assert_eq!(result.text(), "hello");
 | `embed`、`generate_image`、`generate_speech`、`transcribe`、`rerank`、`upload_file` | 核心 |
 | `generate_video`、批处理、实时会话、语音翻译、`stream_transcribe` | 对应的供应商 API 仍在演进；Ferrin 文档标注 `# Stability: evolving`，允许在次版本中调整 |
 | `ferrin-mcp` | evolving |
+| `ferrin-policy` | evolving |
 | `Sandbox` | evolving |
 
 ## 14. 实现记录（2026-09-14，`ferrin` 门面）

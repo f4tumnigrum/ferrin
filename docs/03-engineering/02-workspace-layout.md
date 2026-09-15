@@ -31,6 +31,7 @@ ferrin/
     ferrin-core/
     ferrin-mcp/
     ferrin-otel/
+    ferrin-policy/
     ferrin-testing/
     ferrin-macros/
     ferrin/

@@ -24,6 +24,7 @@ This checkout contains the 0.1.1 release, with [release notes dated 2026-09-15](
 - **Streaming pipeline**: separate event streams and final results, text streams, smoothing, raw chunk passthrough, and direct SSE forwarding.
 - **Other modalities**: embeddings, images, speech synthesis, transcription, speech translation, reranking, video, file and skill uploads, batches, and realtime sessions.
 - **MCP client**: Streamable HTTP, SSE, and stdio transports, OAuth authorization, and server tools exposed as a tool set.
+- **Policy-based approval**: `ferrin-policy` resolves tool approvals through OPA-style policies (an HTTP policy server or embedded Rego), with shadow mode and a capability middleware.
 - **Observability**: `tracing` spans follow the OpenTelemetry GenAI semantic conventions; `ferrin-otel` exports spans and metrics.
 - **Engineering constraints**: no `unsafe`, no `unwrap` in library code, a shared transport for all HTTP, and `secrecy` types that keep keys out of logs.
 
@@ -260,6 +261,7 @@ Features of the `ferrin` facade crate:
 | `openai`, `anthropic`, `google`, `openai-compatible` | Corresponding provider crate, also exported under paths such as `ferrin::openai` | No |
 | `mcp` | MCP client, including stdio and OAuth | No |
 | `otel` | OpenTelemetry bridge, `ferrin::otel::OtelTelemetry` | No |
+| `policy`, `policy-rego` | Policy-based tool approval (`ferrin::policy`); `policy-rego` adds the embedded Rego engine | No |
 | `realtime` | Realtime session loop in `ferrin-core` (WebSocket) | No |
 
 Crates can also be used independently. WebSocket streaming models in `ferrin-openai` (`realtime` transcription and speech translation) require that crate's own `realtime` feature.
@@ -299,6 +301,7 @@ crates/
   ferrin-macros            #[ferrin::tool]
   ferrin-mcp               MCP client
   ferrin-otel              OpenTelemetry bridge
+  ferrin-policy            policy-based tool approval (OPA REST, embedded Rego)
   ferrin-testing           mock models, fixture server, contract checks
   providers/ferrin-openai, ferrin-anthropic, ferrin-google, ferrin-openai-compatible
 examples/                  seven runnable examples
@@ -311,7 +314,7 @@ Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates 
 
 ## Project status
 
-- All 15 crates, `xtask`, and seven examples are implemented. Version 0.1.0 of every crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
+- All 16 crates, `xtask`, and seven examples are implemented (`ferrin-policy` was added on 2026-09-15 and is not published yet). Version 0.1.0 of every other crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
 - There are 665 tests, including 10 live tests requiring real credentials. CI runs 14 jobs across Linux, macOS, and Windows; all passed in the recorded run.
 - Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. The official OpenAI, Anthropic, and Google endpoints have not been tested with real credentials. Provider tests currently use handwritten fixtures (pending item PV-031).
 - Of 31 pending-verification items in the design documents, 30 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).

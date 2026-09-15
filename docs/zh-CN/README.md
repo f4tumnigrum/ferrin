@@ -39,6 +39,7 @@
 - [MCP 集成](01-architecture/15-mcp.md)
 - [并发、取消与超时](01-architecture/16-concurrency-and-cancellation.md)
 - [Provider 适配器实现指南](01-architecture/17-provider-implementation-guide.md)
+- [策略化工具审批](01-architecture/18-policy-approval.md)
 
 ### 02 公共 API
 

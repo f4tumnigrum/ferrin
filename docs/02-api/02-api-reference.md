@@ -218,6 +218,24 @@ let second = ferrin::generate_text(&gpt)
     .await?;
 ```
 
+Policy-based approval (feature `policy`, crate `ferrin-policy`; see [Policy-based tool approval](../01-architecture/18-policy-approval.md)):
+
+```rust
+use ferrin::policy::{HttpPolicyClient, policy_approval, shadow, Enforcement};
+
+let opa = HttpPolicyClient::builder(url::Url::parse("https://policy.internal.example/")?)
+    .header("authorization", "Bearer <token>")
+    .build()?;
+let policy = shadow(policy_approval(opa, "ferrin/tools/decision"))
+    .enforcement(Enforcement::Enforce);
+
+let result = ferrin::generate_text(&gpt)
+    .prompt("Delete temp.log")
+    .tools(tools)
+    .tool_approval(policy)
+    .await?;
+```
+
 ## 6. Structured output
 
 See [Structured output](../01-architecture/08-structured-output.md), section 6.
@@ -328,6 +346,7 @@ assert_eq!(result.text(), "hello");
 | Embeddings, images, speech, transcription, reranking, file upload | Core |
 | Video, batches, realtime, speech translation, streaming transcription | Provider APIs still evolve; documented as Stability: evolving, with minor-version changes allowed |
 | `ferrin-mcp` | evolving |
+| `ferrin-policy` | evolving |
 | `Sandbox` | evolving |
 
 ## 14. Implementation record (2026-09-14, ferrin facade)

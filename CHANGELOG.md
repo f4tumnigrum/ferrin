@@ -8,6 +8,10 @@ lists releases and cross-crate changes. The format follows
 
 ### Added
 
+- `ferrin-policy`: policy-based tool approval with OPA-style decision
+  documents, `HttpPolicyClient` for the OPA REST Data API, `RegoPolicyClient`
+  behind the `rego` feature, shadow mode, default statuses and a capability
+  middleware; facade features `policy` and `policy-rego` (ADR 0020).
 - `ferrin-core`: embedding and image model middleware, `wrap_provider`, and
   registry support for embedding and image middleware.
 
@@ -15,6 +19,8 @@ lists releases and cross-crate changes. The format follows
 
 - Enforce middleware capability restrictions during local tool execution and
   synchronize tool-choice validation in generated and streamed responses.
+- Keep policy decision reasons, evaluation errors and URL credentials out of
+  automatic diagnostics.
 
 ## [0.1.1] - 2026-09-15
 

@@ -23,6 +23,7 @@ ferrin-tool = { path = "crates/ferrin-tool", version = "0.1.1" }
 ferrin-core = { path = "crates/ferrin-core", version = "0.1.1", default-features = false }
 ferrin-mcp = { path = "crates/ferrin-mcp", version = "0.1.1" }
 ferrin-otel = { path = "crates/ferrin-otel", version = "0.1.1" }
+ferrin-policy = { path = "crates/ferrin-policy", version = "0.1.1" }
 # Path only: it is used exclusively as a dev-dependency, so Cargo strips it
 # from the published manifests and publishing never has to resolve it first.
 ferrin-testing = { path = "crates/ferrin-testing" }
@@ -67,6 +68,8 @@ secrecy = "0.10"
 ipnet = "2.12"
 # text
 regex = "1.13"
+# policy evaluation (ferrin-policy feature `rego`; verified 2026-09-15)
+regorus = "0.12"
 unicode-segmentation = "1.13"
 # observability
 tracing = "0.1"

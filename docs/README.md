@@ -39,6 +39,7 @@ This directory describes Ferrin's target architecture, technical design, and eng
 - [MCP integration](01-architecture/15-mcp.md)
 - [Concurrency, cancellation, and timeouts](01-architecture/16-concurrency-and-cancellation.md)
 - [Provider implementation guide](01-architecture/17-provider-implementation-guide.md)
+- [Policy-based tool approval](01-architecture/18-policy-approval.md)
 
 ### 02 Public API
 

@@ -39,6 +39,7 @@ Status: `closed` means source markers became Fact/Decision; `open` means a numbe
 | PV-029 | Install toolchain 1.98.1 | Toolchain section 1 | Installed aarch64 Apple toolchain selected by repository file; all gates ran on it. | closed |
 | PV-030 | Modern MCP MRTR field definitions | MCP sections 2.2.2/5 | Fixed from official schema on 2026-09-14: resultType complete/input_required, keyed message/roots/elicit input requests plus requestState, retry with keyed `inputResponses`/state. Implemented elicitation only. | closed |
 | PV-031 | Handwritten provider fixtures versus real responses | Testing section 10 and all four provider guides | Fixtures follow official schemas. record-fixture exists since 2026-09-14 with scenario JSON; rerecord using real credentials and compare snapshots. | open |
+| PV-032 | Windows MSVC build of `ferrin-policy` with the `rego` feature | Policy-based tool approval section 2.3, toolchain section 5 | `regorus`'s `std` feature enables `msvc_spectre_libs` with its `error` feature, whose build script panics when the Spectre-mitigated CRT libraries are absent (crate source 0.1.3, 2026-09-15). To be settled by the `test (windows-2025)` job of the next CI run; fallback is dropping `std` from the regorus features. | open |
 
 ## Environment records
 

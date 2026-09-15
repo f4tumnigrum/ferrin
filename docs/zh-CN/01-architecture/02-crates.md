@@ -22,6 +22,7 @@
 | `ferrin-mcp` | L3 | MCP 客户端：传输（Streamable HTTP、SSE、stdio）、OAuth、工具桥接、资源与提示、诱导（elicitation）。 | `ferrin-spec`、`ferrin-schema`、`ferrin-tool`、`ferrin-provider-util`（2026-09-14 实现时未用到 `ferrin-message`，见 [MCP 集成](15-mcp.md)第 6 节） |
 | `ferrin-core` | L4 | 核心：Prompt 标准化与转换、文本生成循环、流式管线、结构化输出、Agent、中间件、注册表、重试与超时、遥测接口、其他模态函数、核心错误。 | L0–L2 全部 |
 | `ferrin-otel` | L5 | `Telemetry` 的 OpenTelemetry 实现，遵循 GenAI 语义约定。 | `ferrin-core`、`ferrin-spec`、`ferrin-tool`（2026-09-14 实现：`opentelemetry_sdk` 仅为测试依赖，见 [可观测性](13-observability.md)第 9 节） |
+| `ferrin-policy` | L5 | 策略化工具审批：`PolicyClient`、决策归一化、`policy_approval`、影子模式、能力中间件、OPA REST 客户端、内嵌 Rego（feature `rego`）。 | `ferrin-core`、`ferrin-spec`、`ferrin-provider-util`（2026-09-15 新增，见[策略化工具审批](18-policy-approval.md)、ADR 0020） |
 | `ferrin-testing` | L5 | 测试辅助：Mock 模型、流模拟、fixture 回放、确定性 ID/时钟、HTTP 录制回放。 | `ferrin-core`、`ferrin-provider-util` |
 | `ferrin-macros` | L5 | 过程宏：`#[ferrin::tool]`。 | 无（生成代码引用 `::ferrin::tool::*` 路径，因此只能经门面使用；2026-09-14 实现，见[工具系统](06-tool-system.md)第 1.1 节） |
 | `ferrin` | L5 | 门面：re-export `ferrin-core` 公共 API 与 `prelude`；通过 feature 启用供应商与扩展 crate。 | 全部 |
@@ -50,6 +51,7 @@ flowchart TD
     tool --> core
     util --> core
     core --> otel[ferrin-otel]
+    core --> policy[ferrin-policy]
     core --> testing[ferrin-testing]
     core --> facade[ferrin facade]
     openai --> facade
@@ -58,6 +60,7 @@ flowchart TD
     google --> facade
     mcp --> facade
     otel --> facade
+    policy --> facade
 ```
 
 【决策】`ferrin-mcp` 不依赖 `ferrin-core`。依据：MCP 工具以动态工具形态接入工具集，只需要 `ferrin-tool` 与 `ferrin-provider-util`，不需要核心循环的类型；不依赖核心层也让 MCP 客户端可以单独用于非生成场景。
@@ -201,6 +204,22 @@ ferrin-openai/
     suite/                 // 集成测试（wiremock 回放）
 ```
 
+### 4.4 `ferrin-policy`
+
+```
+src/
+  lib.rs                 // re-export
+  client.rs              // PolicyClient, policy_client, SharedPolicyClient
+  decision.rs            // PolicyDecision::normalize, into_approval
+  approval.rs            // policy_approval, FailureMode, with_default, default_input
+  shadow.rs              // shadow, Enforcement
+  capability.rs          // capability_middleware, parse_allowlist
+  http.rs                // HttpPolicyClient（OPA REST Data API）
+  rego.rs                // RegoPolicyClient（feature `rego`，regorus）
+  path.rs                // 策略路径归一化
+  error.rs               // PolicyError
+```
+
 ## 5. Feature 门控
 
 | Crate | Feature | 作用 | 默认 |
@@ -213,7 +232,8 @@ ferrin-openai/
 | `ferrin-core` | `video` | 编译视频生成 API（轮询/Webhook） | 开 |
 | `ferrin-mcp` | `stdio` | 子进程 stdio 传输 | 开 |
 | `ferrin-mcp` | `oauth` | OAuth 授权流程 | 开 |
-| `ferrin` | `openai`、`anthropic`、`google`、`openai-compatible`、`mcp`、`otel`、`macros`、`realtime` | 启用对应 crate 并在 `ferrin::providers::*` 与 crate 根（`ferrin::openai` 等）下 re-export；`realtime` 转发 `ferrin-core/realtime`（2026-09-14 实现，见 [API 参考](../02-api/02-api-reference.md)第 14 节） | `macros` 开，其余关 |
+| `ferrin-policy` | `rego` | `RegoPolicyClient`：用 `regorus` 进程内求值 Rego | 关 |
+| `ferrin` | `openai`、`anthropic`、`google`、`openai-compatible`、`mcp`、`otel`、`policy`、`policy-rego`、`macros`、`realtime` | 启用对应 crate 并在 `ferrin::providers::*` 与 crate 根（`ferrin::openai` 等）下 re-export；`realtime` 转发 `ferrin-core/realtime`（2026-09-14 实现，见 [API 参考](../02-api/02-api-reference.md)第 14 节） | `macros` 开，其余关 |
 
 【决策】工作区内部 crate 之间不使用可选 feature 改变公共类型的形状（feature 只增删 API，不改变已有签名）。依据：Cargo feature 统一（unification）会让下游组合出未测试的形状；完全禁止 feature 又会让外部用户无法裁剪依赖，因此保留少量 feature，但限制其语义为纯增量。
 

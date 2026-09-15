@@ -24,6 +24,7 @@ Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大�
 - **流式管线**：事件流与最终结果分离，文本流、平滑输出、原始分块透传，可直接转发为 SSE。
 - **其他模态**：嵌入、图像、语音合成、转写、语音翻译、重排、视频、文件与技能上传、批处理、实时会话。
 - **MCP 客户端**：Streamable HTTP、SSE 与 stdio 传输，OAuth 授权，服务器工具一键接入工具集。
+- **策略化审批**：`ferrin-policy` 通过 OPA 风格的策略（HTTP 策略服务器或内嵌 Rego）判定工具审批，支持影子模式与能力中间件。
 - **可观测性**：`tracing` span 遵循 OpenTelemetry GenAI 语义约定；`ferrin-otel` 导出 span 与指标。
 - **工程约束**：无 `unsafe`，库代码禁止 `unwrap`，全部 HTTP 经统一传输层，密钥使用 `secrecy` 类型且不进日志。
 
@@ -260,6 +261,7 @@ match generate_text(openai.responses("gpt-5")).prompt("hi").await {
 | `openai`、`anthropic`、`google`、`openai-compatible` | 对应的供应商 crate，同时在 `ferrin::openai` 等路径下导出 | 否 |
 | `mcp` | MCP 客户端（含 stdio 传输与 OAuth） | 否 |
 | `otel` | OpenTelemetry 桥接 `ferrin::otel::OtelTelemetry` | 否 |
+| `policy`、`policy-rego` | 策略化工具审批（`ferrin::policy`）；`policy-rego` 额外启用内嵌 Rego 引擎 | 否 |
 | `realtime` | `ferrin-core` 的实时会话循环（WebSocket） | 否 |
 
 各 crate 也可以单独依赖；`ferrin-openai` 的 WebSocket 流式模型（实时转写、语音翻译）需要该 crate 自身的 `realtime` feature。
@@ -299,6 +301,7 @@ crates/
   ferrin-macros            #[ferrin::tool]
   ferrin-mcp               MCP client
   ferrin-otel              OpenTelemetry bridge
+  ferrin-policy            policy-based tool approval (OPA REST, embedded Rego)
   ferrin-testing           mock models, fixture server, contract checks
   providers/ferrin-openai, ferrin-anthropic, ferrin-google, ferrin-openai-compatible
 examples/                  seven runnable examples
@@ -311,7 +314,7 @@ verification/              prototypes behind the pending-verification items (sep
 
 ## 项目状态
 
-- 15 个 crate、`xtask` 与七个示例均已实现；全部 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
+- 16 个 crate、`xtask` 与七个示例均已实现（`ferrin-policy` 于 2026-09-15 新增，尚未发布）；其余 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
 - 测试 665 个（其中 10 个为需要真实凭据的在线测试），CI 在 Linux、macOS、Windows 三平台运行 14 个作业，当前全部通过。
 - 真实端点验证：七个示例与全部在线测试在一个第三方 OpenAI 兼容端点上通过。OpenAI 官方端点、Anthropic 与 Google 尚未用真实凭据测试，供应商测试目前基于手工编写的 fixture（待验证事项 PV-031）。
 - 设计文档中 31 项待验证事项已关闭 30 项，详见[待验证事项汇总](docs/zh-CN/05-appendix/02-pending-verification.md)。

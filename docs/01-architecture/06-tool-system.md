@@ -162,6 +162,8 @@ pub trait ApprovalPolicy: Send + Sync {
 
 (2026-09-13: implemented as `resolve<'a>(&'a self, call: &'a ParsedToolCall, ctx: ApprovalContext<'a>) -> BoxFuture<'a, Option<ApprovalStatus>>`; see section 11.)
 
+[Decision] Policies evaluated by an external or embedded engine (OPA REST Data API, Rego through `regorus`) plug in through the same trait: `ferrin_policy::policy_approval(client, path)` implements `ApprovalPolicy`, maps `allow` / `deny` / `requires-approval` to the statuses above and `not-applicable` to `None`, and denies on evaluation failure by default. See [Policy-based tool approval](18-policy-approval.md) and [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md).
+
 ### 4.2 Approval requests and responses
 
 [Decision] Calls requiring user approval do not execute. They emit `tool-approval-request {approval_id, tool_call_id, tool_name, input, reason?, signature?}` and end the loop because continuation conditions fail. The application appends `tool-approval-response {approval_id, approved, reason?, provider_executed?}` to the last tool message and calls again; the signature remains with the request in the assistant message. The core:
@@ -253,3 +255,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 [Decision] Strict schema transforms return an error for arbitrary-key dictionaries instead of closing them or returning an unsupported schema; see [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md). `apply`, `applied`, `to_openai_strict`, and `Schema::transformed` return `Result`; failed in-place transformations leave their input unchanged.
 
 [Decision] Local sandbox cancellation is checked before process creation and remains active for file and process output streams. Each spawned process has a `JoinSet`-owned supervisor that kills and reaps it on cancellation even when the application has not called `wait`; dropping the process aborts that supervisor and kills its owned child. Cancelled reads return one `Interrupted` error and end.
+
+[Fact] 2026-09-15: `ferrin-policy` builds `policy_approval`, `shadow`, `with_default` and `capability_middleware` on this contract without changes to the core; its coverage is listed in [Policy-based tool approval](18-policy-approval.md), section 7.

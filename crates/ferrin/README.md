@@ -9,8 +9,9 @@ root, the lower layers as modules (`spec`, `message`, `schema`, `tool`,
 `provider_util`), and behind features the provider crates
 (`ferrin::openai`, `ferrin::anthropic`, `ferrin::google`,
 `ferrin::openai_compatible`, also grouped under `ferrin::providers`), the MCP
-client (`ferrin::mcp`), the OpenTelemetry bridge (`ferrin::otel`) and the
-`#[ferrin::tool]` macro. `ferrin::prelude` gathers the items most programs
+client (`ferrin::mcp`), the OpenTelemetry bridge (`ferrin::otel`),
+policy-based tool approval (`ferrin::policy`) and the `#[ferrin::tool]`
+macro. `ferrin::prelude` gathers the items most programs
 need.
 
 Part of the [Ferrin](https://github.com/f4tumnigrum/ferrin) workspace. Design:
@@ -59,6 +60,8 @@ async fn run() -> Result<(), ferrin::Error> {
 | `openai-compatible` | off | `ferrin::openai_compatible` (crate `ferrin-openai-compatible`) |
 | `mcp` | off | `ferrin::mcp` (crate `ferrin-mcp`) |
 | `otel` | off | `ferrin::otel` (crate `ferrin-otel`) |
+| `policy` | off | `ferrin::policy` (crate `ferrin-policy`) |
+| `policy-rego` | off | `policy` plus the embedded Rego engine (`ferrin-policy/rego`) |
 | `realtime` | off | `ferrin::realtime` (WebSocket realtime sessions of `ferrin-core`) |
 
 ## Testing

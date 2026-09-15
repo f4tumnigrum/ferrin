@@ -162,6 +162,8 @@ pub trait ApprovalPolicy: Send + Sync {
 
 （2026-09-13：实现签名为 `resolve<'a>(&'a self, call: &'a ParsedToolCall, ctx: ApprovalContext<'a>) -> BoxFuture<'a, Option<ApprovalStatus>>`，见第 11 节。）
 
+【决策】由外部或内嵌引擎判定的策略（OPA REST Data API、经 `regorus` 的 Rego）通过同一 trait 接入：`ferrin_policy::policy_approval(client, path)` 实现 `ApprovalPolicy`，把 `allow` / `deny` / `requires-approval` 映射到上述状态、`not-applicable` 映射为 `None`，判定失败时默认拒绝。见[策略化工具审批](18-policy-approval.md)与 [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md)。
+
 ### 4.2 审批请求与响应
 
 【决策】需要用户审批的调用不执行，而是产生 `tool-approval-request {approval_id, tool_call_id, tool_name, input, reason?, signature?}` 内容并终止循环（继续条件不满足）。应用把审批响应 `tool-approval-response {approval_id, approved, reason?, provider_executed?}` 追加到最后一条工具消息后再次调用（签名随请求保存在助手消息中）；核心层：
@@ -253,3 +255,5 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 【决策】严格 Schema 转换对任意键字典返回错误，不会将其关闭或返回不受支持的 Schema；见 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。`apply`、`applied`、`to_openai_strict` 和 `Schema::transformed` 返回 `Result`；原地转换失败时输入不变。
 
 【决策】本地 sandbox 在创建进程前检查取消，并在文件和进程输出流的生命周期内持续响应取消。每个创建的进程由 `JoinSet` 持有的监督任务管理，即使应用尚未调用 `wait`，取消也会终止并回收进程；丢弃进程对象会中止监督任务并终止其持有的子进程。取消的读取返回一次 `Interrupted` 错误后结束。
+
+【事实】2026-09-15：`ferrin-policy` 在该契约之上实现 `policy_approval`、`shadow`、`with_default` 与 `capability_middleware`，核心层无需改动；其覆盖清单见[策略化工具审批](18-policy-approval.md)第 7 节。
