@@ -134,3 +134,5 @@ PruneOptions::new()
 - 【事实】`prepare_tools` 对每个工具先以 `tools_context` 校验上下文 schema（失败为 `Error::InvalidArgument { argument: "tools_context" }`），再解析动态描述并生成 `ToolDefinition`；`active_tools` 过滤与 `tool_order` 排序在此处应用。批处理的文本请求复用同一函数。
 
 【决策】 两种生成循环均使用准备后归一化的工具选择校验响应；过滤掉全部工具时，也移除该步骤的强制工具调用要求。
+
+【决策】 自定义 `DownloadFn` 接收收集到的全部 URL 及其模型支持标记，包括模型支持所有 URL 的提示。只有默认下载器可以跳过这种情况；自定义下载器可内联需要鉴权的文件，或返回 `None` 保留单个 URL。

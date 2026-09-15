@@ -2,6 +2,7 @@ mod agent;
 mod approval;
 mod cancel_timeout;
 mod common;
+mod download;
 mod error_size;
 mod generate;
 mod hooks;

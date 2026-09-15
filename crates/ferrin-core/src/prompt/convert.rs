@@ -124,9 +124,10 @@ async fn download_files(
         }
     }
     if requests.is_empty()
-        || requests
-            .iter()
-            .all(|request| request.is_url_supported_by_model)
+        || (ctx.download.is_none()
+            && requests
+                .iter()
+                .all(|request| request.is_url_supported_by_model))
     {
         return Ok(HashMap::new());
     }

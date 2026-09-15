@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Invoke explicit custom downloaders even when the model supports every referenced URL.
+
 - Register cancellation wakeups while tools are pending so cancellation promptly drops execution and ends both generation loops.
 
 - Validate every approved tool context before replay starts and propagate context validation errors throughout tool execution.
