@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Resolve Responses and Chat file references using the configured provider name.
+
 - Encode local shell results with the matching Responses shell output wire type.
 
 - Preserve individual custom tool names and application aliases during Responses replay.

@@ -106,3 +106,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Decision] Each `openai.custom` tool maps its application alias to `args.name` independently for calls, results, forced choice, and response names; the tool type `custom` is not a function name. Source: `responses/convert_tools.rs`; regression `custom_tool_aliases_roundtrip_calls_results_and_choice` (2026-09-15).
 
 [Fact] Local `openai.shell` results use `shell_call_output` with an `output` array of stdout/stderr/outcome entries, converting `outcome.exitCode` to `exit_code`; legacy `openai.local_shell` retains `local_shell_call_output`. Source: `responses/convert_tool_results.rs`; regression `local_shell_outputs_use_the_matching_api_generation` (2026-09-15).
+
+[Fact] Responses and Chat request preparation resolve uploaded file references with `OpenAiConfig.name`, independently of the provider options key. Standalone prompt-conversion helpers retain the default `openai` name. Source: regression `uploaded_files_roundtrip_with_custom_provider_name` (2026-09-15).
