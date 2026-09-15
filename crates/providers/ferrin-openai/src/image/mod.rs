@@ -231,9 +231,21 @@ impl ImageModel for OpenAiImageModel {
             if let Some(prompt) = &options.prompt {
                 form = form.field("prompt", prompt);
             }
+            let image_field = if returns_base64_by_default(self.model_id.as_str()) {
+                "image[]"
+            } else {
+                if options.files.len() != 1 {
+                    return Err(UnsupportedFunctionalityError::new(
+                        "multiple input images for DALL-E edits",
+                    )
+                    .into());
+                }
+                form = form.field("response_format", "b64_json");
+                "image"
+            };
             for file in &options.files {
                 let (data, media_type) = Self::image_bytes(file, "image file")?;
-                form = form.file("image[]", Some("image".to_owned()), media_type, data);
+                form = form.file(image_field, Some("image".to_owned()), media_type, data);
             }
             if let Some(mask) = &options.mask {
                 let (data, media_type) = Self::image_bytes(mask, "mask")?;

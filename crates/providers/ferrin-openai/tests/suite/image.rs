@@ -54,3 +54,42 @@ async fn dall_e_requests_base64_explicitly() {
     let request = test.only_request().body_json().unwrap();
     assert_eq!(request["response_format"], json!("b64_json"));
 }
+
+#[tokio::test]
+async fn image_edits_use_model_specific_file_fields_and_response_format() {
+    use ferrin_spec::FileData;
+    use ferrin_spec::image_model::ImageFile;
+
+    for (model, image_field, response_format) in [
+        ("dall-e-2", "image", true),
+        ("gpt-image-1", "image[]", false),
+    ] {
+        let test = TestProvider::start().await;
+        test.mount(Method::POST, "/v1/images/edits", "image", "generate");
+        let mut options = ImageOptions::new("A tiny red square");
+        options.files.push(ImageFile {
+            data: FileData::Bytes {
+                data: bytes::Bytes::from_static(b"image bytes"),
+            },
+            media_type: Some("image/png".into()),
+            provider_options: None,
+        });
+        let result = test
+            .provider
+            .image(model)
+            .do_generate(options)
+            .await
+            .unwrap();
+        let body = test.only_request().body_text();
+        assert!(
+            body.contains(&format!("name=\"{image_field}\"; filename=\"image\"")),
+            "{body}"
+        );
+        assert_eq!(
+            body.contains("name=\"response_format\"\r\n\r\nb64_json"),
+            response_format
+        );
+        assert_eq!(result.images.len(), 1);
+        assert!(result.images[0].data.starts_with(b"\x89PNG"));
+    }
+}
