@@ -91,7 +91,7 @@ pub struct TelemetryOptions {
 
 【事实】适配器产生的警告（不支持的选项、兼容映射、弃用）需要让开发者看到，但库不应直接写控制台。
 
-【决策】警告以 `tracing::warn!(target: "ferrin::warnings", ...)` 记录，每条警告一个事件，字段为 `warning.type`、`warning.feature`、`warning.details`、`provider`、`model_id`。应用通过 tracing 过滤器控制；不设全局开关。
+【决策】警告以 `tracing::warn!(target: "ferrin::warnings", ...)` 记录，每条警告一个事件，字段为 `category`、`feature`、`provider`、`model_id`，省略不透明警告描述。应用通过 tracing 过滤器控制；不设全局开关。
 
 ## 5. 性能指标
 
@@ -153,3 +153,9 @@ let result = ferrin::generate_text(&model)
 - 【决策】内容默认不记录：不实现 `gen_ai.input.messages`/`gen_ai.output.messages`；`OtelTelemetryBuilder::record_tool_content()` 开启后在工具 span 上写 `gen_ai.tool.call.arguments`（仅当调用的 `record_inputs` 为真，因为核心层只在此时传入输入）与 `gen_ai.tool.call.result`（JSON 字符串）。依据：约定把这些属性列为 Opt-In 并警告含敏感数据。
 - 【决策】Tracer 与 Meter 在 `build()` 时解析一次：默认取 `opentelemetry::global` 的提供者，`OtelTelemetryBuilder::tracer_provider`/`meter_provider` 可显式指定（测试用内存导出器），`without_metrics()` 只产生 span。instrumentation scope 为 `ferrin-otel` + crate 版本。库只依赖 `opentelemetry` API 与 `tracing-opentelemetry`（取当前 `tracing` span 的上下文）；`opentelemetry_sdk`（feature `testing`）仅为开发依赖。
 - 【事实】模块：`telemetry.rs`（约 480 行）、`metrics.rs`、`semconv.rs`；测试 14 个（`tests/suite/{spans,metrics}.rs`，`InMemorySpanExporter` + `InMemoryMetricExporter`）：非流式/流式/失败/中止/流错误的 span 与属性、工具 span（默认无内容、开启后有内容、失败）、与 `tracing` span 的父子关系、用量/耗时/首块指标、嵌入与重排指标、失败模态指标、关闭指标。
+
+【决策】 遥测步骤结束与调用结束回调接收过滤后的副本：`record_inputs = false` 移除请求体与请求消息，`record_outputs = false` 移除步骤内容、响应体、响应消息与提供商元数据。模型调用结束事件中的原始响应体也遵循输出开关。应用的步骤结束与调用结束回调以及返回结果保留完整值。这些开关控制生命周期事件内容；执行包装器仍处理其观测的实际类型化结果。
+
+【决策】 遥测错误回调保留错误类型、状态码、重试分类、尝试次数与输出用量，同时移除被开关排除的请求和响应载荷。任一记录开关关闭时，省略无法可靠区分内容来源的不透明错误消息与嵌套原因；结构化输出文本遵循 `record_outputs`。关闭输出记录时，工具失败事件保留失败标记而不携带错误载荷。应用收到的原始错误保持不变。
+
+【决策】 任一内容记录开关关闭时，遥测警告副本保留类别与功能或设置名称，但省略可能含提示或推理全文的不透明消息和详情。无条件警告 tracing 始终省略这些描述，不受记录开关影响；应用警告值保持完整。

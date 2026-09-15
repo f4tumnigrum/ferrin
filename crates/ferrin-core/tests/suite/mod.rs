@@ -15,4 +15,6 @@ mod registry;
 mod retry;
 mod stream;
 mod stream_metadata;
+mod telemetry_content;
+mod telemetry_errors;
 mod tool_restrictions;
