@@ -134,3 +134,5 @@ PruneOptions::new()
 - [Fact] `prepare_tools` first validates each tool's context schema against `tools_context` (failure: `Error::InvalidArgument { argument: "tools_context" }`), resolves dynamic descriptions, and generates `ToolDefinition`. It applies `active_tools` filtering and `tool_order` sorting. Batch text requests reuse this function.
 
 [Decision] The normalized prepared tool choice also governs response validation in both generation loops; filtering away every tool removes the requirement for that step.
+
+[Decision] A custom `DownloadFn` receives all collected URLs with their model-support flags, including prompts whose URLs are all supported. Only the default downloader skips that case; custom downloaders can inline authenticated files or preserve individual URLs by returning `None`.
