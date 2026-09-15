@@ -277,21 +277,24 @@ impl Converter<'_> {
                     ));
                 }
                 AssistantPromptPart::ReasoningFile(file) => {
-                    parts.push(with_thought(file_part(
-                        self.config,
-                        &file.data,
-                        &file.media_type,
-                        true,
-                    )?));
+                    let options = read_part_options(self.config, file.provider_options.as_ref());
+                    parts.push(with_signature(
+                        with_thought(file_part(self.config, &file.data, &file.media_type, true)?),
+                        options.thought_signature.as_deref(),
+                    ));
                 }
                 AssistantPromptPart::File(file) => {
                     let options = read_part_options(self.config, file.provider_options.as_ref());
                     let converted = file_part(self.config, &file.data, &file.media_type, true)?;
-                    parts.push(if options.thought == Some(true) {
+                    let converted = if options.thought == Some(true) {
                         with_thought(converted)
                     } else {
                         converted
-                    });
+                    };
+                    parts.push(with_signature(
+                        converted,
+                        options.thought_signature.as_deref(),
+                    ));
                 }
                 AssistantPromptPart::Custom(_) => {
                     self.warnings.push(Warning::other(

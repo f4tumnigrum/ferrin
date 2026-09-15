@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Retain thought signatures when replaying generated files and reasoning files.
+
 - Preserve explicit thinking budgets and levels when generic reasoning is also set.
 
 - Report and enforce a single-image call limit so core can split multi-image requests.
