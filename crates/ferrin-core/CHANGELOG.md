@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Video polling deadlines cover in-flight status calls and retry waits, including
+  webhook status checks; cancellation interrupts pending status requests.
+
 - Streaming transcription and speech translation enforce total timeouts during
   establishment and consumption, cancelling provider work on expiry or drop.
 

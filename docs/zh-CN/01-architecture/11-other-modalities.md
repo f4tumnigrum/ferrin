@@ -216,3 +216,5 @@ pub struct ResponseMetadata {
 - 【决策】`stream_speech_translation(model, audio: impl Stream<Item = Bytes> + Send + 'static, input_audio_format: AudioFormat, target_language) -> StreamSpeechTranslation`（`source_language`、`output_audio_format`、`include_raw_chunks`，无重试），返回规范层 `SpeechTranslationStreamResult`；`target_language` 为空为 `Error::InvalidArgument`。依据：目标语言与输入格式是每次调用的必需参数。
 
 【事实】 流式转写和语音翻译从等待 builder 到终止流事件采用同一个总期限，涵盖提供商建立流的过程。建立时超时返回 `Error::Timeout { scope: Total }`，流中超时发出一个 `error_type: "timeout"` 的终止错误事件；调用方取消发出 `error_type: "cancelled"`。完成、超时、取消及丢弃流均取消派生的提供商 token，不取消调用方 token（2026-09-15，`tests/suite/modalities/stream_timeout.rs`）。
+
+【事实】 视频轮询期限同样约束每次状态请求、重试退避及 webhook 后的状态请求；到期返回总超时并取消请求 token。调用方取消会立即中断挂起的状态请求（2026-09-15，`tests/suite/modalities/video.rs`）。

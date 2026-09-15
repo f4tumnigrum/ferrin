@@ -19,6 +19,7 @@ use ferrin_spec::ModelId;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ResponseMetadata;
 use ferrin_spec::VideoModel;
+use ferrin_spec::error::ApiCallError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::video_model::VideoData;
 use ferrin_spec::video_model::VideoOptions;
@@ -29,6 +30,7 @@ use ferrin_spec::video_model::VideoStatusOptions;
 use ferrin_spec::video_model::VideoStatusResult;
 use pretty_assertions::assert_eq;
 use serde_json::json;
+use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use super::common::lock;
@@ -41,6 +43,9 @@ struct VideoMock {
     webhook: bool,
     pending_polls: usize,
     fail_status: bool,
+    hang_status: bool,
+    retry_status: bool,
+    status_token: Mutex<Option<CancellationToken>>,
     generate_calls: Mutex<Vec<VideoOptions>>,
     start_calls: Mutex<Vec<VideoStartOptions>>,
     status_calls: AtomicUsize,
@@ -106,12 +111,22 @@ impl VideoModel for VideoMock {
 
     fn do_status(
         &self,
-        _options: VideoStatusOptions,
+        options: VideoStatusOptions,
     ) -> impl Future<Output = Result<VideoStatusResult, ProviderError>> + Send {
         let call = self.status_calls.fetch_add(1, Ordering::SeqCst);
         let pending = call < self.pending_polls;
         let fail = self.fail_status;
+        *lock(&self.status_token) = Some(options.cancellation);
         async move {
+            if self.hang_status {
+                return std::future::pending().await;
+            }
+            if self.retry_status {
+                return Err(ProviderError::ApiCall(Box::new(ApiCallError::new(
+                    "temporary failure",
+                    Url::parse("https://example.com").unwrap(),
+                ))));
+            }
             if fail {
                 return Ok(VideoStatusResult::Error {
                     error: "content policy".to_owned(),
@@ -150,6 +165,9 @@ fn mock() -> VideoMock {
         webhook: false,
         pending_polls: 0,
         fail_status: false,
+        hang_status: false,
+        retry_status: false,
+        status_token: Mutex::new(None),
         generate_calls: Mutex::new(Vec::new()),
         start_calls: Mutex::new(Vec::new()),
         status_calls: AtomicUsize::new(0),
@@ -281,4 +299,140 @@ async fn unsupported_models_fail() {
     m.sync = false;
     let error = generate_video(Arc::new(m), "a cat").await.unwrap_err();
     assert!(error.as_provider().is_some(), "{error}");
+}
+
+#[tokio::test(start_paused = true)]
+async fn poll_deadline_bounds_hung_status_and_retry_backoff() {
+    for retry_status in [false, true] {
+        let mut m = mock();
+        m.operations = true;
+        m.hang_status = !retry_status;
+        m.retry_status = retry_status;
+        let model = Arc::new(m);
+        let started = tokio::time::Instant::now();
+        let error = tokio::time::timeout(
+            Duration::from_secs(10),
+            generate_video(Arc::clone(&model), "a cat").poll(PollConfig {
+                interval: Duration::from_millis(1),
+                timeout: Duration::from_millis(100),
+                max_attempts: None,
+            }),
+        )
+        .await
+        .unwrap()
+        .unwrap_err();
+        assert!(matches!(error, Error::Timeout { .. }), "{error}");
+        assert_eq!(
+            (started.elapsed(), model.status_calls.load(Ordering::SeqCst)),
+            (Duration::from_millis(100), 1)
+        );
+        assert!(lock(&model.status_token).as_ref().unwrap().is_cancelled());
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn webhook_status_request_obeys_the_poll_deadline() {
+    let mut m = mock();
+    m.operations = true;
+    m.webhook = true;
+    m.hang_status = true;
+    let model = Arc::new(m);
+    let error = tokio::time::timeout(
+        Duration::from_secs(10),
+        generate_video(Arc::clone(&model), "a cat")
+            .poll(PollConfig {
+                timeout: Duration::from_millis(100),
+                ..fast_poll()
+            })
+            .webhook(Arc::new(|| {
+                Box::pin(async {
+                    Ok(WebhookHandle {
+                        url: Url::parse("https://example.com/webhook").unwrap(),
+                        received: Box::pin(async {
+                            Ok(WebhookPayload {
+                                headers: Headers::new(),
+                                body: json!({}),
+                            })
+                        }),
+                    })
+                })
+            })),
+    )
+    .await
+    .unwrap()
+    .unwrap_err();
+    assert!(matches!(error, Error::Timeout { .. }), "{error}");
+    assert_eq!(model.status_calls.load(Ordering::SeqCst), 1);
+    assert!(lock(&model.status_token).as_ref().unwrap().is_cancelled());
+}
+
+#[tokio::test(start_paused = true)]
+async fn cancelling_a_hung_status_request_returns_without_waiting_for_deadline() {
+    use futures_util::FutureExt;
+    use std::future::IntoFuture;
+    let mut m = mock();
+    m.operations = true;
+    m.hang_status = true;
+    let model = Arc::new(m);
+    let token = CancellationToken::new();
+    let mut call = generate_video(Arc::clone(&model), "a cat")
+        .poll(PollConfig {
+            interval: Duration::ZERO,
+            ..fast_poll()
+        })
+        .cancellation(token.clone())
+        .into_future();
+    assert!(call.as_mut().now_or_never().is_none());
+    tokio::time::advance(Duration::from_millis(1)).await;
+    assert!(call.as_mut().now_or_never().is_none());
+    assert_eq!(model.status_calls.load(Ordering::SeqCst), 1);
+    token.cancel();
+    let error = tokio::time::timeout(Duration::from_secs(1), call)
+        .await
+        .unwrap()
+        .unwrap_err();
+    assert!(matches!(error, Error::Cancelled), "{error}");
+}
+
+#[tokio::test(start_paused = true)]
+async fn cancellation_during_webhook_wait_is_immediate() {
+    use tokio::sync::Notify;
+
+    let mut m = mock();
+    m.operations = true;
+    m.webhook = true;
+    let model = Arc::new(m);
+    let token = CancellationToken::new();
+    let entered = Arc::new(Notify::new());
+    let pending = Arc::clone(&entered);
+    let factory: WebhookFactory = Arc::new(move || {
+        let pending = Arc::clone(&pending);
+        Box::pin(async move {
+            Ok(WebhookHandle {
+                url: Url::parse("https://example.com/webhook").unwrap(),
+                received: Box::pin(async move {
+                    pending.notify_one();
+                    std::future::pending().await
+                }),
+            })
+        })
+    });
+    let start = tokio::time::Instant::now();
+    let call = generate_video(Arc::clone(&model), "a cat")
+        .webhook(factory)
+        .cancellation(token.clone());
+    let (result, ()) = tokio::time::timeout(Duration::from_secs(1), async {
+        tokio::join!(async { call.await }, async {
+            entered.notified().await;
+            token.cancel();
+        })
+    })
+    .await
+    .unwrap();
+    let error = result.unwrap_err();
+    assert!(matches!(error, Error::Cancelled), "{error}");
+    assert_eq!(
+        (start.elapsed(), model.status_calls.load(Ordering::SeqCst)),
+        (Duration::ZERO, 0)
+    );
 }
