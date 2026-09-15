@@ -132,3 +132,5 @@ PruneOptions::new()
 - [Fact] `ferrin_core::prompt::Instructions { content, provider_options }`, re-exported as `ferrin_core::Instructions`, represents `system` input and implements `From<&str>`/`From<String>`. `standardize()` converts it to the first `system` message.
 - [Decision] Construct `DefaultDownloader::try_default()` lazily, only when the prompt has an unsupported URL and the caller provided no `download`. Calls needing no downloads should not initialize TLS or connection pools or fail because transport construction failed.
 - [Fact] `prepare_tools` first validates each tool's context schema against `tools_context` (failure: `Error::InvalidArgument { argument: "tools_context" }`), resolves dynamic descriptions, and generates `ToolDefinition`. It applies `active_tools` filtering and `tool_order` sorting. Batch text requests reuse this function.
+
+[Decision] The normalized prepared tool choice also governs response validation in both generation loops; filtering away every tool removes the requirement for that step.

@@ -132,3 +132,5 @@ PruneOptions::new()
 - 【事实】`ferrin_core::prompt::Instructions { content, provider_options }`（re-export 为 `ferrin_core::Instructions`）表示 `system` 输入，实现 `From<&str>`、`From<String>`；`standardize()` 把它转换为序列最前的系统消息。
 - 【决策】`DefaultDownloader::try_default()` 惰性构造：构建器不在配置阶段创建 HTTP 传输，只有当 prompt 中出现模型不支持的 URL 且调用方未提供 `download` 时才构造默认传输并下载。依据：无需下载的调用不应触碰 TLS 与连接池初始化，也不应因传输构造失败而报错。
 - 【事实】`prepare_tools` 对每个工具先以 `tools_context` 校验上下文 schema（失败为 `Error::InvalidArgument { argument: "tools_context" }`），再解析动态描述并生成 `ToolDefinition`；`active_tools` 过滤与 `tool_order` 排序在此处应用。批处理的文本请求复用同一函数。
+
+【决策】 两种生成循环均使用准备后归一化的工具选择校验响应；过滤掉全部工具时，也移除该步骤的强制工具调用要求。

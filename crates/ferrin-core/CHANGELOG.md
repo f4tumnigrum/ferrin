@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Clear effective required or named tool choices when step preparation filters out every tool.
+
 ### Added
 
 - `generate_text` benchmark (single step, 11- and 51-message histories,

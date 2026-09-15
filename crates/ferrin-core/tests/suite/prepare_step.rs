@@ -97,3 +97,48 @@ async fn message_overrides_replace_the_history_sent_to_the_model() {
     assert_eq!(calls[0].prompt.len(), 1);
     assert!(matches!(&calls[0].prompt[0], PromptMessage::User { .. }));
 }
+
+#[tokio::test]
+async fn empty_effective_tools_clear_required_choice_in_both_loops() {
+    for choice in [ToolChoice::Required, ToolChoice::tool("get_weather")] {
+        let model = mock()
+            .generate(text_result("done"))
+            .stream(ferrin_testing::text_parts(
+                ["done"],
+                ferrin_spec::Usage::default(),
+            ))
+            .build_shared();
+        let generated = generate_text(Arc::clone(&model))
+            .prompt("hi")
+            .tools(weather_tools())
+            .tool_choice(choice.clone())
+            .prepare_step(|_: &PrepareStepContext<'_>| {
+                StepOverrides::none().with_active_tools(Vec::<ferrin_spec::ToolName>::new())
+            })
+            .await
+            .unwrap();
+        let streamed = ferrin_core::stream_text(Arc::clone(&model))
+            .prompt("hi")
+            .tools(weather_tools())
+            .tool_choice(choice)
+            .prepare_step(|_: &PrepareStepContext<'_>| {
+                StepOverrides::none().with_active_tools(Vec::<ferrin_spec::ToolName>::new())
+            })
+            .await
+            .unwrap()
+            .consume()
+            .await
+            .unwrap();
+        assert_eq!(
+            (generated.text(), streamed.text()),
+            ("done".into(), "done".into())
+        );
+        for call in model
+            .generate_calls()
+            .iter()
+            .chain(model.stream_calls().iter())
+        {
+            assert_eq!((&call.tools, &call.tool_choice), (&Vec::new(), &None));
+        }
+    }
+}
