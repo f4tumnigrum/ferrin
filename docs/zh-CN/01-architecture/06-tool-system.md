@@ -243,3 +243,5 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 - 【事实】`RefineToolInputs` 按工具名保存 `Arc<dyn Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>>>`，在输入通过 schema 校验之后、执行之前改写输入；改写结果写回 `ParsedToolCall.input` 并进入响应消息。
 - 【事实】`ToolApprovalRequestContent { approval_id, tool_call: ParsedToolCall, reason, is_automatic }` 携带完整的已解析工具调用而非仅 `tool_call_id`，`StepContent::ToolApprovalResponse(ToolApprovalResponseContent { approval_id, tool_call, approved, reason, provider_executed })` 记录重放时的判定结果。依据：审批 UI 需要展示工具名与输入，避免应用在历史消息中二次查找。
 - 【事实】`DescriptionContext::with_tool_context(JsonValue)` 供生成循环之外（批处理、实时会话）解析动态描述。
+
+【决策】 解析与修复使用本步骤发给提供商的同一工具集，先应用调用者限制，再应用活动工具筛选。仅由本地调用者访问的工具仍可供该调用者使用，但模型直接返回其名称时不能选中它或触发其输入回调。

@@ -429,7 +429,7 @@ async fn run_step(
 
     let step_messages: Arc<[Message]> = Arc::from(inputs.messages.clone());
     let parse_ctx = ParseContext {
-        tools: &ctx.execution_tools,
+        tools: &inputs.tools,
         tool_choice: inputs.tool_choice.as_ref(),
         repair: ctx.config.repair_tool_call.as_deref(),
         refine: &ctx.config.refine_tool_inputs,

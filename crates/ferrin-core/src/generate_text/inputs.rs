@@ -33,6 +33,7 @@ pub(crate) struct StepInputs {
     pub(crate) instructions: Option<Instructions>,
     pub(crate) messages: Vec<Message>,
     pub(crate) tools_context: Option<JsonValue>,
+    pub(crate) tools: ferrin_tool::ToolSet,
     pub(crate) tool_choice: Option<ferrin_spec::ToolChoice>,
     pub(crate) options: CallOptions,
 }
@@ -113,9 +114,13 @@ pub(crate) async fn prepare_step_inputs(
     ctx.telemetry.on_step_start(&step_start);
     Hooks::emit(&ctx.hooks.on_step_start, step_start).await;
 
+    let tools = active_tools.as_ref().map_or_else(
+        || ctx.model_tools.clone(),
+        |active| ctx.model_tools.filter_active(active),
+    );
     let prepared = prepare_tools(PrepareToolsInput {
-        tools: &ctx.model_tools,
-        active_tools: active_tools.as_deref(),
+        tools: &tools,
+        active_tools: None,
         tool_order: &tool_order,
         tool_choice: tool_choice.clone(),
         tools_context: tools_context.as_ref(),
@@ -150,6 +155,7 @@ pub(crate) async fn prepare_step_inputs(
         instructions,
         messages,
         tools_context,
+        tools,
         tool_choice: prepared.tool_choice,
         options,
     })
