@@ -278,3 +278,5 @@ The event processor alone owns mutable aggregation state: it accumulates step co
 - [Fact] `ferrin_core::clock::Clock` (`fn now(&self) -> DateTime<Utc>`, blanket-implemented for `Fn() -> DateTime<Utc>`) injects step timestamps and performance clocks. Fixed test clocks remove timestamp differences from snapshots.
 
 [Decision] Both generation loops run the same required/named tool-choice completion check before executing queued tools, including when a provider returns text only or refuses the request.
+
+[Decision] Smoothing stores metadata with the buffered delta and emits it on that delta’s first resegmented chunk. A later metadata-bearing delta first flushes the preceding buffer with its own metadata; metadata-only deltas remain observable even when there is no text.

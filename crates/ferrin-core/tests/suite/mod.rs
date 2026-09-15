@@ -14,4 +14,5 @@ mod realtime;
 mod registry;
 mod retry;
 mod stream;
+mod stream_metadata;
 mod tool_restrictions;
