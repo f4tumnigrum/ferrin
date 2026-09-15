@@ -437,9 +437,20 @@ impl Connection {
                     .await;
             }
         };
+        let tools_context = match tool.validate_context(&call.name, self.tools_context.clone()) {
+            Ok(context) => context,
+            Err(error) => {
+                return self
+                    .emit(Err(Error::invalid_argument(
+                        "tools_context",
+                        error.to_string(),
+                    )))
+                    .await;
+            }
+        };
         let ctx = ToolContext::new(ToolCallId::new(call.call_id.clone()))
             .with_cancellation(self.shared.cancellation.child_token())
-            .with_tools_context(self.tools_context.clone());
+            .with_tools_context(tools_context);
         let handle = RealtimeHandle {
             shared: Arc::clone(&self.shared),
         };
@@ -470,6 +481,22 @@ async fn execute_tool_call(
     handle: RealtimeHandle,
     events: mpsc::Sender<RealtimeEvent>,
 ) {
+    let needs_approval = tokio::select! {
+        biased;
+        () = ctx.cancellation.cancelled() => return,
+        required = tool.needs_approval().resolve(input.clone(), ctx.clone()) => required,
+    };
+    if needs_approval {
+        let _ = events.send(Err(Error::invalid_argument(
+            "tools",
+            "realtime tool requires application approval; submit its approved result or denial with add_tool_output",
+        ))).await;
+        return;
+    }
+    if ctx.cancellation.is_cancelled() {
+        let _ = events.send(Err(Error::Cancelled)).await;
+        return;
+    }
     let Some(stream) = tool.execute(input, ctx) else {
         return;
     };

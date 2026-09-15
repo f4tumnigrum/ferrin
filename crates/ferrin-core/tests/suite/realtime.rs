@@ -1,6 +1,8 @@
 use std::future::Future;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use ferrin_core::Error;
@@ -472,4 +474,129 @@ async fn tool_definitions_skip_provider_tools() {
             .unwrap()
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn tool_approval_controls_automatic_execution_and_manual_outputs() {
+    use ferrin_tool::NeedsApproval;
+    use ferrin_tool::Schema;
+    use ferrin_tool::Tool;
+    use ferrin_tool::ToolError;
+
+    for (approval, expected_executions) in [
+        (NeedsApproval::Always, 0),
+        (NeedsApproval::Never, 1),
+        (
+            NeedsApproval::Dynamic(Arc::new(|input, ctx| {
+                Box::pin(async move {
+                    assert_eq!((input, ctx.tools_context), (json!({}), None));
+                    true
+                })
+            })),
+            0,
+        ),
+        (
+            NeedsApproval::Dynamic(Arc::new(|_, _| Box::pin(async { false }))),
+            1,
+        ),
+    ] {
+        let executions = Arc::new(AtomicUsize::new(0));
+        let counter = Arc::clone(&executions);
+        let tool = Tool::function_with_schema(Schema::from_json_schema(json!({"type": "object"})))
+            .needs_approval(approval)
+            .execute(move |_, _| {
+                counter.fetch_add(1, Ordering::SeqCst);
+                async { Ok::<_, ToolError>(json!({"ok": true})) }
+            })
+            .build();
+        let server = MockServer::start().await;
+        let mut session = realtime_session(model())
+            .client_secret(server.secret())
+            .tools(ToolSet::new().insert("guarded", tool).unwrap())
+            .tools_context(json!({"ignored_without_schema": true}))
+            .connect()
+            .await
+            .unwrap();
+        server.wait_for(1).await;
+        server
+            .push(json!({
+                "type": "function-call-arguments-done", "response_id": "resp_1",
+                "item_id": "item_1", "call_id": "call_1", "name": "guarded",
+                "arguments": "{}", "raw": {}
+            }))
+            .await;
+        next(&mut session).await.unwrap();
+        if expected_executions == 0 {
+            let error = next(&mut session).await.unwrap_err();
+            assert!(matches!(error, Error::InvalidArgument { .. }), "{error}");
+            assert!(error.to_string().contains("approval"));
+            assert_eq!(executions.load(Ordering::SeqCst), 0);
+            session
+                .handle()
+                .add_tool_output("call_1", &json!({"denied": true}))
+                .await
+                .unwrap();
+        }
+        server
+            .push(json!({
+                "type": "response-done", "response_id": "resp_1",
+                "status": "completed", "raw": {}
+            }))
+            .await;
+        next(&mut session).await.unwrap();
+        let sent = server.wait_for(3).await;
+        assert_eq!(executions.load(Ordering::SeqCst), expected_executions);
+        assert_eq!(
+            sent.iter()
+                .map(|event| event["type"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                "session-update",
+                "conversation-item-create",
+                "response-create"
+            ]
+        );
+        session.close().await.unwrap();
+        server.shutdown().await;
+    }
+}
+
+#[tokio::test]
+async fn cancellation_during_approval_resolution_prevents_execution() {
+    use ferrin_tool::Schema;
+    use ferrin_tool::Tool;
+    use ferrin_tool::ToolError;
+
+    let executions = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&executions);
+    let tool = Tool::function_with_schema(Schema::from_json_schema(json!({"type": "object"})))
+        .needs_approval_if(|_, ctx| async move {
+            ctx.cancellation.cancel();
+            false
+        })
+        .execute(move |_, _| {
+            counter.fetch_add(1, Ordering::SeqCst);
+            async { Ok::<_, ToolError>(json!({"ok": true})) }
+        })
+        .build();
+    let server = MockServer::start().await;
+    let mut session = realtime_session(model())
+        .client_secret(server.secret())
+        .tools(ToolSet::new().insert("guarded", tool).unwrap())
+        .connect()
+        .await
+        .unwrap();
+    server
+        .push(json!({
+            "type": "function-call-arguments-done", "response_id": "resp_1",
+            "item_id": "item_1", "call_id": "call_1", "name": "guarded",
+            "arguments": "{}", "raw": {}
+        }))
+        .await;
+    next(&mut session).await.unwrap();
+    let error = next(&mut session).await.unwrap_err();
+    assert!(matches!(error, Error::Cancelled), "{error}");
+    assert_eq!(executions.load(Ordering::SeqCst), 0);
+    session.close().await.unwrap();
+    server.shutdown().await;
 }
