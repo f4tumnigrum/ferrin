@@ -12,7 +12,7 @@
 
 Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI, and any OpenAI-compatible endpoint.
 
-This checkout prepares 0.1.2, with [release notes dated 2026-09-16](CHANGELOG.md#012---2026-09-16). It adds model middleware and policy-based tool approval, including execution-boundary and diagnostic safeguards. The schema API migration introduced in 0.1.1 still applies to callers upgrading from 0.1.0; see [ADR 0019](docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md). Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#10-release-012-2026-09-16).
+This checkout contains the 0.1.2 release, with [release notes dated 2026-09-16](CHANGELOG.md#012---2026-09-16). It adds model middleware and policy-based tool approval, including execution-boundary and diagnostic safeguards. The schema API migration introduced in 0.1.1 still applies to callers upgrading from 0.1.0; see [ADR 0019](docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md). Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#10-release-012-2026-09-16).
 
 ## Features
 
@@ -314,10 +314,10 @@ Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates 
 
 ## Project status
 
-- All 16 crates, `xtask`, and seven examples are implemented (`ferrin-policy` was added on 2026-09-15 and is not published yet). Version 0.1.0 of every other crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
-- The local 2026-09-16 run passed 810 tests and skipped 10 live tests requiring real credentials. Cross-platform CI and registry publication are verified separately in the release record.
+- All 16 crates, `xtask`, and seven examples are implemented (`ferrin-policy` was first published in 0.1.2). All 16 crates are published at version 0.1.2. Version 0.1.0 of every other crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
+- The local 2026-09-16 run passed 810 tests and skipped 10 live tests requiring real credentials. All 14 cross-platform CI jobs, coverage and CodeQL passed for the release commit; all 16 docs.rs builds succeeded. See the release record.
 - Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. The official OpenAI, Anthropic, and Google endpoints have not been tested with real credentials. Provider tests currently use handwritten fixtures (pending item PV-031).
-- Of 32 pending-verification items in the design documents, 30 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).
+- Of 32 pending-verification items in the design documents, 31 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).
 
 ## Development
 

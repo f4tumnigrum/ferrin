@@ -14,8 +14,9 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   were first published as 0.1.0 on 2026-09-14; `ferrin-policy` is new in
   0.1.2. The current workspace version is 0.1.2, with dated changelog sections
   for 2026-09-16 and empty `Unreleased` sections. Version 0.1.1 retained
-  breaking schema API changes by explicit exception (ADR 0019). Registry
-  publication status is recorded separately after verification. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
+  breaking schema API changes by explicit exception (ADR 0019).
+  All 16 crates were published as 0.1.2 on 2026-09-16 (Asia/Shanghai); detailed
+  publication verification is recorded in the release document. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
   `ferrin-schema` / `ferrin-message` / `ferrin-provider-util` →
   `ferrin-tool` → provider crates and `ferrin-mcp` → `ferrin-core` →
   `ferrin-otel` / `ferrin-policy` / `ferrin-testing` → `ferrin`. Each architecture chapter ends

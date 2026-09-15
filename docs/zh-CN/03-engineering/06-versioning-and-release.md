@@ -91,3 +91,7 @@
 【决策】维护者授权在修复能力约束、工具选择同步和诊断脱敏问题后发布 0.1.2。新增模型中间件与策略 feature API 均为增量接口，没有新增供应商规范字段。
 
 【决策】默认分支历史移除 Claude 联合作者署名，已有发布标签保持不变。这些标签属于原始历史，因此发布说明从根变更日志的带日期版本段提取，不再依赖祖先关系推断上一标签。
+
+【事实】[发布运行 35033192744](https://github.com/f4tumnigrum/ferrin/actions/runs/35033192744) 已在提交 `7f950ad` 的 `v0.1.2` 标签上成功完成；该提交的 [CI run 35032650222](https://github.com/f4tumnigrum/ferrin/actions/runs/35032650222) 全部 14 个作业、覆盖率与 CodeQL 检查均通过。crates.io 官方版本 API 确认全部 16 个 0.1.2 版本已上架且未 yank，16 个 docs.rs `status.json` 端点均返回 `doc_status: true`（2026-09-16，Asia/Shanghai 验证）。[GitHub Release](https://github.com/f4tumnigrum/ferrin/releases/tag/v0.1.2) 发布于 `2026-09-15T22:58:43Z`，本地日期为 2026-09-16。
+
+【事实】本机 `just check-all` 通过：810 个测试通过，跳过 10 个需要凭据的在线测试；doctest、API 快照、依赖审计和 61 种 feature 组合均通过。公共 API 有变更的已有 crate（`ferrin-core`、`ferrin`）相对 `v0.1.1` 的 Semver 检查分别通过 196 项适用检查；首次发布的策略 crate 没有旧基线。Windows CI 关闭了托管 `windows-2025` 运行器的 PV-032，PV-031 仍待验证。

@@ -41,7 +41,7 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 【决策】`RegoPolicyClient::builder().policy(name, source).data(json).build()` 一次性解析模块并合并数据文档。每次评估克隆已准备好的引擎、设置输入并求值 `data.<path>`，因此客户端无锁即为 `Sync`。`Value::Undefined` 变为 `null`（不适用）；不存在的规则路径为 `PolicyError::Engine` 错误，审批策略将其转为拒绝。依据：未定义规则是 Rego 表达“无意见”的正常方式，而路径拼写错误是配置错误，不得静默放行调用。
 
-【待验证】（PV-032）`regorus` 的 `std` feature 会启用带 `error` feature 的 `msvc_spectre_libs`，其构建脚本在 MSVC 目标上未安装 Spectre 缓解版 CRT 库时 panic（来源：`msvc_spectre_libs` 0.1.3 构建脚本）。`windows-2025` CI 作业能否以 `--all-features` 构建 `ferrin-policy`，由下一次 CI 运行核实。
+【事实】（PV-032，2026-09-16 验证）[CI run 35032650222](https://github.com/f4tumnigrum/ferrin/actions/runs/35032650222) 的 `test (windows-2025)` 作业在 `7f950ad` 上通过包含 Rego 客户端的全 feature 构建与测试。`regorus` 的 MSVC 构建仍要求 Spectre 缓解版 CRT 库；本结论仅验证该托管运行器，不代表任意 Windows 安装环境。
 
 ## 3. 决策文档
 
@@ -110,7 +110,7 @@ decision := {"decision": "requires-approval"} if {
 ## 7. 待验证与验收项
 
 - 【决策】`ferrin-policy` 的最低覆盖（`tests/suite/`）：第 3 节归一化表格及全部被拒形式；默认输入文档与 `to_input` 覆盖；评估错误时的拒绝与回落；`with_default`；两种执行模式下的 `shadow`；两种允许列表形式的能力过滤、失败关闭与回落、`tool_choice` 清理、无工具时不评估；对 `FixtureServer` 的 HTTP 线路格式（两种分隔符的路径、请求体、头、user agent、缺失 `result`、非成功状态、非 JSON 与非对象响应体、非法路径、默认 URL 策略拒绝本机 HTTP 服务器、基路径前缀）；Rego 客户端（输入与数据、未定义规则、缺失规则、非法策略）及其经 `policy_approval` 的使用；经 `generate_text` 与 `MockLanguageModel` 观察到的拒绝、放行与需人工审批三种决策。
-- 【待验证】（PV-032）`rego` feature 的 Windows CI 构建（第 2.3 节）。
+- 【事实】PV-032 已由第 2.3 节记录的 Windows CI 构建与测试关闭。
 
 ## 8. 实现记录（2026-09-15）
 

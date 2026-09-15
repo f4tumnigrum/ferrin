@@ -41,7 +41,7 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 [Decision] `RegoPolicyClient::builder().policy(name, source).data(json).build()` parses the modules and merges the data documents once. Every evaluation clones the prepared engine, sets the input and evaluates `data.<path>`, so the client is `Sync` without locks. `Value::Undefined` becomes `null` (not applicable); a rule path that does not exist is a `PolicyError::Engine` error, which the approval policy turns into a denial. Rationale: an undefined rule is the normal Rego way to say "no opinion", whereas a misspelled path is a configuration error that must not silently approve calls.
 
-[Pending verification] (PV-032) `regorus`'s `std` feature enables `msvc_spectre_libs` with its `error` feature, whose build script panics on MSVC targets when the Spectre-mitigated CRT libraries are not installed (source: the `msvc_spectre_libs` 0.1.3 build script). Whether the `windows-2025` CI job builds `ferrin-policy` with `--all-features` is verified by the next CI run.
+[Fact] (PV-032, verified 2026-09-16) The `test (windows-2025)` job of [CI run 35032650222](https://github.com/f4tumnigrum/ferrin/actions/runs/35032650222) passed with all features, including the Rego client, at `7f950ad`. `regorus` still requires the Spectre-mitigated CRT libraries for MSVC; this result verifies the hosted runner, not arbitrary Windows installations.
 
 ## 3. Decision documents
 
@@ -110,7 +110,7 @@ decision := {"decision": "requires-approval"} if {
 ## 7. Verification items
 
 - [Decision] Minimum coverage of `ferrin-policy` (`tests/suite/`): the normalization table of section 3 including every rejected form; the default input document and the `to_input` override; denial and fall-through on evaluation errors; `with_default`; `shadow` in both enforcement modes; capability filtering with both allowlist forms, fail-closed and fall-through, `tool_choice` cleanup, and no evaluation without tools; the HTTP wire format (path with either separator, body, headers, user agent, missing `result`, non-success status, non-JSON and non-object bodies, invalid paths, default URL policy rejecting a local HTTP server, base path prefix) against `FixtureServer`; the Rego client (input and data, undefined rule, missing rule, invalid policy) and its use through `policy_approval`; denied, allowed and user-approval decisions observed through `generate_text` with `MockLanguageModel`.
-- [Pending verification] (PV-032) Windows CI build of the `rego` feature (section 2.3).
+- [Fact] PV-032 is closed by the Windows CI build and tests recorded in section 2.3.
 
 ## 8. Implementation record (2026-09-15)
 
