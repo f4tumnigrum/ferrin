@@ -8,6 +8,7 @@
 
 mod body;
 mod handlers;
+mod json_lines;
 mod request;
 #[cfg(feature = "reqwest")]
 mod reqwest_transport;
@@ -20,7 +21,7 @@ pub use handlers::BinaryStreamResponseHandler;
 pub use handlers::EventSourceResponseHandler;
 pub use handlers::Handled;
 pub use handlers::JsonErrorResponseHandler;
-pub use handlers::JsonLinesResponseHandler;
+
 pub use handlers::JsonResponseHandler;
 pub use handlers::ParseResult;
 pub use handlers::ResponseContext;
@@ -32,11 +33,13 @@ pub use handlers::binary_response_handler;
 pub use handlers::binary_stream_response_handler;
 pub use handlers::event_source_response_handler;
 pub use handlers::json_error_response_handler;
-pub use handlers::json_lines_response_handler;
+
 pub use handlers::json_response_handler;
 pub use handlers::parse_json_chunk;
 pub use handlers::status_code_error_response_handler;
 pub use handlers::text_response_handler;
+pub use json_lines::JsonLinesResponseHandler;
+pub use json_lines::json_lines_response_handler;
 pub use request::ApiResponse;
 pub use request::delete;
 pub use request::get;

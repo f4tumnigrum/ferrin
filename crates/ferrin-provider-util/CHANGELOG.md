@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Bound JSON Lines buffering to a configurable per-line limit (16 MiB by default), releasing oversized bodies immediately.
+
 - Decode the first SSE event when the UTF-8 BOM crosses response chunks.
 
 - Ignore unrepresentable `Retry-After` delays instead of panicking.
