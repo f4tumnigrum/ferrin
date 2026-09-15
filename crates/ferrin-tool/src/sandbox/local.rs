@@ -3,6 +3,7 @@
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use ferrin_spec::BoxFuture;
@@ -13,6 +14,7 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Child;
 use tokio::process::Command;
+use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 use super::ByteStream;
@@ -103,17 +105,20 @@ impl LocalProcessSandbox {
     }
 }
 
-fn reader_stream(reader: impl AsyncRead + Send + Unpin + 'static) -> ByteStream {
+fn reader_stream(
+    reader: impl AsyncRead + Send + Unpin + 'static,
+    cancellation: CancellationToken,
+) -> ByteStream {
     Box::pin(futures_util::stream::unfold(
-        Some(reader),
-        |reader| async move {
-            let mut reader = reader?;
+        Some((reader, cancellation)),
+        |state| async move {
+            let (mut reader, cancellation) = state?;
             let mut buffer = vec![0u8; 8 * 1024];
-            match reader.read(&mut buffer).await {
+            match with_cancellation(&cancellation, reader.read(&mut buffer)).await {
                 Ok(0) => None,
                 Ok(read) => {
                     buffer.truncate(read);
-                    Some((Ok(Bytes::from(buffer)), Some(reader)))
+                    Some((Ok(Bytes::from(buffer)), Some((reader, cancellation))))
                 }
                 Err(error) => Some((Err(error), None)),
             }
@@ -174,15 +179,47 @@ async fn create_with_parents(path: &Path) -> io::Result<tokio::fs::File> {
 }
 
 struct LocalProcess {
-    child: Child,
+    pid: Option<u32>,
+    tasks: JoinSet<io::Result<i32>>,
+    completion: Option<Result<i32, Arc<io::Error>>>,
     stdout: Option<ByteStream>,
     stderr: Option<ByteStream>,
+    kill: CancellationToken,
+}
+
+async fn supervise_process(
+    mut child: Child,
     cancellation: CancellationToken,
+    kill: CancellationToken,
+) -> io::Result<i32> {
+    let waited = with_cancellation(&cancellation, with_cancellation(&kill, child.wait())).await;
+    match waited {
+        Ok(status) => Ok(status.code().unwrap_or(-1)),
+        Err(error) if error.kind() == io::ErrorKind::Interrupted => {
+            match child.kill().await {
+                Ok(()) => {}
+                Err(error) if error.kind() == io::ErrorKind::InvalidInput => {}
+                Err(error) => return Err(error),
+            }
+            if cancellation.is_cancelled() {
+                Err(error)
+            } else {
+                child.wait().await.map(|status| status.code().unwrap_or(-1))
+            }
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn process_result(result: &Result<i32, Arc<io::Error>>) -> io::Result<i32> {
+    result
+        .clone()
+        .map_err(|error| io::Error::new(error.kind(), error))
 }
 
 impl SandboxProcess for LocalProcess {
     fn pid(&self) -> Option<u32> {
-        self.child.id()
+        self.pid
     }
 
     fn take_stdout(&mut self) -> Option<ByteStream> {
@@ -195,24 +232,30 @@ impl SandboxProcess for LocalProcess {
 
     fn wait(&mut self) -> BoxFuture<'_, io::Result<i32>> {
         Box::pin(async move {
-            let cancellation = self.cancellation.clone();
-            let waited = with_cancellation(&cancellation, self.child.wait()).await;
-            match waited {
-                Ok(status) => Ok(status.code().unwrap_or(-1)),
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => {
-                    self.child.kill().await?;
-                    Err(error)
-                }
-                Err(error) => Err(error),
+            if let Some(completion) = &self.completion {
+                return process_result(completion);
             }
+            let result = match self.tasks.join_next().await {
+                Some(Ok(result)) => result,
+                Some(Err(error)) => Err(io::Error::other(error)),
+                None => Err(io::Error::other(
+                    "process supervisor ended without a result",
+                )),
+            };
+            self.pid = None;
+            let completion = result.map_err(Arc::new);
+            let result = process_result(&completion);
+            self.completion = Some(completion);
+            result
         })
     }
 
     fn kill(&mut self) -> BoxFuture<'_, io::Result<()>> {
         Box::pin(async move {
-            match self.child.kill().await {
-                Ok(()) => Ok(()),
-                Err(error) if error.kind() == io::ErrorKind::InvalidInput => Ok(()),
+            self.kill.cancel();
+            match self.wait().await {
+                Ok(_) => Ok(()),
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => Ok(()),
                 Err(error) => Err(error),
             }
         })
@@ -228,7 +271,7 @@ impl Sandbox for LocalProcessSandbox {
         Box::pin(async move {
             let path = self.resolve(&options.path);
             let file = with_cancellation(&options.cancellation, open_optional(&path)).await?;
-            Ok(file.map(reader_stream))
+            Ok(file.map(|file| reader_stream(file, options.cancellation)))
         })
     }
 
@@ -309,14 +352,29 @@ impl Sandbox for LocalProcessSandbox {
 
     fn spawn(&self, options: ProcessOptions) -> BoxFuture<'_, io::Result<Box<dyn SandboxProcess>>> {
         Box::pin(async move {
+            if options.cancellation.is_cancelled() {
+                return Err(cancelled());
+            }
             let mut child = self.command(&options).spawn()?;
-            let stdout = child.stdout.take().map(reader_stream);
-            let stderr = child.stderr.take().map(reader_stream);
+            let pid = child.id();
+            let stdout = child
+                .stdout
+                .take()
+                .map(|reader| reader_stream(reader, options.cancellation.clone()));
+            let stderr = child
+                .stderr
+                .take()
+                .map(|reader| reader_stream(reader, options.cancellation.clone()));
+            let kill = CancellationToken::new();
+            let mut tasks = JoinSet::new();
+            tasks.spawn(supervise_process(child, options.cancellation, kill.clone()));
             Ok(Box::new(LocalProcess {
-                child,
+                pid,
+                tasks,
+                completion: None,
                 stdout,
                 stderr,
-                cancellation: options.cancellation,
+                kill,
             }) as Box<dyn SandboxProcess>)
         })
     }
@@ -324,6 +382,9 @@ impl Sandbox for LocalProcessSandbox {
     fn run(&self, options: ProcessOptions) -> BoxFuture<'_, io::Result<ProcessResult>> {
         Box::pin(async move {
             let cancellation = options.cancellation.clone();
+            if cancellation.is_cancelled() {
+                return Err(cancelled());
+            }
             let mut child = self.command(&options).spawn()?;
             let output = with_cancellation(&cancellation, async {
                 let stdout = child.stdout.take();

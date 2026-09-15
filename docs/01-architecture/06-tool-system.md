@@ -251,3 +251,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 [Decision] Approval replay validates the current context for every approved executable client tool before starting any execution. Context construction propagates validation failures as `InvalidArgument` for `tools_context`; it never substitutes a missing context after validation fails.
 
 [Decision] Strict schema transforms return an error for arbitrary-key dictionaries instead of closing them or returning an unsupported schema; see [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md). `apply`, `applied`, `to_openai_strict`, and `Schema::transformed` return `Result`; failed in-place transformations leave their input unchanged.
+
+[Decision] Local sandbox cancellation is checked before process creation and remains active for file and process output streams. Each spawned process has a `JoinSet`-owned supervisor that kills and reaps it on cancellation even when the application has not called `wait`; dropping the process aborts that supervisor and kills its owned child. Cancelled reads return one `Interrupted` error and end.
