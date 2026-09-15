@@ -56,6 +56,21 @@ pub(crate) struct Authenticator {
     policy: UrlPolicy,
 }
 
+/// Reset coordination on normal completion, errors and dropped auth futures.
+#[cfg(feature = "oauth")]
+struct AuthFlightGuard<'a>(&'a Authenticator);
+
+#[cfg(feature = "oauth")]
+impl Drop for AuthFlightGuard<'_> {
+    fn drop(&mut self) {
+        let mut in_flight = super::lock(&self.0.in_flight);
+        self.0
+            .generation
+            .send_modify(|current| *current = current.wrapping_add(1));
+        *in_flight = false;
+    }
+}
+
 impl std::fmt::Debug for Authenticator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Authenticator")
@@ -152,16 +167,16 @@ impl Authenticator {
             };
             if let Some(seen) = seen {
                 let mut generation = self.generation.subscribe();
-                let _ = generation.wait_for(|current| *current > seen).await;
+                let _ = generation.wait_for(|current| *current != seen).await;
                 return Ok(if self.bearer_token().await.is_some() {
                     AuthOutcome::Authorized
                 } else {
                     AuthOutcome::Redirected
                 });
             }
+            let guard = AuthFlightGuard(self);
             let outcome = crate::oauth::auth(provider.as_ref(), http, options).await;
-            *super::lock(&self.in_flight) = false;
-            self.generation.send_modify(|current| *current += 1);
+            drop(guard);
             match outcome? {
                 crate::oauth::AuthResult::Authorized => Ok(AuthOutcome::Authorized),
                 crate::oauth::AuthResult::Redirect => Ok(AuthOutcome::Redirected),

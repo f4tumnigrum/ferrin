@@ -656,3 +656,93 @@ async fn a_401_without_stored_tokens_redirects_and_reports_unauthorized() {
     assert_eq!(provider.redirects.lock().unwrap().len(), 1);
     assert!(provider.client.lock().unwrap().is_some());
 }
+
+struct InterruptedMetadata {
+    attempts: std::sync::atomic::AtomicUsize,
+    entered: tokio::sync::Notify,
+}
+
+impl ferrin_provider_util::http::HttpTransport for InterruptedMetadata {
+    fn execute(
+        &self,
+        request: ferrin_provider_util::http::HttpRequest,
+    ) -> BoxFuture<
+        '_,
+        Result<
+            ferrin_provider_util::http::HttpResponse,
+            ferrin_provider_util::http::TransportError,
+        >,
+    > {
+        use ferrin_provider_util::http::HttpResponse;
+        use std::sync::atomic::Ordering;
+        Box::pin(async move {
+            if request.url.path() == "/mcp" {
+                return Ok(HttpResponse::from_bytes(
+                    StatusCode::UNAUTHORIZED,
+                    Headers::new(),
+                    bytes::Bytes::new(),
+                ));
+            }
+            if self.attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                self.entered.notify_one();
+                return std::future::pending().await;
+            }
+            Ok(HttpResponse::from_bytes(
+                StatusCode::BAD_REQUEST,
+                Headers::new(),
+                bytes::Bytes::new(),
+            ))
+        })
+    }
+}
+
+#[tokio::test]
+async fn cancelled_authentication_does_not_block_later_flows() {
+    use std::sync::atomic::Ordering;
+    use tokio_util::sync::CancellationToken;
+    let http = Arc::new(InterruptedMetadata {
+        attempts: std::sync::atomic::AtomicUsize::new(0),
+        entered: tokio::sync::Notify::new(),
+    });
+    let config = HttpTransportConfig::new(Url::parse("http://127.0.0.1/mcp").unwrap())
+        .url_policy(local_policy())
+        .auth_provider(Arc::new(TestProvider::default()))
+        .transport(http.clone());
+    let transport = HttpTransport::new(config).unwrap();
+    transport.start().await.unwrap();
+    let token = CancellationToken::new();
+    let (first, ()) = tokio::join!(
+        transport.send(
+            JsonRpcMessage::request(1, "ping", None),
+            SendOptions {
+                cancellation: Some(token.clone()),
+                ..SendOptions::default()
+            }
+        ),
+        async {
+            http.entered.notified().await;
+            token.cancel();
+        }
+    );
+    assert!(matches!(first, Err(McpError::Cancelled)));
+    let second = tokio::time::timeout(
+        Duration::from_secs(5),
+        transport.send(
+            JsonRpcMessage::request(2, "ping", None),
+            SendOptions::default(),
+        ),
+    )
+    .await
+    .expect("later authentication must start a new flow");
+    assert!(matches!(second, Err(McpError::OAuth { .. })));
+    let after_second = http.attempts.load(Ordering::SeqCst);
+    assert!(after_second > 1);
+    let third = transport
+        .send(
+            JsonRpcMessage::request(3, "ping", None),
+            SendOptions::default(),
+        )
+        .await;
+    assert!(matches!(third, Err(McpError::OAuth { .. })));
+    assert!(http.attempts.load(Ordering::SeqCst) > after_second);
+}
