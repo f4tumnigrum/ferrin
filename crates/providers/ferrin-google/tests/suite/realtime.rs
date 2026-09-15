@@ -255,3 +255,36 @@ async fn server_events_map_to_standard_events_with_turn_ids() {
         RealtimeServerEvent::Custom { raw_type, .. } if raw_type == "somethingNew"
     ));
 }
+
+#[tokio::test]
+async fn function_outputs_preserve_every_json_type_and_plain_text() {
+    let test = TestProvider::start().await;
+    let model = test.provider.realtime().realtime_model(MODEL);
+    for (output, response) in [
+        ("Sunny", json!({"result": "Sunny"})),
+        ("42", json!({"result": 42})),
+        ("[1,2]", json!({"result": [1,2]})),
+        ("null", json!({"result": null})),
+        ("false", json!({"result": false})),
+        ("\"Sunny\"", json!({"result": "Sunny"})),
+        ("{\"temp\":21}", json!({"temp": 21})),
+        ("", json!({"result": ""})),
+    ] {
+        let serialized = model
+            .serialize_client_event(RealtimeClientEvent::ConversationItemCreate {
+                item: ConversationItem::FunctionCallOutput {
+                    call_id: "call-1".to_owned(),
+                    name: Some("weather".to_owned()),
+                    output: output.to_owned(),
+                },
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            serialized,
+            json!({"toolResponse": {"functionResponses": [{
+                "id":"call-1", "name":"weather", "response":response
+            }]}})
+        );
+    }
+}

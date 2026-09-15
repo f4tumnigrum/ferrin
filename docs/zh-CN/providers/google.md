@@ -103,3 +103,5 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 【事实】 显式 `thinkingConfig` 预算与级别优先于通用推理设置，缺失字段仍使用通用映射。回归覆盖：`tests/suite/request.rs::explicit_thinking_fields_override_generic_reasoning`（2026-09-15）。
 
 【事实】 助手文件与推理文件回放保留生成时的 `thoughtSignature`；验证：`tests/suite/prompt.rs::generated_files_replay_their_thought_signatures`（2026-09-15）。
+
+【决策】 Live API 函数输出直接保留 JSON 对象，其他 JSON 值或普通文本包装为 `response.result`，以满足响应必须为对象的要求并保留工具输出。回归：`tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text`（2026-09-15）。
