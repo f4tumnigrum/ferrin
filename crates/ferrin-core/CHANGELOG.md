@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Reasoning extraction preserves unfinished tag text and pairs every reasoning
+  block at text/stream boundaries, including empty and unclosed blocks.
+
 - Array output keeps local schema references valid after wrapping nested and
   recursive element schemas.
 

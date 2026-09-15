@@ -335,8 +335,122 @@ async fn custom_separator_and_partial_tag_at_stream_end() {
             "reasoning-delta(reasoning-1): | c",
             "reasoning-end(reasoning-1)",
             "text-delta(1): | d",
+            "text-delta(1):<thi",
             "text-end(1)",
             "finish",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn incomplete_tags_and_empty_blocks_keep_text_and_pair_events() {
+    for (text, expected) in [
+        (
+            "1 <",
+            vec![
+                "text-start(1)",
+                "text-delta(1):1 ",
+                "text-delta(1):<",
+                "text-end(1)",
+            ],
+        ),
+        (
+            "<think></think><think></think>",
+            vec![
+                "reasoning-start(reasoning-0)",
+                "reasoning-end(reasoning-0)",
+                "reasoning-start(reasoning-1)",
+                "reasoning-end(reasoning-1)",
+                "text-start(1)",
+                "text-end(1)",
+            ],
+        ),
+        (
+            "<think>unfinished</thi",
+            vec![
+                "reasoning-start(reasoning-0)",
+                "reasoning-delta(reasoning-0):unfinished",
+                "reasoning-delta(reasoning-0):</thi",
+                "reasoning-end(reasoning-0)",
+                "text-start(1)",
+                "text-end(1)",
+            ],
+        ),
+        (
+            "<think>",
+            vec![
+                "reasoning-start(reasoning-0)",
+                "reasoning-end(reasoning-0)",
+                "text-start(1)",
+                "text-end(1)",
+            ],
+        ),
+    ] {
+        let model = wrapped(
+            MockLanguageModel::builder()
+                .stream(text_stream("1", &[text]))
+                .build_shared(),
+            extract_reasoning("think"),
+        );
+        let mut all = vec!["stream-start"];
+        all.extend(expected);
+        all.push("finish");
+        assert_eq!(render(&stream(&model).await), all, "input: {text}");
+    }
+}
+
+#[tokio::test]
+async fn finish_and_eof_flush_buffers_and_close_open_reasoning() {
+    for with_finish in [false, true] {
+        let mut parts = text_stream("1", &["<think>x<"]);
+        parts.pop(); // Finish.
+        parts.pop(); // TextEnd.
+        if with_finish {
+            parts.push(StreamPart::finish(FinishReason::stop(), Usage::default()));
+        }
+        let model = wrapped(
+            MockLanguageModel::builder().stream(parts).build_shared(),
+            extract_reasoning("think"),
+        );
+        let mut expected = vec![
+            "stream-start",
+            "reasoning-start(reasoning-0)",
+            "reasoning-delta(reasoning-0):x",
+            "reasoning-delta(reasoning-0):<",
+            "reasoning-end(reasoning-0)",
+            "text-start(1)",
+            "text-end(1)",
+        ];
+        if with_finish {
+            expected.push("finish");
+        }
+        assert_eq!(render(&stream(&model).await), expected);
+    }
+}
+
+#[tokio::test]
+async fn reasoning_ids_are_unique_across_text_parts() {
+    let mut parts = text_stream("1", &["<think>a</think>"]);
+    parts.pop();
+    parts.extend(text_stream("2", &["<think></think>"]).into_iter().skip(1));
+    let model = wrapped(
+        MockLanguageModel::builder().stream(parts).build_shared(),
+        extract_reasoning("think"),
+    );
+    assert_eq!(
+        render(&stream(&model).await),
+        vec![
+            "stream-start",
+            "reasoning-start(reasoning-0)",
+            "reasoning-delta(reasoning-0):a",
+            "reasoning-end(reasoning-0)",
+            "text-start(1)",
+            "text-end(1)",
+            "reasoning-start(reasoning-1)",
+            "reasoning-end(reasoning-1)",
+            "text-start(2)",
+            "text-end(2)",
+            "finish"
         ]
     );
 }
