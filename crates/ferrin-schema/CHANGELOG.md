@@ -13,6 +13,10 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Repair JSON prefixes containing escaped object keys and Unicode surrogate
+  pairs without committing incomplete scalars; preserve positive-exponent
+  numbers in complete documents and truncated prefixes.
+
 - Preserve nullability of optional enum, const, and composed constraints in
   OpenAI strict schemas without widening their non-null values or breaking
   references to declared schema resources when nullable wrappers move nodes.
