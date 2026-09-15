@@ -17,7 +17,6 @@ use ferrin_spec::RequestMetadata;
 use ferrin_spec::ResponseMetadata;
 use ferrin_spec::StreamPart;
 use ferrin_spec::ToolCallId;
-use ferrin_spec::ToolChoice;
 use ferrin_spec::ToolName;
 use ferrin_spec::Usage;
 use ferrin_spec::Warning;
@@ -640,23 +639,10 @@ impl Attempt {
     }
 
     fn check_tool_choice(&self) -> Result<(), Error> {
-        match &self.inputs.tool_choice {
-            Some(ToolChoice::Required) if self.state.tool_calls.is_empty() => {
-                Err(Error::ToolChoiceNotSatisfied { expected: None })
-            }
-            Some(ToolChoice::Tool { tool_name })
-                if !self
-                    .state
-                    .tool_calls
-                    .iter()
-                    .any(|call| call.tool_name == *tool_name) =>
-            {
-                Err(Error::ToolChoiceNotSatisfied {
-                    expected: Some(tool_name.clone()),
-                })
-            }
-            _ => Ok(()),
-        }
+        crate::generate_text::parse_tool_call::check_tool_choice(
+            self.inputs.tool_choice.as_ref(),
+            &self.state.tool_calls,
+        )
     }
 }
 

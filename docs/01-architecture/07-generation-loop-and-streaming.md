@@ -276,3 +276,5 @@ The event processor alone owns mutable aggregation state: it accumulates step co
 - [Decision] `TransformContext::stop()` cancels the invocation, model stream, and pending tools, ending with `Error::Cancelled`. An internal `stop` token gates subsequent events; transforms should end their own output streams. Merely ending output would leak tasks and allow billable provider generation to continue.
 - [Decision] Startup readiness is the first `do_stream()` returning `Ok` or a retried `Err`, as in section 3.8. Errors after that point but before the first `StreamStart` arrive through `StreamEvent::Error` and `Completion`.
 - [Fact] `ferrin_core::clock::Clock` (`fn now(&self) -> DateTime<Utc>`, blanket-implemented for `Fn() -> DateTime<Utc>`) injects step timestamps and performance clocks. Fixed test clocks remove timestamp differences from snapshots.
+
+[Decision] Both generation loops run the same required/named tool-choice completion check before executing queued tools, including when a provider returns text only or refuses the request.

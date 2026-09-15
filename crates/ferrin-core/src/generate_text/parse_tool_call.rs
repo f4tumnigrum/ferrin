@@ -222,3 +222,23 @@ fn invalid_call(call: &ToolCall, error: &Error) -> ParsedToolCall {
         provider_metadata: call.provider_metadata.clone(),
     }
 }
+
+/// Checks the effective choice shared by both generation loops.
+pub(crate) fn check_tool_choice(
+    choice: Option<&ToolChoice>,
+    calls: &[ParsedToolCall],
+) -> Result<(), Error> {
+    match choice {
+        Some(ToolChoice::Required) if calls.is_empty() => {
+            Err(Error::ToolChoiceNotSatisfied { expected: None })
+        }
+        Some(ToolChoice::Tool { tool_name })
+            if !calls.iter().any(|call| call.tool_name == *tool_name) =>
+        {
+            Err(Error::ToolChoiceNotSatisfied {
+                expected: Some(tool_name.clone()),
+            })
+        }
+        _ => Ok(()),
+    }
+}

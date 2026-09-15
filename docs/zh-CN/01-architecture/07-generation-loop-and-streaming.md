@@ -276,3 +276,5 @@ pub enum Chunking {
 - 【决策】`TransformContext::stop()` 取消本次调用：模型流与待执行工具被取消，调用以 `Error::Cancelled` 结束，管线以内部 `stop` 令牌门控后续事件；变换应同时结束自己的输出流。依据：只终止流而不取消模型请求会泄漏后台任务，并让供应商继续生成计费的输出。
 - 【决策】`stream_text(...).await` 的就绪条件是首步骤的 `do_stream()` 返回（`Ok` 或经重试后的 `Err`），与第 3.8 节一致；此后首个 `StreamStart` 之前的错误通过 `StreamEvent::Error` 与 `Completion` 传递。
 - 【事实】`ferrin_core::clock::Clock`（`fn now(&self) -> DateTime<Utc>`，为 `Fn() -> DateTime<Utc>` 提供 blanket impl）注入步骤时间戳与性能指标的时钟，测试用固定时钟消除快照中的时间差异。
+
+【决策】 两种生成循环在执行已排队工具之前，使用同一项必选或指定名称工具选择的完成校验；仅返回文本或拒答时同样适用。

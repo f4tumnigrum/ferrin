@@ -465,6 +465,8 @@ async fn run_step(
     ctx.telemetry.on_language_model_call_end(&call_end);
     Hooks::emit(&ctx.hooks.on_language_model_call_end, call_end).await;
 
+    super::parse_tool_call::check_tool_choice(inputs.tool_choice.as_ref(), &tool_calls)?;
+
     let approvals = resolve_approvals(
         ctx,
         &tool_calls,
