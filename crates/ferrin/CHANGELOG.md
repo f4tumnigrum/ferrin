@@ -5,6 +5,13 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Re-export the embedding, image and provider middleware
+  (`EmbeddingModelMiddleware`, `ImageModelMiddleware`, `ProviderMiddleware`,
+  `wrap_embedding_model`, `wrap_image_model`, `wrap_provider`) at the crate
+  root and in the prelude.
+
 ## [0.1.1] - 2026-09-15
 
 ### Changed

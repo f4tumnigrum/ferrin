@@ -1,9 +1,12 @@
-//! Language model middleware.
+//! Model middleware.
 //!
 //! A middleware wraps a model: it may rewrite call options, wrap the
 //! generate/stream calls, and override identity or supported URLs. Apply
 //! with [`wrap_language_model`]; the first middleware in the list is the
-//! outermost.
+//! outermost. [`EmbeddingModelMiddleware`] / [`wrap_embedding_model`] and
+//! [`ImageModelMiddleware`] / [`wrap_image_model`] do the same for embedding
+//! and image models, and [`wrap_provider`] applies all three kinds to every
+//! model a provider resolves.
 
 use std::fmt;
 
@@ -18,8 +21,22 @@ use ferrin_spec::SupportedUrls;
 use ferrin_spec::error::ProviderError;
 
 pub mod builtin;
+mod embedding;
+mod image;
+mod provider;
+pub(crate) mod tool_contract;
 mod wrap;
 
+pub use embedding::EmbedNext;
+pub use embedding::EmbeddingMiddlewareContext;
+pub use embedding::EmbeddingModelMiddleware;
+pub use embedding::wrap_embedding_model;
+pub use image::ImageGenerateNext;
+pub use image::ImageMiddlewareContext;
+pub use image::ImageModelMiddleware;
+pub use image::wrap_image_model;
+pub use provider::ProviderMiddleware;
+pub use provider::wrap_provider;
 pub use wrap::wrap_language_model;
 
 /// Which model method is being called.

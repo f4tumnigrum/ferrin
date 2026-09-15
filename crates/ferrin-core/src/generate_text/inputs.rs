@@ -36,6 +36,7 @@ pub(crate) struct StepInputs {
     pub(crate) tools: ferrin_tool::ToolSet,
     pub(crate) tool_choice: Option<ferrin_spec::ToolChoice>,
     pub(crate) options: CallOptions,
+    pub(crate) tool_contract: Option<crate::middleware::tool_contract::ToolContract>,
 }
 
 /// Applies `prepare_step`, prepares tools and converts the prompt.
@@ -158,6 +159,7 @@ pub(crate) async fn prepare_step_inputs(
         tools_context,
         tools,
         tool_choice: prepared.tool_choice,
+        tool_contract: None,
         options,
     })
 }
@@ -191,5 +193,14 @@ pub(crate) fn complete_response_metadata(
     }
     if response.model_id.is_none() {
         response.model_id = Some(inputs.identity.model_id.clone());
+    }
+}
+
+impl StepInputs {
+    /// Refreshes middleware restrictions without carrying them across retries.
+    pub(crate) fn refresh_tools(&mut self, original: &ferrin_tool::ToolSet) {
+        if let Some(contract) = &self.tool_contract {
+            (self.tools, self.tool_choice) = contract.apply(original);
+        }
     }
 }

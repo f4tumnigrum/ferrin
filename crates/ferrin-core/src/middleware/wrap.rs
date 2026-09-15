@@ -15,6 +15,7 @@ use ferrin_spec::error::ProviderError;
 use super::CallKind;
 use super::LanguageModelMiddleware;
 use super::MiddlewareContext;
+use super::tool_contract::ToolContract;
 
 /// Wraps `model` with `middleware`; the first entry becomes the outermost
 /// layer. An empty list returns `model` unchanged.
@@ -79,12 +80,24 @@ impl LanguageModel for WrappedLanguageModel {
             model: self.inner.as_ref(),
             kind: CallKind::Generate,
         };
+        let contract = ToolContract::current();
         let options = self.layer.transform_params(options, ctx).await?;
+        if let Some(contract) = &contract {
+            contract.observe(&options);
+        }
         let inner = &self.inner;
         self.layer
             .wrap_generate(
                 options,
-                Box::new(move |options| inner.do_generate(options)),
+                Box::new(move |options| {
+                    if let Some(contract) = &contract {
+                        contract.observe(&options);
+                    }
+                    Box::pin(ToolContract::continue_call(
+                        contract,
+                        inner.do_generate(options),
+                    ))
+                }),
                 ctx,
             )
             .await
@@ -95,12 +108,24 @@ impl LanguageModel for WrappedLanguageModel {
             model: self.inner.as_ref(),
             kind: CallKind::Stream,
         };
+        let contract = ToolContract::current();
         let options = self.layer.transform_params(options, ctx).await?;
+        if let Some(contract) = &contract {
+            contract.observe(&options);
+        }
         let inner = &self.inner;
         self.layer
             .wrap_stream(
                 options,
-                Box::new(move |options| inner.do_stream(options)),
+                Box::new(move |options| {
+                    if let Some(contract) = &contract {
+                        contract.observe(&options);
+                    }
+                    Box::pin(ToolContract::continue_call(
+                        contract,
+                        inner.do_stream(options),
+                    ))
+                }),
                 ctx,
             )
             .await

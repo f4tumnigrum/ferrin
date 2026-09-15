@@ -5,6 +5,25 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Apply middleware tool restrictions and normalized tool choices to local execution in both generation loops, with isolated state for concurrent calls and retries.
+
+### Added
+
+- Embedding and image model middleware: `EmbeddingModelMiddleware` /
+  `wrap_embedding_model` (with `max_embeddings_per_call`,
+  `max_input_bytes_per_call` and `supports_parallel_calls` hooks) and
+  `ImageModelMiddleware` / `wrap_image_model` (with `max_images_per_call`),
+  mirroring the language model middleware.
+- `wrap_provider(provider, ProviderMiddleware)` applies language, embedding and
+  image middleware to every model a provider resolves.
+- `middleware::builtin::default_embedding_settings(EmbeddingDefaults)` merges
+  default headers and provider options into embedding calls.
+- `ProviderRegistryBuilder::embedding_model_middleware` and
+  `image_model_middleware`; the registry wraps resolved embedding and image
+  models like language models.
+
 ## [0.1.1] - 2026-09-15
 
 ### Fixed

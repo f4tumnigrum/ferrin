@@ -24,6 +24,11 @@
       "source": "ferrin_core::Clock"
     },
     {
+      "path": "ferrin::EmbeddingModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::EmbeddingModelMiddleware"
+    },
+    {
       "path": "ferrin::Error",
       "kind": "use",
       "source": "ferrin_core::Error"
@@ -54,6 +59,11 @@
       "source": "ferrin_core::Hooks"
     },
     {
+      "path": "ferrin::ImageModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::ImageModelMiddleware"
+    },
+    {
       "path": "ferrin::Instructions",
       "kind": "use",
       "source": "ferrin_core::Instructions"
@@ -67,6 +77,11 @@
       "path": "ferrin::Output",
       "kind": "use",
       "source": "ferrin_core::Output"
+    },
+    {
+      "path": "ferrin::ProviderMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::ProviderMiddleware"
     },
     {
       "path": "ferrin::ProviderRegistry",
@@ -328,6 +343,11 @@
       "source": "ferrin_spec::EmbeddingModel"
     },
     {
+      "path": "ferrin::prelude::EmbeddingModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::EmbeddingModelMiddleware"
+    },
+    {
       "path": "ferrin::prelude::Error",
       "kind": "use",
       "source": "ferrin_core::Error"
@@ -371,6 +391,11 @@
       "path": "ferrin::prelude::ImageModel",
       "kind": "use",
       "source": "ferrin_spec::ImageModel"
+    },
+    {
+      "path": "ferrin::prelude::ImageModelMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::ImageModelMiddleware"
     },
     {
       "path": "ferrin::prelude::ImageSize",
@@ -436,6 +461,11 @@
       "path": "ferrin::prelude::ProviderError",
       "kind": "use",
       "source": "ferrin_spec::ProviderError"
+    },
+    {
+      "path": "ferrin::prelude::ProviderMiddleware",
+      "kind": "use",
+      "source": "ferrin_core::ProviderMiddleware"
     },
     {
       "path": "ferrin::prelude::ProviderOptions",
@@ -653,9 +683,24 @@
       "source": "ferrin_core::upload_file"
     },
     {
+      "path": "ferrin::prelude::wrap_embedding_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_embedding_model"
+    },
+    {
+      "path": "ferrin::prelude::wrap_image_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_image_model"
+    },
+    {
       "path": "ferrin::prelude::wrap_language_model",
       "kind": "use",
       "source": "ferrin_core::wrap_language_model"
+    },
+    {
+      "path": "ferrin::prelude::wrap_provider",
+      "kind": "use",
+      "source": "ferrin_core::wrap_provider"
     },
     {
       "path": "ferrin::prompt",
@@ -827,9 +872,24 @@
       "source": "ferrin_core::video"
     },
     {
+      "path": "ferrin::wrap_embedding_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_embedding_model"
+    },
+    {
+      "path": "ferrin::wrap_image_model",
+      "kind": "use",
+      "source": "ferrin_core::wrap_image_model"
+    },
+    {
       "path": "ferrin::wrap_language_model",
       "kind": "use",
       "source": "ferrin_core::wrap_language_model"
+    },
+    {
+      "path": "ferrin::wrap_provider",
+      "kind": "use",
+      "source": "ferrin_core::wrap_provider"
     }
   ]
 }

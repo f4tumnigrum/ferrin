@@ -114,7 +114,10 @@ impl LanguageModelMiddleware for DefaultSettings {
     }
 }
 
-fn merge_provider_options(base: &ProviderOptions, overrides: ProviderOptions) -> ProviderOptions {
+pub(super) fn merge_provider_options(
+    base: &ProviderOptions,
+    overrides: ProviderOptions,
+) -> ProviderOptions {
     let mut merged = base.clone();
     for (provider, options) in overrides {
         match merged.remove(&provider) {

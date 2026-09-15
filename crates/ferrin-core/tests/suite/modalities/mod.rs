@@ -1,7 +1,7 @@
 //! Tests of the non-text modalities against in-test mock models.
 
 mod batch;
-mod common;
+pub(crate) mod common;
 mod embed;
 mod files;
 mod image;

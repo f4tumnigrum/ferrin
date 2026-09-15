@@ -79,15 +79,18 @@ pub use ferrin_core::Agent;
 pub use ferrin_core::AgentCall;
 pub use ferrin_core::CallSettings;
 pub use ferrin_core::Clock;
+pub use ferrin_core::EmbeddingModelMiddleware;
 pub use ferrin_core::Error;
 pub use ferrin_core::ErrorKind;
 pub use ferrin_core::GenerateText;
 pub use ferrin_core::GenerateTextResult;
 pub use ferrin_core::HookFn;
 pub use ferrin_core::Hooks;
+pub use ferrin_core::ImageModelMiddleware;
 pub use ferrin_core::Instructions;
 pub use ferrin_core::LanguageModelMiddleware;
 pub use ferrin_core::Output;
+pub use ferrin_core::ProviderMiddleware;
 pub use ferrin_core::ProviderRegistry;
 #[cfg(feature = "realtime")]
 pub use ferrin_core::RealtimeSession;
@@ -122,7 +125,10 @@ pub use ferrin_core::stream_transcribe;
 pub use ferrin_core::transcribe;
 pub use ferrin_core::upload_file;
 pub use ferrin_core::upload_skill;
+pub use ferrin_core::wrap_embedding_model;
+pub use ferrin_core::wrap_image_model;
 pub use ferrin_core::wrap_language_model;
+pub use ferrin_core::wrap_provider;
 
 /// First-party provider crates, enabled by the feature of the same name.
 ///
@@ -160,13 +166,16 @@ pub mod prelude {
     pub use ferrin_core::Agent;
     pub use ferrin_core::AgentCall;
     pub use ferrin_core::CallSettings;
+    pub use ferrin_core::EmbeddingModelMiddleware;
     pub use ferrin_core::Error;
     pub use ferrin_core::ErrorKind;
     pub use ferrin_core::GenerateText;
     pub use ferrin_core::GenerateTextResult;
+    pub use ferrin_core::ImageModelMiddleware;
     pub use ferrin_core::Instructions;
     pub use ferrin_core::LanguageModelMiddleware;
     pub use ferrin_core::Output;
+    pub use ferrin_core::ProviderMiddleware;
     pub use ferrin_core::ProviderRegistry;
     #[cfg(feature = "realtime")]
     pub use ferrin_core::RealtimeSession;
@@ -195,7 +204,10 @@ pub mod prelude {
     pub use ferrin_core::stream_text;
     pub use ferrin_core::transcribe;
     pub use ferrin_core::upload_file;
+    pub use ferrin_core::wrap_embedding_model;
+    pub use ferrin_core::wrap_image_model;
     pub use ferrin_core::wrap_language_model;
+    pub use ferrin_core::wrap_provider;
     #[cfg(feature = "macros")]
     pub use ferrin_macros::tool;
     pub use ferrin_message::AssistantPart;

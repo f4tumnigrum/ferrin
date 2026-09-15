@@ -89,6 +89,21 @@
       ]
     },
     {
+      "path": "ferrin_core::EmbeddingModelMiddleware",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "middleware::EmbeddingModelMiddleware",
+      "methods": [
+        "fn max_embeddings_per_call(&self, model: &dyn DynEmbeddingModel) -> Option<usize>",
+        "fn max_input_bytes_per_call(&self, model: &dyn DynEmbeddingModel) -> Option<usize>",
+        "fn override_model_id(&self, _model: &dyn DynEmbeddingModel) -> Option<ModelId>",
+        "fn override_provider(&self, _model: &dyn DynEmbeddingModel) -> Option<ProviderId>",
+        "fn supports_parallel_calls(&self, model: &dyn DynEmbeddingModel) -> bool",
+        "fn transform_params<'a>(&'a self, options: EmbedOptions, _ctx: EmbeddingMiddlewareContext<'a>) -> BoxFuture<'a, Result<EmbedOptions, ProviderError>>",
+        "fn wrap_embed<'a>(&'a self, options: EmbedOptions, next: EmbedNext<'a>, _ctx: EmbeddingMiddlewareContext<'a>) -> BoxFuture<'a, Result<EmbedResult, ProviderError>>"
+      ]
+    },
+    {
       "path": "ferrin_core::Error",
       "kind": "enum",
       "signature": "enum",
@@ -321,6 +336,19 @@
       ]
     },
     {
+      "path": "ferrin_core::ImageModelMiddleware",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "middleware::ImageModelMiddleware",
+      "methods": [
+        "fn max_images_per_call(&self, model: &dyn DynImageModel) -> Option<usize>",
+        "fn override_model_id(&self, _model: &dyn DynImageModel) -> Option<ModelId>",
+        "fn override_provider(&self, _model: &dyn DynImageModel) -> Option<ProviderId>",
+        "fn transform_params<'a>(&'a self, options: ImageOptions, _ctx: ImageMiddlewareContext<'a>) -> BoxFuture<'a, Result<ImageOptions, ProviderError>>",
+        "fn wrap_generate<'a>(&'a self, options: ImageOptions, next: ImageGenerateNext<'a>, _ctx: ImageMiddlewareContext<'a>) -> BoxFuture<'a, Result<ImageResult, ProviderError>>"
+      ]
+    },
+    {
       "path": "ferrin_core::Instructions",
       "kind": "struct",
       "signature": "struct",
@@ -383,6 +411,29 @@
       "traits": [
         "impl<T> Clone for Output<T>",
         "impl<T> Debug for Output<T>"
+      ]
+    },
+    {
+      "path": "ferrin_core::ProviderMiddleware",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "middleware::ProviderMiddleware",
+      "fields": [
+        "language_model: Vec<Arc<dyn LanguageModelMiddleware>>",
+        "embedding_model: Vec<Arc<dyn EmbeddingModelMiddleware>>",
+        "image_model: Vec<Arc<dyn ImageModelMiddleware>>"
+      ],
+      "methods": [
+        "fn embedding_model(self, middleware: Arc<dyn EmbeddingModelMiddleware>) -> Self",
+        "fn image_model(self, middleware: Arc<dyn ImageModelMiddleware>) -> Self",
+        "fn is_empty(&self) -> bool",
+        "fn language_model(self, middleware: Arc<dyn LanguageModelMiddleware>) -> Self",
+        "fn new() -> Self"
+      ],
+      "traits": [
+        "impl Clone for ProviderMiddleware",
+        "impl Debug for ProviderMiddleware",
+        "impl Default for ProviderMiddleware"
       ]
     },
     {
@@ -3061,9 +3112,77 @@
       ]
     },
     {
+      "path": "ferrin_core::middleware::EmbedNext",
+      "kind": "type_alias",
+      "signature": "type<'a> = Box<dyn FnOnce(EmbedOptions) -> BoxFuture<'a, Result<EmbedResult, ProviderError>> + Send + 'a>",
+      "source": "embedding::EmbedNext"
+    },
+    {
+      "path": "ferrin_core::middleware::EmbeddingMiddlewareContext",
+      "kind": "struct",
+      "signature": "struct<'a>",
+      "source": "embedding::EmbeddingMiddlewareContext",
+      "fields": [
+        "model: &'a dyn DynEmbeddingModel"
+      ],
+      "traits": [
+        "impl Debug for EmbeddingMiddlewareContext<'_>",
+        "impl<'a> Clone for EmbeddingMiddlewareContext<'a>",
+        "impl<'a> Copy for EmbeddingMiddlewareContext<'a>"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::EmbeddingModelMiddleware",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "embedding::EmbeddingModelMiddleware",
+      "methods": [
+        "fn max_embeddings_per_call(&self, model: &dyn DynEmbeddingModel) -> Option<usize>",
+        "fn max_input_bytes_per_call(&self, model: &dyn DynEmbeddingModel) -> Option<usize>",
+        "fn override_model_id(&self, _model: &dyn DynEmbeddingModel) -> Option<ModelId>",
+        "fn override_provider(&self, _model: &dyn DynEmbeddingModel) -> Option<ProviderId>",
+        "fn supports_parallel_calls(&self, model: &dyn DynEmbeddingModel) -> bool",
+        "fn transform_params<'a>(&'a self, options: EmbedOptions, _ctx: EmbeddingMiddlewareContext<'a>) -> BoxFuture<'a, Result<EmbedOptions, ProviderError>>",
+        "fn wrap_embed<'a>(&'a self, options: EmbedOptions, next: EmbedNext<'a>, _ctx: EmbeddingMiddlewareContext<'a>) -> BoxFuture<'a, Result<EmbedResult, ProviderError>>"
+      ]
+    },
+    {
       "path": "ferrin_core::middleware::GenerateNext",
       "kind": "type_alias",
       "signature": "type<'a> = Box<dyn FnOnce(CallOptions) -> BoxFuture<'a, Result<GenerateResult, ProviderError>> + Send + 'a>"
+    },
+    {
+      "path": "ferrin_core::middleware::ImageGenerateNext",
+      "kind": "type_alias",
+      "signature": "type<'a> = Box<dyn FnOnce(ImageOptions) -> BoxFuture<'a, Result<ImageResult, ProviderError>> + Send + 'a>",
+      "source": "image::ImageGenerateNext"
+    },
+    {
+      "path": "ferrin_core::middleware::ImageMiddlewareContext",
+      "kind": "struct",
+      "signature": "struct<'a>",
+      "source": "image::ImageMiddlewareContext",
+      "fields": [
+        "model: &'a dyn DynImageModel"
+      ],
+      "traits": [
+        "impl Debug for ImageMiddlewareContext<'_>",
+        "impl<'a> Clone for ImageMiddlewareContext<'a>",
+        "impl<'a> Copy for ImageMiddlewareContext<'a>"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::ImageModelMiddleware",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "image::ImageModelMiddleware",
+      "methods": [
+        "fn max_images_per_call(&self, model: &dyn DynImageModel) -> Option<usize>",
+        "fn override_model_id(&self, _model: &dyn DynImageModel) -> Option<ModelId>",
+        "fn override_provider(&self, _model: &dyn DynImageModel) -> Option<ProviderId>",
+        "fn transform_params<'a>(&'a self, options: ImageOptions, _ctx: ImageMiddlewareContext<'a>) -> BoxFuture<'a, Result<ImageOptions, ProviderError>>",
+        "fn wrap_generate<'a>(&'a self, options: ImageOptions, next: ImageGenerateNext<'a>, _ctx: ImageMiddlewareContext<'a>) -> BoxFuture<'a, Result<ImageResult, ProviderError>>"
+      ]
     },
     {
       "path": "ferrin_core::middleware::LanguageModelMiddleware",
@@ -3090,6 +3209,29 @@
         "impl Debug for MiddlewareContext<'_>",
         "impl<'a> Clone for MiddlewareContext<'a>",
         "impl<'a> Copy for MiddlewareContext<'a>"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::ProviderMiddleware",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "provider::ProviderMiddleware",
+      "fields": [
+        "language_model: Vec<Arc<dyn LanguageModelMiddleware>>",
+        "embedding_model: Vec<Arc<dyn EmbeddingModelMiddleware>>",
+        "image_model: Vec<Arc<dyn ImageModelMiddleware>>"
+      ],
+      "methods": [
+        "fn embedding_model(self, middleware: Arc<dyn EmbeddingModelMiddleware>) -> Self",
+        "fn image_model(self, middleware: Arc<dyn ImageModelMiddleware>) -> Self",
+        "fn is_empty(&self) -> bool",
+        "fn language_model(self, middleware: Arc<dyn LanguageModelMiddleware>) -> Self",
+        "fn new() -> Self"
+      ],
+      "traits": [
+        "impl Clone for ProviderMiddleware",
+        "impl Debug for ProviderMiddleware",
+        "impl Default for ProviderMiddleware"
       ]
     },
     {
@@ -3148,6 +3290,23 @@
       ]
     },
     {
+      "path": "ferrin_core::middleware::builtin::DefaultEmbeddingSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "default_embedding_settings::DefaultEmbeddingSettings",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn apply(&self, options: EmbedOptions) -> EmbedOptions"
+      ],
+      "traits": [
+        "impl Clone for DefaultEmbeddingSettings",
+        "impl Debug for DefaultEmbeddingSettings",
+        "impl EmbeddingModelMiddleware for DefaultEmbeddingSettings"
+      ]
+    },
+    {
       "path": "ferrin_core::middleware::builtin::DefaultInstructions",
       "kind": "struct",
       "signature": "struct",
@@ -3176,6 +3335,21 @@
         "impl Clone for DefaultSettings",
         "impl Debug for DefaultSettings",
         "impl LanguageModelMiddleware for DefaultSettings"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::builtin::EmbeddingDefaults",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "default_embedding_settings::EmbeddingDefaults",
+      "fields": [
+        "headers: Headers",
+        "provider_options: ProviderOptions"
+      ],
+      "traits": [
+        "impl Clone for EmbeddingDefaults",
+        "impl Debug for EmbeddingDefaults",
+        "impl Default for EmbeddingDefaults"
       ]
     },
     {
@@ -3247,6 +3421,15 @@
       "kind": "function",
       "signature": "fn add_tool_input_examples() -> AddToolInputExamples",
       "source": "add_tool_input_examples::add_tool_input_examples",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::builtin::default_embedding_settings",
+      "kind": "function",
+      "signature": "fn default_embedding_settings(defaults: EmbeddingDefaults) -> DefaultEmbeddingSettings",
+      "source": "default_embedding_settings::default_embedding_settings",
       "attrs": [
         "must_use"
       ]
@@ -3324,10 +3507,37 @@
       ]
     },
     {
+      "path": "ferrin_core::middleware::wrap_embedding_model",
+      "kind": "function",
+      "signature": "fn wrap_embedding_model(model: Arc<dyn DynEmbeddingModel>, middleware: impl IntoIterator<Item = Arc<dyn EmbeddingModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynEmbeddingModel>",
+      "source": "embedding::wrap_embedding_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::wrap_image_model",
+      "kind": "function",
+      "signature": "fn wrap_image_model(model: Arc<dyn DynImageModel>, middleware: impl IntoIterator<Item = Arc<dyn ImageModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynImageModel>",
+      "source": "image::wrap_image_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
       "path": "ferrin_core::middleware::wrap_language_model",
       "kind": "function",
       "signature": "fn wrap_language_model(model: Arc<dyn DynLanguageModel>, middleware: impl IntoIterator<Item = Arc<dyn LanguageModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynLanguageModel>",
       "source": "wrap::wrap_language_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_core::middleware::wrap_provider",
+      "kind": "function",
+      "signature": "fn wrap_provider(provider: ProviderRef, middleware: ProviderMiddleware) -> ProviderRef",
+      "source": "provider::wrap_provider",
       "attrs": [
         "must_use"
       ]
@@ -3940,6 +4150,8 @@
       ],
       "methods": [
         "fn build(self) -> ProviderRegistry",
+        "fn embedding_model_middleware(self, middleware: Arc<dyn EmbeddingModelMiddleware>) -> Self",
+        "fn image_model_middleware(self, middleware: Arc<dyn ImageModelMiddleware>) -> Self",
         "fn language_model_middleware(self, middleware: Arc<dyn LanguageModelMiddleware>) -> Self",
         "fn provider(self, id: impl Into<String>, provider: ProviderRef) -> Self",
         "fn separator(self, separator: impl Into<String>) -> Self"
@@ -5494,10 +5706,37 @@
       ]
     },
     {
+      "path": "ferrin_core::wrap_embedding_model",
+      "kind": "function",
+      "signature": "fn wrap_embedding_model(model: Arc<dyn DynEmbeddingModel>, middleware: impl IntoIterator<Item = Arc<dyn EmbeddingModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynEmbeddingModel>",
+      "source": "middleware::wrap_embedding_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_core::wrap_image_model",
+      "kind": "function",
+      "signature": "fn wrap_image_model(model: Arc<dyn DynImageModel>, middleware: impl IntoIterator<Item = Arc<dyn ImageModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynImageModel>",
+      "source": "middleware::wrap_image_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
       "path": "ferrin_core::wrap_language_model",
       "kind": "function",
       "signature": "fn wrap_language_model(model: Arc<dyn DynLanguageModel>, middleware: impl IntoIterator<Item = Arc<dyn LanguageModelMiddleware>, IntoIter: DoubleEndedIterator>) -> Arc<dyn DynLanguageModel>",
       "source": "middleware::wrap_language_model",
+      "attrs": [
+        "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_core::wrap_provider",
+      "kind": "function",
+      "signature": "fn wrap_provider(provider: ProviderRef, middleware: ProviderMiddleware) -> ProviderRef",
+      "source": "middleware::wrap_provider",
       "attrs": [
         "must_use"
       ]

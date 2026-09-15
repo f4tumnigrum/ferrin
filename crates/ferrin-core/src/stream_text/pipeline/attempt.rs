@@ -221,35 +221,48 @@ impl Attempt {
         let inputs = &self.inputs;
         let call_ctx = &self.call_ctx;
         let cancellation = &self.cancellation;
-        let (started, result) = retry(&ctx.config.retry_policy, cancellation.token(), |_attempt| {
-            let options = inputs.options.clone();
-            let model = Arc::clone(&inputs.model);
-            let telemetry = &ctx.telemetry;
-            async move {
-                let started = Instant::now();
-                let outcome = telemetry
-                    .execute_language_model_call(
-                        call_ctx,
-                        Box::pin(async move {
-                            model
-                                .do_stream(options)
+        let (started, result, contract) =
+            retry(&ctx.config.retry_policy, cancellation.token(), |_attempt| {
+                let options = inputs.options.clone();
+                let model = Arc::clone(&inputs.model);
+                let telemetry = &ctx.telemetry;
+                async move {
+                    let started = Instant::now();
+                    let contract = crate::middleware::tool_contract::ToolContract::new(&options);
+                    let outcome = contract
+                        .scope(async {
+                            telemetry
+                                .execute_language_model_call(
+                                    call_ctx,
+                                    Box::pin(async move {
+                                        model
+                                            .do_stream(options)
+                                            .await
+                                            .map(|result| {
+                                                ModelCallOutcome::Stream(Box::new(result))
+                                            })
+                                            .map_err(Error::from)
+                                    }),
+                                )
                                 .await
-                                .map(|result| ModelCallOutcome::Stream(Box::new(result)))
-                                .map_err(Error::from)
-                        }),
-                    )
-                    .await?;
-                match outcome {
-                    ModelCallOutcome::Stream(result) => Ok((started, *result)),
-                    #[allow(unreachable_patterns, reason = "the outcome enum is non-exhaustive")]
-                    _ => Err(Error::message(
-                        "telemetry integration returned a generate result for a stream call",
-                    )),
+                        })
+                        .await;
+                    match outcome? {
+                        ModelCallOutcome::Stream(result) => Ok((started, *result, contract)),
+                        #[allow(
+                            unreachable_patterns,
+                            reason = "the outcome enum is non-exhaustive"
+                        )]
+                        _ => Err(Error::message(
+                            "telemetry integration returned a generate result for a stream call",
+                        )),
+                    }
                 }
-            }
-        })
-        .await
-        .map_err(|error| cancellation.map_error(error))?;
+            })
+            .await
+            .map_err(|error| cancellation.map_error(error))?;
+        self.inputs.tool_contract = Some(contract);
+        self.inputs.refresh_tools(&self.ctx.model_tools);
         self.state = AttemptState::new(started);
         self.state.request = result.request;
         self.state.response = result.response;
@@ -638,7 +651,8 @@ impl Attempt {
         })
     }
 
-    fn check_tool_choice(&self) -> Result<(), Error> {
+    fn check_tool_choice(&mut self) -> Result<(), Error> {
+        self.inputs.refresh_tools(&self.ctx.model_tools);
         crate::generate_text::parse_tool_call::check_tool_choice(
             self.inputs.tool_choice.as_ref(),
             &self.state.tool_calls,

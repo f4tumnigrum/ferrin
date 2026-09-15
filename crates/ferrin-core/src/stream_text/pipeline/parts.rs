@@ -341,6 +341,7 @@ impl Attempt {
         &mut self,
         call: &ferrin_spec::ToolCall,
     ) -> Result<Vec<StreamEvent>, Error> {
+        self.inputs.refresh_tools(&self.ctx.model_tools);
         let parsed = {
             let parse_ctx = ParseContext {
                 tools: &self.inputs.tools,

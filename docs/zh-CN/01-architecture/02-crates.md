@@ -141,9 +141,12 @@ src/
     mod.rs               // Agent trait
     tool_loop_agent.rs
   middleware/
-    mod.rs               // LanguageModelMiddleware, ImageModelMiddleware
+    mod.rs               // LanguageModelMiddleware
     wrap.rs
-    builtin/             // default_settings, extract_reasoning, simulate_streaming, extract_json, add_tool_input_examples
+    embedding.rs         // EmbeddingModelMiddleware, wrap_embedding_model
+    image.rs             // ImageModelMiddleware, wrap_image_model
+    provider.rs          // ProviderMiddleware, wrap_provider
+    builtin/             // default_settings, default_embedding_settings, extract_reasoning, simulate_streaming, extract_json, add_tool_input_examples
   registry/
     provider_registry.rs
     custom_provider.rs

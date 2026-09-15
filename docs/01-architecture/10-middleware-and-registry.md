@@ -67,20 +67,24 @@ The result implements `DynLanguageModel`. Resolve `provider()` and `model_id()` 
 
 Implementations in `ferrin_core::middleware::builtin`: `default_settings`, `extract_reasoning`, `simulate_streaming`, `extract_json`, and `add_tool_input_examples`.
 
-### 1.4 Image middleware
+### 1.4 Embedding and image middleware
 
 [Decision] `ImageModelMiddleware` and `wrap_image_model` transform parameters and wrap `do_generate`; `wrap_provider` applies middleware to all of a provider's language and image models.
 
-Ferrin provides these interfaces and `wrap_provider(provider, ProviderMiddleware { language_model: Vec<_>, image_model: Vec<_> })`.
+[Decision] `EmbeddingModelMiddleware` and `wrap_embedding_model` give embedding models the same treatment: `transform_params(EmbedOptions)`, `wrap_embed`, `override_provider`, `override_model_id`, and the limit hooks `max_embeddings_per_call`, `max_input_bytes_per_call` and `supports_parallel_calls`, which receive the wrapped model and default to forwarding its values. Rationale: `embed_many` chunks and schedules by exactly these limits, so a middleware that batches or proxies must be able to change them; forwarding defaults keep a layer that overrides nothing transparent. The image counterpart exposes `max_images_per_call` the same way. Both traits otherwise mirror section 1.1 (pass-through defaults, `BoxFuture` returns, continuation types `EmbedNext` / `ImageGenerateNext`), and composition follows section 1.2.
+
+[Decision] `wrap_provider(provider, ProviderMiddleware { language_model, embedding_model, image_model })` wraps every model of those three kinds that the provider resolves, keeps the provider id, and delegates the other model kinds and the services (`realtime`, `files`, `skills`, `batch`) unchanged. Embedding models are included deliberately: registry-level embedding defaults (section 1.3) are otherwise impossible to express per provider. An empty `ProviderMiddleware` returns the provider itself. A provider that hands out an unresolved model id cannot be wrapped and yields `NoSuchModel` with an explanatory message.
+
+[Decision] `default_embedding_settings(EmbeddingDefaults { headers, provider_options })` is the embedding counterpart of `default_settings`: headers and provider options are merged with the call's values taking precedence, provider options recursively through `merge_json_objects`.
 
 ## 2. Registry
 
 ### 2.1 ProviderRegistry
 
-[Decision] Provider registries default to separator `:` and may attach language/image middleware:
+[Decision] Provider registries default to separator `:` and may attach language, embedding and image middleware:
 
 - `language_model("openai:gpt-5")` splits at the first separator. Missing separators return `NoSuchModel`; unknown providers return `NoSuchProvider` with the requested ID and available list; missing models return `NoSuchModel`.
-- Apply registry middleware to every resolved language/image model.
+- Apply registry middleware to every resolved language, embedding and image model.
 - Support `embedding_model`, `image_model`, `transcription_model`, `speech_model`, `reranking_model`, `video_model`, `files(provider_id)`, and `skills(provider_id)`.
 
 ```rust
@@ -102,8 +106,9 @@ impl ProviderRegistry {
 impl ProviderRegistryBuilder {
     pub fn provider(self, id: impl Into<ProviderId>, provider: Arc<dyn Provider>) -> Self;
     pub fn separator(self, sep: impl Into<String>) -> Self;
-    pub fn language_model_middleware(self, mw: Vec<Arc<dyn LanguageModelMiddleware>>) -> Self;
-    pub fn image_model_middleware(self, mw: Vec<Arc<dyn ImageModelMiddleware>>) -> Self;
+    pub fn language_model_middleware(self, mw: Arc<dyn LanguageModelMiddleware>) -> Self;
+    pub fn embedding_model_middleware(self, mw: Arc<dyn EmbeddingModelMiddleware>) -> Self;
+    pub fn image_model_middleware(self, mw: Arc<dyn ImageModelMiddleware>) -> Self;
     pub fn build(self) -> ProviderRegistry;
 }
 ```
@@ -148,7 +153,8 @@ Without it, string calls return `Error::NoDefaultRegistry`. The [project scope](
 let registry = ProviderRegistry::builder()
     .provider("openai", ferrin_openai::create_openai(Default::default())?)
     .provider("anthropic", ferrin_anthropic::create_anthropic(Default::default())?)
-    .language_model_middleware(vec![Arc::new(default_settings(CallDefaults { temperature: Some(0.2), ..Default::default() }))])
+    .language_model_middleware(Arc::new(default_settings(CallDefaults { temperature: Some(0.2), ..Default::default() })))
+    .embedding_model_middleware(Arc::new(default_embedding_settings(EmbeddingDefaults { headers: Headers::new().with("x-team", "search"), ..Default::default() })))
     .build();
 
 let model = registry.language_model("anthropic:claude-sonnet-4-5")?;
@@ -168,3 +174,11 @@ let wrapped = wrap_language_model(model, [Arc::new(extract_reasoning("think")) a
 - [Decision] Configure the default registry once with `registry::set_default_registry()` and `OnceLock`. Repeated setup returns `Error::InvalidArgument { argument: "registry" }`; string IDs without a registry return `Error::NoDefaultRegistry`.
 
 [Fact] Streaming reasoning extraction flushes incomplete tag prefixes literally at text end, finish, and end of stream. Every extracted block, including consecutive empty or unclosed blocks, has paired start/end events; reasoning IDs are unique across source text parts (2026-09-15, `tests/suite/middleware/extract_reasoning.rs`).
+
+## 6. Implementation record (2026-09-15)
+
+- [Fact] `ferrin_core::middleware` provides `EmbeddingModelMiddleware` / `wrap_embedding_model` (`embedding.rs`), `ImageModelMiddleware` / `wrap_image_model` (`image.rs`) and `ProviderMiddleware` / `wrap_provider` (`provider.rs`) as described in section 1.4; `builtin::default_embedding_settings` is the embedding default-settings middleware. The wrappers resolve `provider()` / `model_id()` once at wrap time (middleware override, then the inner model) and evaluate the limit hooks on every call.
+- [Fact] The registry builder takes one middleware per call (`language_model_middleware(Arc<dyn _>)`, `embedding_model_middleware`, `image_model_middleware`), appending in outermost-first order; `ProviderRegistry::embedding_model` and `image_model` apply their lists like `language_model` does. An unresolved reference returned by a provider is reported as `Error::NoDefaultRegistry`.
+- [Fact] Coverage: `tests/suite/middleware/{embedding,image,provider,default_embedding_settings}.rs` (composition order, identity and limit overrides observed through `embed_many` / `generate_image` chunking, provider pass-through, unresolved references, header and provider-option precedence) and `tests/suite/registry.rs` (registry embedding/image middleware).
+
+[Decision] Language middleware tool filtering also constrains local tool execution. Each model attempt owns an isolated tool contract: middleware layers may narrow its tool names, and the final tool choice is normalized against that intersection before parsing calls or checking completion. The contract is shared through scoped middleware continuations (including continuations polled by a child task), retained during stream consumption, and reset for retries. This keeps policy filtering effective without adding fields to the provider specification or sharing mutable state between calls.

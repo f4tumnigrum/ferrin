@@ -21,7 +21,11 @@ use ferrin_spec::VideoModelRef;
 
 use crate::error::Error;
 use crate::error::NoSuchProviderDetails;
+use crate::middleware::EmbeddingModelMiddleware;
+use crate::middleware::ImageModelMiddleware;
 use crate::middleware::LanguageModelMiddleware;
+use crate::middleware::wrap_embedding_model;
+use crate::middleware::wrap_image_model;
 use crate::middleware::wrap_language_model;
 
 /// Resolves model ids of the form `<provider><separator><model>`.
@@ -30,6 +34,8 @@ pub struct ProviderRegistry {
     providers: BTreeMap<String, ProviderRef>,
     separator: String,
     language_model_middleware: Vec<Arc<dyn LanguageModelMiddleware>>,
+    embedding_model_middleware: Vec<Arc<dyn EmbeddingModelMiddleware>>,
+    image_model_middleware: Vec<Arc<dyn ImageModelMiddleware>>,
     id: ProviderId,
 }
 
@@ -42,6 +48,11 @@ impl fmt::Debug for ProviderRegistry {
                 "language_model_middleware",
                 &self.language_model_middleware.len(),
             )
+            .field(
+                "embedding_model_middleware",
+                &self.embedding_model_middleware.len(),
+            )
+            .field("image_model_middleware", &self.image_model_middleware.len())
             .finish()
     }
 }
@@ -116,24 +127,44 @@ impl ProviderRegistry {
         )))
     }
 
-    /// Resolves an embedding model.
+    /// Resolves an embedding model, applying the registry middleware.
     ///
     /// # Errors
     ///
     /// See [`ProviderRegistry::language_model`].
     pub fn embedding_model(&self, id: &str) -> Result<EmbeddingModelRef, Error> {
         let (provider, model_id) = self.split(id, ModelKind::Embedding)?;
-        Ok(provider.embedding_model(model_id)?)
+        let model = provider.embedding_model(model_id)?;
+        if self.embedding_model_middleware.is_empty() {
+            return Ok(model);
+        }
+        let inner = model
+            .into_model()
+            .map_err(|id| Error::NoDefaultRegistry { model_id: id })?;
+        Ok(EmbeddingModelRef::from_arc(wrap_embedding_model(
+            inner,
+            self.embedding_model_middleware.iter().cloned(),
+        )))
     }
 
-    /// Resolves an image model.
+    /// Resolves an image model, applying the registry middleware.
     ///
     /// # Errors
     ///
     /// See [`ProviderRegistry::language_model`].
     pub fn image_model(&self, id: &str) -> Result<ImageModelRef, Error> {
         let (provider, model_id) = self.split(id, ModelKind::Image)?;
-        Ok(provider.image_model(model_id)?)
+        let model = provider.image_model(model_id)?;
+        if self.image_model_middleware.is_empty() {
+            return Ok(model);
+        }
+        let inner = model
+            .into_model()
+            .map_err(|id| Error::NoDefaultRegistry { model_id: id })?;
+        Ok(ImageModelRef::from_arc(wrap_image_model(
+            inner,
+            self.image_model_middleware.iter().cloned(),
+        )))
     }
 
     /// Resolves a transcription model.
@@ -275,6 +306,8 @@ pub struct ProviderRegistryBuilder {
     providers: BTreeMap<String, ProviderRef>,
     separator: String,
     language_model_middleware: Vec<Arc<dyn LanguageModelMiddleware>>,
+    embedding_model_middleware: Vec<Arc<dyn EmbeddingModelMiddleware>>,
+    image_model_middleware: Vec<Arc<dyn ImageModelMiddleware>>,
 }
 
 impl Default for ProviderRegistryBuilder {
@@ -283,6 +316,8 @@ impl Default for ProviderRegistryBuilder {
             providers: BTreeMap::new(),
             separator: ":".to_owned(),
             language_model_middleware: Vec::new(),
+            embedding_model_middleware: Vec::new(),
+            image_model_middleware: Vec::new(),
         }
     }
 }
@@ -296,6 +331,11 @@ impl fmt::Debug for ProviderRegistryBuilder {
                 "language_model_middleware",
                 &self.language_model_middleware.len(),
             )
+            .field(
+                "embedding_model_middleware",
+                &self.embedding_model_middleware.len(),
+            )
+            .field("image_model_middleware", &self.image_model_middleware.len())
             .finish()
     }
 }
@@ -325,6 +365,23 @@ impl ProviderRegistryBuilder {
         self
     }
 
+    /// Applies `middleware` to every resolved embedding model.
+    #[must_use]
+    pub fn embedding_model_middleware(
+        mut self,
+        middleware: Arc<dyn EmbeddingModelMiddleware>,
+    ) -> Self {
+        self.embedding_model_middleware.push(middleware);
+        self
+    }
+
+    /// Applies `middleware` to every resolved image model.
+    #[must_use]
+    pub fn image_model_middleware(mut self, middleware: Arc<dyn ImageModelMiddleware>) -> Self {
+        self.image_model_middleware.push(middleware);
+        self
+    }
+
     /// Builds the registry.
     #[must_use]
     pub fn build(self) -> ProviderRegistry {
@@ -332,6 +389,8 @@ impl ProviderRegistryBuilder {
             providers: self.providers,
             separator: self.separator,
             language_model_middleware: self.language_model_middleware,
+            embedding_model_middleware: self.embedding_model_middleware,
+            image_model_middleware: self.image_model_middleware,
             id: ProviderId::new("registry"),
         }
     }

@@ -382,7 +382,7 @@ async fn run_step(
     cancellation: &CallCancellation,
 ) -> Result<(StepResult, LoopState), Error> {
     let step_started = Instant::now();
-    let inputs = prepare_step_inputs(ctx, steps, response_messages, cancellation).await?;
+    let mut inputs = prepare_step_inputs(ctx, steps, response_messages, cancellation).await?;
     emit_model_call_start(ctx, &inputs).await;
 
     let call_ctx = ModelCallContext {
@@ -392,7 +392,7 @@ async fn run_step(
         function_id: ctx.function_id().map(str::to_owned),
     };
     let model_call_started = Instant::now();
-    let mut result: GenerateResult =
+    let (mut result, contract): (GenerateResult, _) =
         retry(&ctx.config.retry_policy, cancellation.token(), |_attempt| {
             let options = inputs.options.clone();
             let model = Arc::clone(&inputs.model);
@@ -400,20 +400,25 @@ async fn run_step(
             let call_ctx = &call_ctx;
             let span = spans::model_call_span(&inputs.identity);
             async move {
-                let outcome = telemetry
-                    .execute_language_model_call(
-                        call_ctx,
-                        Box::pin(async move {
-                            model
-                                .do_generate(options)
-                                .await
-                                .map(|result| ModelCallOutcome::Generate(Box::new(result)))
-                                .map_err(Error::from)
-                        }),
-                    )
-                    .await?;
-                match outcome {
-                    ModelCallOutcome::Generate(result) => Ok(*result),
+                let contract = crate::middleware::tool_contract::ToolContract::new(&options);
+                let outcome = contract
+                    .scope(async {
+                        telemetry
+                            .execute_language_model_call(
+                                call_ctx,
+                                Box::pin(async move {
+                                    model
+                                        .do_generate(options)
+                                        .await
+                                        .map(|result| ModelCallOutcome::Generate(Box::new(result)))
+                                        .map_err(Error::from)
+                                }),
+                            )
+                            .await
+                    })
+                    .await;
+                match outcome? {
+                    ModelCallOutcome::Generate(result) => Ok((*result, contract)),
                     #[allow(unreachable_patterns, reason = "the outcome enum is non-exhaustive")]
                     _ => Err(Error::message(
                         "telemetry integration returned a stream for a generate call",
@@ -424,6 +429,8 @@ async fn run_step(
         })
         .await
         .map_err(|error| cancellation.map_error(error))?;
+    inputs.tool_contract = Some(contract);
+    inputs.refresh_tools(&ctx.model_tools);
     let response_time = model_call_started.elapsed();
     complete_response_metadata(ctx, &inputs, &mut result.response);
     spans::log_warnings(&result.warnings, &inputs.identity);

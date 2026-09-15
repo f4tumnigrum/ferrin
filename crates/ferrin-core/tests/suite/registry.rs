@@ -82,3 +82,51 @@ async fn string_model_ids_need_the_default_registry() {
     assert_eq!(result.text(), "from m1");
     assert!(set_default_registry(Arc::new(registry())).is_err());
 }
+
+#[test]
+fn registry_middleware_wraps_embedding_and_image_models() {
+    use ferrin_core::EmbeddingModelMiddleware;
+    use ferrin_core::ImageModelMiddleware;
+    use ferrin_spec::DynEmbeddingModel;
+    use ferrin_spec::DynImageModel;
+    use ferrin_spec::ModelId;
+
+    use crate::suite::modalities::common::EmbedMock;
+    use crate::suite::modalities::common::ImageMock;
+
+    struct RenameEmbedding;
+
+    impl EmbeddingModelMiddleware for RenameEmbedding {
+        fn override_model_id(&self, _model: &dyn DynEmbeddingModel) -> Option<ModelId> {
+            Some(ModelId::new("embedding-wrapped"))
+        }
+    }
+
+    struct RenameImage;
+
+    impl ImageModelMiddleware for RenameImage {
+        fn override_model_id(&self, _model: &dyn DynImageModel) -> Option<ModelId> {
+            Some(ModelId::new("image-wrapped"))
+        }
+    }
+
+    let provider = custom_provider("mock")
+        .embedding_model("e1", EmbedMock::new())
+        .image_model("i1", ImageMock::new())
+        .build();
+    let registry = ProviderRegistry::builder()
+        .provider("mock", Arc::new(provider) as ProviderRef)
+        .embedding_model_middleware(Arc::new(RenameEmbedding))
+        .image_model_middleware(Arc::new(RenameImage))
+        .build();
+
+    let embedding = registry.embedding_model("mock:e1").unwrap();
+    assert_eq!(
+        embedding.model().unwrap().model_id().as_str(),
+        "embedding-wrapped"
+    );
+    let image = registry.image_model("mock:i1").unwrap();
+    assert_eq!(image.model().unwrap().model_id().as_str(), "image-wrapped");
+    assert!(registry.embedding_model("mock:missing").is_err());
+    assert!(registry.image_model("other:i1").is_err());
+}

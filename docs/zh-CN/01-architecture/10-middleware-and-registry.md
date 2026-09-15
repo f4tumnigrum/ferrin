@@ -67,20 +67,24 @@ pub fn wrap_language_model_with(model: impl Into<LanguageModelRef>, middleware: 
 
 实现位于 `ferrin_core::middleware::builtin`：`default_settings`、`extract_reasoning`、`simulate_streaming`、`extract_json`、`add_tool_input_examples`。
 
-### 1.4 图像模型中间件
+### 1.4 嵌入模型与图像模型中间件
 
 【决策】`ImageModelMiddleware` 与 `wrap_image_model` 提供参数变换与 `do_generate` 包裹；`wrap_provider` 可同时对供应商的全部语言模型与图像模型应用中间件。
 
-Ferrin 提供 `ImageModelMiddleware` 与 `wrap_image_model`，以及 `wrap_provider(provider, ProviderMiddleware { language_model: Vec<_>, image_model: Vec<_> })`。
+【决策】`EmbeddingModelMiddleware` 与 `wrap_embedding_model` 为嵌入模型提供同样的能力：`transform_params(EmbedOptions)`、`wrap_embed`、`override_provider`、`override_model_id`，以及限制钩子 `max_embeddings_per_call`、`max_input_bytes_per_call`、`supports_parallel_calls`——它们接收被包裹的模型，默认转发其原值。依据：`embed_many` 正是按这些限制切分与调度，做批处理或代理的中间件必须能改写它们；转发式默认值让不做改写的层保持透明。图像侧以同样方式暴露 `max_images_per_call`。两个 trait 其余部分与第 1.1 节一致（直通默认实现、`BoxFuture` 返回值、续延类型 `EmbedNext` / `ImageGenerateNext`），组合顺序遵循第 1.2 节。
+
+【决策】`wrap_provider(provider, ProviderMiddleware { language_model, embedding_model, image_model })` 包裹供应商解析出的这三类模型中的每一个，保留供应商 ID，其余模型种类与服务（`realtime`、`files`、`skills`、`batch`）原样委托。有意纳入嵌入模型：否则无法按供应商表达注册表级的嵌入默认值（第 1.3 节）。空的 `ProviderMiddleware` 直接返回原供应商。供应商若返回未解析的模型 ID，则无法包裹，报 `NoSuchModel` 并附说明。
+
+【决策】`default_embedding_settings(EmbeddingDefaults { headers, provider_options })` 是 `default_settings` 的嵌入版：请求头与供应商选项与调用值合并，调用值优先，供应商选项经 `merge_json_objects` 递归合并。
 
 ## 2. 注册表
 
 ### 2.1 ProviderRegistry
 
-【决策】供应商注册表（分隔符默认 `:`，可附加语言模型与图像模型中间件）：
+【决策】供应商注册表（分隔符默认 `:`，可附加语言模型、嵌入模型与图像模型中间件）：
 
 - `language_model("openai:gpt-5")` 按首个分隔符拆分为供应商 ID 与模型 ID；缺少分隔符报 `NoSuchModel` 错误，供应商不存在报 `NoSuchProvider` 错误（携带供应商 ID 与可用列表），供应商返回空报 `NoSuchModel` 错误。
-- 注册表级中间件应用到每个取出的语言模型/图像模型。
+- 注册表级中间件应用到每个取出的语言模型、嵌入模型与图像模型。
 - 支持 `embedding_model`、`image_model`、`transcription_model`、`speech_model`、`reranking_model`、`video_model`、`files(provider_id)`、`skills(provider_id)`。
 
 ```rust
@@ -102,8 +106,9 @@ impl ProviderRegistry {
 impl ProviderRegistryBuilder {
     pub fn provider(self, id: impl Into<ProviderId>, provider: Arc<dyn Provider>) -> Self;
     pub fn separator(self, sep: impl Into<String>) -> Self;
-    pub fn language_model_middleware(self, mw: Vec<Arc<dyn LanguageModelMiddleware>>) -> Self;
-    pub fn image_model_middleware(self, mw: Vec<Arc<dyn ImageModelMiddleware>>) -> Self;
+    pub fn language_model_middleware(self, mw: Arc<dyn LanguageModelMiddleware>) -> Self;
+    pub fn embedding_model_middleware(self, mw: Arc<dyn EmbeddingModelMiddleware>) -> Self;
+    pub fn image_model_middleware(self, mw: Arc<dyn ImageModelMiddleware>) -> Self;
     pub fn build(self) -> ProviderRegistry;
 }
 ```
@@ -148,7 +153,8 @@ pub fn default_registry() -> Option<&'static ProviderRegistry>;
 let registry = ProviderRegistry::builder()
     .provider("openai", ferrin_openai::create_openai(Default::default())?)
     .provider("anthropic", ferrin_anthropic::create_anthropic(Default::default())?)
-    .language_model_middleware(vec![Arc::new(default_settings(CallDefaults { temperature: Some(0.2), ..Default::default() }))])
+    .language_model_middleware(Arc::new(default_settings(CallDefaults { temperature: Some(0.2), ..Default::default() })))
+    .embedding_model_middleware(Arc::new(default_embedding_settings(EmbeddingDefaults { headers: Headers::new().with("x-team", "search"), ..Default::default() })))
     .build();
 
 let model = registry.language_model("anthropic:claude-sonnet-4-5")?;
@@ -168,3 +174,11 @@ let wrapped = wrap_language_model(model, [Arc::new(extract_reasoning("think")) a
 - 【决策】进程级默认注册表通过 `registry::set_default_registry()`（`OnceLock`，只能设置一次，重复设置返回 `Error::InvalidArgument { argument: "registry" }`）配置；未设置时以字符串形式传入的模型 ID 返回 `Error::NoDefaultRegistry`。
 
 【事实】 流式推理提取在文本结束、Finish 和流结束时按字面保留未完成的标签前缀。所有提取块（包括连续空块及未闭合块）均有配对的开始/结束事件，推理 ID 在不同源文本块之间保持唯一（2026-09-15，`tests/suite/middleware/extract_reasoning.rs`）。
+
+## 6. 实现记录（2026-09-15）
+
+- 【事实】`ferrin_core::middleware` 按第 1.4 节提供 `EmbeddingModelMiddleware` / `wrap_embedding_model`（`embedding.rs`）、`ImageModelMiddleware` / `wrap_image_model`（`image.rs`）与 `ProviderMiddleware` / `wrap_provider`（`provider.rs`）；`builtin::default_embedding_settings` 为嵌入版默认设置中间件。包装器在包裹时一次性确定 `provider()` / `model_id()`（先中间件覆盖，后内层模型），限制钩子在每次调用时求值。
+- 【事实】注册表构建器每次调用附加一个中间件（`language_model_middleware(Arc<dyn _>)`、`embedding_model_middleware`、`image_model_middleware`），按最外层优先的顺序追加；`ProviderRegistry::embedding_model` 与 `image_model` 与 `language_model` 一样应用各自的列表。供应商返回未解析引用时报 `Error::NoDefaultRegistry`。
+- 【事实】覆盖：`tests/suite/middleware/{embedding,image,provider,default_embedding_settings}.rs`（组合顺序、经 `embed_many` / `generate_image` 分块观察到的标识与限制覆盖、供应商直通、未解析引用、请求头与供应商选项优先级）与 `tests/suite/registry.rs`（注册表嵌入/图像中间件）。
+
+【决策】 语言模型中间件对工具的过滤也约束本地工具执行。每次模型调用尝试拥有独立的工具约束：各层只能收窄工具名称集合；解析调用或校验结束条件前，按集合的交集规范化最终工具选择。约束通过带作用域的中间件续体传递（包括在子任务中轮询的续体），流消费期间持续保留，重试时重新创建。这使策略过滤真正生效，无须向供应商规范新增字段，也不在并发调用间共享可变状态。
