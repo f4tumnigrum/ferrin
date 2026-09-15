@@ -384,7 +384,12 @@ impl VideoCallTask {
 
         if let Some(received) = received {
             let wait = tokio::time::timeout_at(deadline, received);
-            match wait.await {
+            let result = tokio::select! {
+                biased;
+                () = self.cancellation.cancelled() => return Err(Error::Cancelled),
+                result = wait => result,
+            };
+            match result {
                 Ok(Ok(_payload)) => {}
                 Ok(Err(error)) => return Err(Error::from(error)),
                 Err(_) => {
@@ -429,15 +434,26 @@ impl VideoCallTask {
             attempts = attempts.saturating_add(1);
             let operation = start.operation.clone();
             let headers = self.options.headers.clone();
-            let status = retry(&self.retry_policy, &self.cancellation, |_| {
+            let status_token = self.cancellation.child_token();
+            let _cancel_status_on_drop = status_token.clone().drop_guard();
+            let status_call = retry(&self.retry_policy, &status_token, |_| {
                 let options = VideoStatusOptions {
                     operation: operation.clone(),
                     headers: headers.clone(),
-                    cancellation: token.child_token(),
+                    cancellation: status_token.child_token(),
                 };
                 async move { model.do_status(options).await.map_err(Error::from) }
-            })
-            .await?;
+            });
+            let status = tokio::select! {
+                biased;
+                () = self.cancellation.cancelled() => return Err(Error::Cancelled),
+                result = tokio::time::timeout_at(deadline, status_call) => {
+                    result.map_err(|_| Error::Timeout {
+                        scope: TimeoutScope::Total,
+                        elapsed: started.elapsed(),
+                    })??
+                }
+            };
             match status {
                 VideoStatusResult::Error { error, .. } => {
                     return Err(Error::message(format!("video generation failed: {error}")));
