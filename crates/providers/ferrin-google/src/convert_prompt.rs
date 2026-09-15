@@ -303,6 +303,13 @@ impl Converter<'_> {
                 }
                 AssistantPromptPart::ToolCall(call) => {
                     let options = read_part_options(self.config, call.provider_options.as_ref());
+                    if options.server_tool_type.as_deref() == Some("code_execution") {
+                        parts.push(with_signature(
+                            json!({"executableCode": call.input}),
+                            options.thought_signature.as_deref(),
+                        ));
+                        continue;
+                    }
                     if let Some(tool_type) = &options.server_tool_type {
                         let mut tool_call = JsonObject::new();
                         tool_call
@@ -347,6 +354,13 @@ impl Converter<'_> {
                 }
                 AssistantPromptPart::ToolResult(result) => {
                     let options = read_part_options(self.config, result.provider_options.as_ref());
+                    if options.server_tool_type.as_deref() == Some("code_execution") {
+                        parts.push(with_signature(
+                            json!({"codeExecutionResult": tool_result_value(&result.output)}),
+                            options.thought_signature.as_deref(),
+                        ));
+                        continue;
+                    }
                     if let Some(tool_type) = &options.server_tool_type {
                         let mut response = JsonObject::new();
                         response.insert("toolType".to_owned(), JsonValue::from(tool_type.as_str()));
@@ -380,6 +394,13 @@ impl Converter<'_> {
                 ToolPromptPart::ToolApprovalResponse(_) => {}
                 ToolPromptPart::ToolResult(result) => {
                     let options = read_part_options(self.config, result.provider_options.as_ref());
+                    if options.server_tool_type.as_deref() == Some("code_execution") {
+                        self.append_to_model(with_signature(
+                            json!({"codeExecutionResult": tool_result_value(&result.output)}),
+                            options.thought_signature.as_deref(),
+                        ));
+                        continue;
+                    }
                     if let Some(tool_type) = &options.server_tool_type {
                         let mut response = JsonObject::new();
                         response.insert("toolType".to_owned(), JsonValue::from(tool_type.as_str()));

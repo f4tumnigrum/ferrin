@@ -231,15 +231,21 @@ impl GoogleStreamState {
         if let Some(code) = &part.executable_code
             && code.code.is_some()
         {
-            parts.push(StreamPart::ToolCall(self.mapper.code_execution_call(
-                code.language.as_deref(),
-                code.code.as_deref(),
-            )));
+            parts.push(StreamPart::ToolCall(
+                self.mapper.code_execution_call_with_signature(
+                    code.language.as_deref(),
+                    code.code.as_deref(),
+                    signature,
+                ),
+            ));
         } else if let Some(result) = &part.code_execution_result {
-            parts.push(StreamPart::ToolResult(self.mapper.code_execution_result(
-                result.outcome.as_deref(),
-                result.output.as_deref(),
-            )));
+            parts.push(StreamPart::ToolResult(
+                self.mapper.code_execution_result_with_signature(
+                    result.outcome.as_deref(),
+                    result.output.as_deref(),
+                    signature,
+                ),
+            ));
         } else if let Some(text) = &part.text {
             self.text_part(text, part.thought == Some(true), signature, parts);
         } else if let Some(inline) = &part.inline_data {
