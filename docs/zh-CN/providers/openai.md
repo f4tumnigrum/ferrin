@@ -100,3 +100,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
 
 【事实】（2026-09-14，真实凭据验证）`store` 为真（默认）时，多步调用把上一轮的助手消息与供应商执行的工具项以 `item_reference` 回传（节省请求体）；某第三方 OpenAI 兼容代理端点对含 `item_reference` 的请求返回 502，去掉引用项后同一请求成功。对不保存响应项的端点，应设置供应商选项 `{"openai": {"store": false}}`，此时 `ferrin-openai` 回传完整项而不使用引用（`responses/convert_prompt.rs`）。真实 OpenAI 端点未在本次验证中测试。
+
+【决策】 Responses 设置 `conversation` 不表示本地工具结果已上传：工具消息始终发送函数、自定义及 provider-defined 工具输出。来源：`responses/convert_tool_results.rs`；回归测试 `conversation_sends_new_local_tool_results`（2026-09-15）。
