@@ -158,10 +158,17 @@ impl ExtractReasoning {
             separator: self.separator.clone(),
             start_with_reasoning: self.start_with_reasoning,
             extractions: HashMap::new(),
-            delayed_text_start: None,
+            next_reasoning_id: 0,
         };
         let stream = stream
-            .map(move |part| stream::iter(state.process(part)))
+            .map(Some)
+            .chain(stream::once(async { None }))
+            .map(move |part| {
+                stream::iter(match part {
+                    Some(part) => state.process(part),
+                    None => state.finish_all(),
+                })
+            })
             .flatten();
         StreamResult {
             stream: Box::pin(stream),
@@ -197,8 +204,66 @@ struct Extraction {
     after_switch: bool,
     is_reasoning: bool,
     buffer: String,
-    id_counter: u32,
+    reasoning_id: Option<PartId>,
     text_id: PartId,
+    delayed_text_start: Option<StreamPart>,
+    text_started: bool,
+}
+
+impl Extraction {
+    fn new(id: PartId, start_with_reasoning: bool) -> Self {
+        Self {
+            is_first_reasoning: true,
+            is_first_text: true,
+            after_switch: false,
+            is_reasoning: start_with_reasoning,
+            buffer: String::new(),
+            reasoning_id: None,
+            text_id: id,
+            delayed_text_start: None,
+            text_started: false,
+        }
+    }
+
+    fn start_text(&mut self, out: &mut Vec<StreamPart>) {
+        if let Some(start) = self.delayed_text_start.take() {
+            self.text_started = true;
+            out.push(start);
+        }
+    }
+
+    fn start_reasoning(&mut self, counter: &mut u32, out: &mut Vec<StreamPart>) -> PartId {
+        self.reasoning_id
+            .get_or_insert_with(|| {
+                let id = PartId::new(format!("reasoning-{counter}"));
+                *counter += 1;
+                out.push(StreamPart::ReasoningStart {
+                    id: id.clone(),
+                    provider_metadata: None,
+                });
+                id
+            })
+            .clone()
+    }
+
+    fn end_reasoning(&mut self, counter: &mut u32, out: &mut Vec<StreamPart>) {
+        // Empty and unterminated sections still have a complete lifecycle.
+        let id = self.start_reasoning(counter, out);
+        out.push(StreamPart::ReasoningEnd {
+            id,
+            provider_metadata: None,
+        });
+        self.reasoning_id = None;
+    }
+
+    fn finish(&mut self, separator: &str, counter: &mut u32, out: &mut Vec<StreamPart>) {
+        let buffer = std::mem::take(&mut self.buffer);
+        publish(self, &buffer, separator, counter, out);
+        if self.is_reasoning {
+            self.end_reasoning(counter, out);
+        }
+        self.start_text(out);
+    }
 }
 
 struct StreamState {
@@ -207,27 +272,50 @@ struct StreamState {
     separator: String,
     start_with_reasoning: bool,
     extractions: HashMap<PartId, Extraction>,
-    delayed_text_start: Option<StreamPart>,
-}
-
-fn reasoning_id(counter: u32) -> PartId {
-    PartId::new(format!("reasoning-{counter}"))
+    next_reasoning_id: u32,
 }
 
 impl StreamState {
+    fn finish_all(&mut self) -> Vec<StreamPart> {
+        let mut out = Vec::new();
+        let mut extractions: Vec<_> = self.extractions.drain().collect();
+        extractions.sort_by(|(left, _), (right, _)| left.as_str().cmp(right.as_str()));
+        for (id, mut extraction) in extractions {
+            extraction.finish(&self.separator, &mut self.next_reasoning_id, &mut out);
+            if extraction.text_started {
+                out.push(StreamPart::TextEnd {
+                    id,
+                    provider_metadata: None,
+                });
+            }
+        }
+        out
+    }
+
     fn process(&mut self, part: StreamPart) -> Vec<StreamPart> {
         let mut out = Vec::new();
         match part {
-            // Never send `text-start` before `reasoning-start`.
-            StreamPart::TextStart { .. } => {
-                self.delayed_text_start = Some(part);
+            // Delay each source part independently until its first text delta.
+            StreamPart::TextStart { ref id, .. } => {
+                let id = id.clone();
+                let extraction = self
+                    .extractions
+                    .entry(id.clone())
+                    .or_insert_with(|| Extraction::new(id, self.start_with_reasoning));
+                extraction.delayed_text_start = Some(part);
             }
-            StreamPart::TextEnd { .. } => {
-                out.extend(self.delayed_text_start.take());
+            StreamPart::TextEnd { ref id, .. } => {
+                if let Some(mut extraction) = self.extractions.remove(id) {
+                    extraction.finish(&self.separator, &mut self.next_reasoning_id, &mut out);
+                }
                 out.push(part);
             }
             StreamPart::TextDelta { id, delta, .. } => {
                 self.process_delta(&id, &delta, &mut out);
+            }
+            StreamPart::Finish { .. } => {
+                out.extend(self.finish_all());
+                out.push(part);
             }
             other => out.push(other),
         }
@@ -235,19 +323,10 @@ impl StreamState {
     }
 
     fn process_delta(&mut self, id: &PartId, delta: &str, out: &mut Vec<StreamPart>) {
-        let start_with_reasoning = self.start_with_reasoning;
         let extraction = self
             .extractions
             .entry(id.clone())
-            .or_insert_with(|| Extraction {
-                is_first_reasoning: true,
-                is_first_text: true,
-                after_switch: false,
-                is_reasoning: start_with_reasoning,
-                buffer: String::new(),
-                id_counter: 0,
-                text_id: id.clone(),
-            });
+            .or_insert_with(|| Extraction::new(id.clone(), self.start_with_reasoning));
         extraction.buffer.push_str(delta);
         loop {
             let next_tag = if extraction.is_reasoning {
@@ -261,7 +340,7 @@ impl StreamState {
                     extraction,
                     &buffer,
                     &self.separator,
-                    &mut self.delayed_text_start,
+                    &mut self.next_reasoning_id,
                     out,
                 );
                 break;
@@ -271,25 +350,14 @@ impl StreamState {
                 extraction,
                 &before,
                 &self.separator,
-                &mut self.delayed_text_start,
+                &mut self.next_reasoning_id,
                 out,
             );
             let end = start + next_tag.len();
             if end <= extraction.buffer.len() {
                 extraction.buffer = extraction.buffer[end..].to_owned();
                 if extraction.is_reasoning {
-                    // Empty sections still open a reasoning part.
-                    if extraction.is_first_reasoning {
-                        out.push(StreamPart::ReasoningStart {
-                            id: reasoning_id(extraction.id_counter),
-                            provider_metadata: None,
-                        });
-                    }
-                    out.push(StreamPart::ReasoningEnd {
-                        id: reasoning_id(extraction.id_counter),
-                        provider_metadata: None,
-                    });
-                    extraction.id_counter += 1;
+                    extraction.end_reasoning(&mut self.next_reasoning_id, out);
                 }
                 extraction.is_reasoning = !extraction.is_reasoning;
                 extraction.after_switch = true;
@@ -305,7 +373,7 @@ fn publish(
     extraction: &mut Extraction,
     text: &str,
     separator: &str,
-    delayed_text_start: &mut Option<StreamPart>,
+    counter: &mut u32,
     out: &mut Vec<StreamPart>,
 ) {
     if text.is_empty() {
@@ -322,20 +390,15 @@ fn publish(
         ""
     };
     if extraction.is_reasoning {
-        if extraction.after_switch || extraction.is_first_reasoning {
-            out.push(StreamPart::ReasoningStart {
-                id: reasoning_id(extraction.id_counter),
-                provider_metadata: None,
-            });
-        }
+        let id = extraction.start_reasoning(counter, out);
         out.push(StreamPart::ReasoningDelta {
-            id: reasoning_id(extraction.id_counter),
+            id,
             delta: format!("{prefix}{text}"),
             provider_metadata: None,
         });
         extraction.is_first_reasoning = false;
     } else {
-        out.extend(delayed_text_start.take());
+        extraction.start_text(out);
         out.push(StreamPart::TextDelta {
             id: extraction.text_id.clone(),
             delta: format!("{prefix}{text}"),

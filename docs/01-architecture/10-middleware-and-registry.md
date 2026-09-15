@@ -166,3 +166,5 @@ let wrapped = wrap_language_model(model, [Arc::new(extract_reasoning("think")) a
 - [Decision] As a `Provider`, `ProviderRegistry::provider_id()` is `"registry"`, giving nested registries a stable identity for errors and telemetry.
 - [Fact] `ProviderRegistry::realtime_model(id)` resolves through provider `realtime()`; unsupported realtime returns `NoSuchModel` with `ModelKind::Realtime`. It also exposes `files(provider_id)`, `skills(provider_id)`, and `speech_translation_model(id)`.
 - [Decision] Configure the default registry once with `registry::set_default_registry()` and `OnceLock`. Repeated setup returns `Error::InvalidArgument { argument: "registry" }`; string IDs without a registry return `Error::NoDefaultRegistry`.
+
+[Fact] Streaming reasoning extraction flushes incomplete tag prefixes literally at text end, finish, and end of stream. Every extracted block, including consecutive empty or unclosed blocks, has paired start/end events; reasoning IDs are unique across source text parts (2026-09-15, `tests/suite/middleware/extract_reasoning.rs`).

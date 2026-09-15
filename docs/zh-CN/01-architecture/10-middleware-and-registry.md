@@ -166,3 +166,5 @@ let wrapped = wrap_language_model(model, [Arc::new(extract_reasoning("think")) a
 - 【决策】`ProviderRegistry` 作为 `Provider` 时的 `provider_id()` 为 `"registry"`。依据：嵌套注册表需要一个稳定标识以便在 `NoSuchProvider` 错误与遥测中区分层级。
 - 【事实】`ProviderRegistry::realtime_model(id)` 通过供应商的 `realtime()` 工厂解析实时模型；供应商不支持实时会话时返回 `NoSuchModel`（`ModelKind::Realtime`）。第 2.1 节的 `files(provider_id)`、`skills(provider_id)` 与 `speech_translation_model(id)` 同样提供。
 - 【决策】进程级默认注册表通过 `registry::set_default_registry()`（`OnceLock`，只能设置一次，重复设置返回 `Error::InvalidArgument { argument: "registry" }`）配置；未设置时以字符串形式传入的模型 ID 返回 `Error::NoDefaultRegistry`。
+
+【事实】 流式推理提取在文本结束、Finish 和流结束时按字面保留未完成的标签前缀。所有提取块（包括连续空块及未闭合块）均有配对的开始/结束事件，推理 ID 在不同源文本块之间保持唯一（2026-09-15，`tests/suite/middleware/extract_reasoning.rs`）。
