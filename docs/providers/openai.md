@@ -108,3 +108,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Fact] Local `openai.shell` results use `shell_call_output` with an `output` array of stdout/stderr/outcome entries, converting `outcome.exitCode` to `exit_code`; legacy `openai.local_shell` retains `local_shell_call_output`. Source: `responses/convert_tool_results.rs`; regression `local_shell_outputs_use_the_matching_api_generation` (2026-09-15).
 
 [Fact] Responses and Chat request preparation resolve uploaded file references with `OpenAiConfig.name`, independently of the provider options key. Standalone prompt-conversion helpers retain the default `openai` name. Source: regression `uploaded_files_roundtrip_with_custom_provider_name` (2026-09-15).
+
+[Decision] Provider tool argument conversion renames only documented API fields and traverses known configuration objects; headers, metadata, schemas, and unknown argument values remain opaque. This preserves user dictionary keys and HTTP header spelling. Source: `responses/convert_tools.rs`; regression `provider_tool_options_preserve_opaque_dictionary_keys` (2026-09-15).
