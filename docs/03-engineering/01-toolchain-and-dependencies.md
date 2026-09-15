@@ -120,6 +120,7 @@ Append a row for every version check:
 | 2026-09-15 | `url`, [official crates.io API](https://crates.io/api/v1/crates/url), highest unyanked stable release | [Fact] 2.5.8 remains latest stable (published 2026-01-05) and is already locked; schema now reuses the workspace dependency without a version change | Schema review F03 |
 | 2026-09-15 | `verification/Cargo.lock`, aligned with the already verified root `rustls` version | [Fact] The isolated prototype workspace now also locks 0.23.45 for RUSTSEC-2026-0285; the root workspace audit does not cover this separate lockfile | Additional review I05 |
 | 2026-09-15 | Ferrin workspace version and official crates.io API | [Fact] The registry still lists 0.1.0 as latest stable and has no 0.1.1 release. [Decision] Prepare the user-selected 0.1.1 locally without publication; dependency requirements and toolchain are otherwise unchanged in this preparation | Version preparation |
+| 2026-09-15 | Ferrin 0.1.1, official crates.io version API and docs.rs status endpoints | [Fact] All 15 versions are published and unyanked; all 15 documentation builds report success. See [release verification](06-versioning-and-release.md#9-release-011-2026-09-15) | Publication verification |
 
 check-versions compares manifest dependencies with crates.io and reports outdated entries; weekly CI opens an issue (see [CI and quality gates](05-ci-and-quality-gates.md)).
 

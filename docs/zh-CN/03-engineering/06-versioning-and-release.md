@@ -81,3 +81,5 @@
 【决策】在说明 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 中的破坏性 Schema API 变化后，维护者明确选择并授权发布 0.1.1。本次发布是第 1 节兼容补丁规则的一次例外，版本号不能被理解为与 0.1.0 向后 API 兼容。调用方必须传播或处理 `Schema::transformed`、`SchemaTransform::apply`/`applied` 与 `to_openai_strict` 新增的 `Result`。后续发布仍遵循通用版本策略。
 
 【事实】准备提交 `6b6d88b` 通过 [CI run 34944988012](https://github.com/f4tumnigrum/ferrin/actions/runs/34944988012) 的全部 14 个作业，包括三种平台上的测试与包验证。该运行早于本次带日期的发布文档修改，并未验证 0.1.1 的注册表上传或 docs.rs 构建。
+
+【事实】[发布运行 34946615509](https://github.com/f4tumnigrum/ferrin/actions/runs/34946615509) 已在提交 `a7cad68f` 的 `v0.1.1` 标签上完成；该提交已通过 [CI run 34946103620](https://github.com/f4tumnigrum/ferrin/actions/runs/34946103620) 的全部 14 个作业。crates.io 官方 API 确认全部 15 个 0.1.1 版本已上架且未 yank，所有 docs.rs `status.json` 均返回 `doc_status: true`（2026-09-15 验证）。[GitHub Release](https://github.com/f4tumnigrum/ferrin/releases/tag/v0.1.1) 于 `2026-09-15T08:26:28Z` 发布，并包含上述兼容性说明。
