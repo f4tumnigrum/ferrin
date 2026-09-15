@@ -25,7 +25,7 @@ async fn generate_requests_the_image_modality_and_collects_image_files() {
         "inline-image",
     );
     let model = test.provider.image("gemini-2.5-flash-image");
-    assert_eq!(model.max_images_per_call(), Some(10));
+    assert_eq!(model.max_images_per_call(), Some(1));
     let mut options = ImageOptions::new("A red square");
     options.aspect_ratio = Some(AspectRatio::new(16, 9));
     options.seed = Some(3);
@@ -99,4 +99,19 @@ async fn unsupported_arguments_are_rejected_or_warned() {
     options.size = Some(ImageSize::new(1024, 1024));
     let (_, warnings) = model.prepare_call(&options).unwrap();
     assert_eq!(features(&warnings), vec!["size"]);
+}
+
+#[tokio::test]
+async fn advertised_image_batches_always_prepare_successfully() {
+    let test = TestProvider::start().await;
+    for maximum in [0, 1, 2, 10, usize::MAX] {
+        let model = test
+            .provider
+            .image("gemini-2.5-flash-image")
+            .with_max_images_per_call(maximum);
+        let mut options = ImageOptions::new("A red square");
+        options.n = model.max_images_per_call().unwrap() as u32;
+        assert!(model.prepare_call(&options).is_ok());
+        assert_eq!(options.n, 1);
+    }
 }

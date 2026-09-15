@@ -34,7 +34,7 @@ use crate::language_model::GoogleLanguageModel;
 use crate::prepare_tools::ids;
 
 /// Default maximum images per call.
-pub const DEFAULT_MAX_IMAGES_PER_CALL: usize = 10;
+pub const DEFAULT_MAX_IMAGES_PER_CALL: usize = 1;
 
 /// Image model backed by a Gemini image-capable language model.
 #[derive(Debug, Clone)]
@@ -57,10 +57,10 @@ impl GoogleImageModel {
         }
     }
 
-    /// Overrides the maximum number of images per call.
+    /// Overrides the requested maximum, capped at the supported single image.
     #[must_use]
     pub fn with_max_images_per_call(mut self, max: usize) -> Self {
-        self.max_images_per_call = max;
+        self.max_images_per_call = max.clamp(1, DEFAULT_MAX_IMAGES_PER_CALL);
         self
     }
 
