@@ -255,3 +255,54 @@ async fn tool_calls_and_results_use_ids_and_signatures_on_gemini_3() {
     }
     insta::assert_json_snapshot!("prompt_tools_gemini3_warnings", converted.warnings);
 }
+
+#[tokio::test]
+async fn generated_files_replay_their_thought_signatures() {
+    use ferrin_google::output::OutputMapper;
+    use ferrin_spec::Content;
+    use ferrin_spec::language_model::prompt::ReasoningFilePart;
+
+    let test = TestProvider::start().await;
+    let mapper = OutputMapper::new(test.provider.config().clone(), ToolNameMapping::default());
+    let mut parts = Vec::new();
+    for thought in [false, true] {
+        let output = mapper
+            .inline_file("image/png", "aGk=", thought, Some("opaque-signature"))
+            .unwrap();
+        parts.push(match output {
+            Content::File {
+                data,
+                media_type,
+                provider_metadata,
+                ..
+            } => {
+                let mut file = FilePart::new(data, media_type);
+                file.provider_options = provider_metadata;
+                AssistantPromptPart::File(file)
+            }
+            Content::ReasoningFile {
+                data,
+                media_type,
+                provider_metadata,
+            } => AssistantPromptPart::ReasoningFile(ReasoningFilePart {
+                data,
+                media_type,
+                provider_options: provider_metadata,
+            }),
+            other => panic!("expected file, got {other:?}"),
+        });
+    }
+    let converted = convert(
+        &test,
+        "gemini-3-pro-preview",
+        &[PromptMessage::assistant(parts)],
+    )
+    .unwrap();
+    assert_eq!(
+        converted.contents,
+        vec![json!({"role":"model", "parts":[
+            {"inlineData":{"mimeType":"image/png", "data":"aGk="}, "thoughtSignature":"opaque-signature"},
+            {"inlineData":{"mimeType":"image/png", "data":"aGk="}, "thought":true, "thoughtSignature":"opaque-signature"}
+        ]})]
+    );
+}
