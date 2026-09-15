@@ -245,3 +245,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 - [Fact] `DescriptionContext::with_tool_context(JsonValue)` resolves dynamic descriptions outside generation loops, including batches and realtime sessions.
 
 [Decision] Parsing and repair use the same caller-filtered, active tool set sent to the provider for that step. Tools hidden behind a local caller remain available to that caller, but a direct model call cannot select them or trigger their input hooks.
+
+[Decision] Approval replay deduplicates decisions by both approval ID and tool-call ID within one invocation. Conflicting approval or provider-execution decisions fail before any tool executes; repeated identical decisions schedule one execution. This does not provide cross-invocation exactly-once execution.
