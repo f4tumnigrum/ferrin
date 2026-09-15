@@ -186,6 +186,7 @@ impl StreamTransform for SmoothStream {
             chunking: self.config.chunking.clone(),
             buffer: String::new(),
             current: None,
+            provider_metadata: None,
             pending: VecDeque::new(),
             delay_pending: false,
             done: false,
@@ -208,7 +209,7 @@ impl StreamTransform for SmoothStream {
                     Some(event) => state.handle(event),
                     None => {
                         state.done = true;
-                        state.flush(None);
+                        state.flush();
                     }
                 }
             }
@@ -228,6 +229,7 @@ struct SmoothState {
     chunking: Chunking,
     buffer: String,
     current: Option<(Kind, PartId)>,
+    provider_metadata: Option<ProviderMetadata>,
     pending: VecDeque<(StreamEvent, bool)>,
     delay_pending: bool,
     done: bool,
@@ -247,7 +249,7 @@ impl SmoothState {
                 provider_metadata,
             } => self.smooth(Kind::Reasoning, id, text, provider_metadata),
             other => {
-                self.flush(None);
+                self.flush();
                 self.pending.push_back((other, false));
             }
         }
@@ -264,25 +266,31 @@ impl SmoothState {
             .current
             .as_ref()
             .is_some_and(|(current_kind, current_id)| *current_kind == kind && *current_id == id);
-        if !self.buffer.is_empty() && (!same_part || provider_metadata.is_some()) {
-            self.flush(provider_metadata);
+        if !same_part || provider_metadata.is_some() {
+            self.flush();
+            self.provider_metadata = provider_metadata;
         }
         self.buffer.push_str(&text);
         self.current = Some((kind, id));
+        if text.is_empty() && self.provider_metadata.is_some() {
+            self.flush();
+        }
         while let Some(end) = self.chunking.detect(&self.buffer) {
             let chunk: String = self.buffer.drain(..end).collect();
-            if let Some(event) = self.delta(chunk, None) {
+            let metadata = self.provider_metadata.take();
+            if let Some(event) = self.delta(chunk, metadata) {
                 self.pending.push_back((event, true));
             }
         }
     }
 
-    fn flush(&mut self, provider_metadata: Option<ProviderMetadata>) {
-        if self.buffer.is_empty() {
+    fn flush(&mut self) {
+        if self.buffer.is_empty() && self.provider_metadata.is_none() {
             return;
         }
         let text = std::mem::take(&mut self.buffer);
-        if let Some(event) = self.delta(text, provider_metadata) {
+        let metadata = self.provider_metadata.take();
+        if let Some(event) = self.delta(text, metadata) {
             self.pending.push_back((event, false));
         }
     }

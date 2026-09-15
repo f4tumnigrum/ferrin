@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve delta metadata while smoothing text and reasoning, including buffered transitions and metadata-only deltas.
+
 - Cache successful URL downloads across text-generation steps, retaining identical file bytes when prepare_step switches models.
 
 - Invoke explicit custom downloaders even when the model supports every referenced URL.
