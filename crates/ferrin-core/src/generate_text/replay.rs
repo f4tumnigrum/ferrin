@@ -37,6 +37,21 @@ pub(crate) async fn replay_approvals(
     if collected.approved.is_empty() && collected.denied.is_empty() {
         return Ok(Vec::new());
     }
+    // Validate every context before any replayed tool can produce a side effect.
+    for approval in &collected.approved {
+        if let Some(tool) = ctx
+            .execution_tools
+            .get(approval.tool_call.tool_name.as_str())
+            && !approval.tool_call.provider_executed
+            && tool.is_executable()
+        {
+            tool.validate_context(
+                &approval.tool_call.tool_name,
+                ctx.config.tools_context.clone(),
+            )
+            .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
+        }
+    }
     let messages_arc: Arc<[Message]> = Arc::from(messages.to_vec());
     let tools_context = ctx.config.tools_context.clone();
     let approval_ctx = ApprovalContext {
@@ -108,26 +123,23 @@ pub(crate) async fn replay_approvals(
                 }
             }
         }
+        let tool_context = match tool {
+            Some(tool) => ctx.tool_context(
+                tool,
+                &call.tool_call_id,
+                &call.tool_name,
+                &messages_arc,
+                tools_context.as_ref(),
+                cancellation,
+            )?,
+            None => ToolContext::new(call.tool_call_id.clone()),
+        };
         let status = resolve_approval(
             &call,
             tool.map(AsRef::as_ref),
             ctx.config.tool_approval.as_deref(),
             approval_ctx,
-            || {
-                tool.map_or_else(
-                    || ToolContext::new(call.tool_call_id.clone()),
-                    |tool| {
-                        ctx.tool_context(
-                            tool,
-                            &call.tool_call_id,
-                            &call.tool_name,
-                            &messages_arc,
-                            tools_context.as_ref(),
-                            cancellation,
-                        )
-                    },
-                )
-            },
+            || tool_context,
         )
         .await;
         if let ApprovalStatus::Denied { reason } = status {

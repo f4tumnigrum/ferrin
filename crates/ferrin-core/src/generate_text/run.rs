@@ -226,11 +226,10 @@ impl LoopContext {
         messages: &Arc<[Message]>,
         tools_context: Option<&JsonValue>,
         cancellation: &CallCancellation,
-    ) -> ToolContext {
+    ) -> Result<ToolContext, Error> {
         let validated = tool
             .validate_context(tool_name, tools_context.cloned())
-            .ok()
-            .flatten();
+            .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
         let ctx = ToolContext::new(tool_call_id.clone())
             .with_messages(Arc::clone(messages))
             .with_cancellation(cancellation.token().child_token())
@@ -240,7 +239,7 @@ impl LoopContext {
             Some(sandbox) => ctx.with_sandbox(Arc::clone(sandbox)),
             None => ctx,
         };
-        ctx
+        Ok(ctx)
     }
 
     /// Bundles what one tool task needs.
@@ -251,8 +250,8 @@ impl LoopContext {
         messages: &Arc<[Message]>,
         tools_context: Option<&JsonValue>,
         cancellation: &CallCancellation,
-    ) -> ToolTask {
-        ToolTask {
+    ) -> Result<ToolTask, Error> {
+        Ok(ToolTask {
             telemetry: self.telemetry.clone(),
             hooks: Arc::clone(&self.hooks),
             call_id: self.call_id.clone(),
@@ -264,8 +263,8 @@ impl LoopContext {
                 messages,
                 tools_context,
                 cancellation,
-            ),
-        }
+            )?,
+        })
     }
 }
 
@@ -474,7 +473,7 @@ async fn run_step(
         inputs.tools_context.as_ref(),
         cancellation,
     )
-    .await;
+    .await?;
 
     let mut tool_outputs: Vec<StepContent> = invalid_tool_errors(&tool_calls);
     let client_tool_calls = tool_calls
