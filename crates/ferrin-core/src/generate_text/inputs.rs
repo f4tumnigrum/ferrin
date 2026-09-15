@@ -138,7 +138,7 @@ pub(crate) async fn prepare_step_inputs(
     let mut options = CallOptions::new(prompt);
     settings.apply(&mut options);
     options.tools = prepared.definitions;
-    options.tool_choice = prepared.tool_choice;
+    options.tool_choice = prepared.tool_choice.clone();
     options.response_format = ctx.response_format.clone();
     options.headers = std::mem::take(&mut options.headers).with_user_agent_suffix([USER_AGENT]);
     options.cancellation = cancellation.token().child_token();
@@ -150,7 +150,7 @@ pub(crate) async fn prepare_step_inputs(
         instructions,
         messages,
         tools_context,
-        tool_choice,
+        tool_choice: prepared.tool_choice,
         options,
     })
 }
