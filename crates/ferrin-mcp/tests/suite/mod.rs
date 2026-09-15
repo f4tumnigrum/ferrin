@@ -1,4 +1,6 @@
 mod apps;
+mod client_connect_cleanup;
+mod client_deadlines;
 mod client_legacy;
 mod client_lifecycle;
 mod client_modern;
