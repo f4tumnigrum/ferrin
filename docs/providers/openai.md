@@ -100,3 +100,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Pending verification] (PV-031) Fixtures were handwritten from official response schemas; rerecord real responses with `record-fixture`.
 
 [Fact] Live verification on 2026-09-14: default `store` true sends previous assistant/provider-tool items as `item_reference`. A third-party proxy returned 502 for references but accepted full items. Use {"openai":{"`store`":false}} for endpoints not storing items; convert_prompt then sends complete content. This run did not test the official OpenAI endpoint.
+
+[Decision] A configured Responses `conversation` does not imply that local tool results have been uploaded: tool messages always send their function/custom/provider-defined outputs. Source: `responses/convert_tool_results.rs`; regression `conversation_sends_new_local_tool_results` (2026-09-15).

@@ -7,6 +7,7 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Send newly executed local tool results when a Responses conversation is configured.
 - Verify that Realtime WebSocket configuration debug output redacts its token
   while retaining the authentication subprotocol for the connection.
 

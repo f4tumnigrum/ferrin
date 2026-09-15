@@ -73,9 +73,6 @@ fn convert_tool_result(
         // Already sent as an approval response.
         return Ok(());
     }
-    if ctx.has_conversation {
-        return Ok(());
-    }
     let provider_name = ctx
         .tool_name_mapping
         .to_provider_tool_name(result.tool_name.as_str());

@@ -224,3 +224,31 @@ async fn unsupported_file_media_type_is_rejected() {
         "{error:?}"
     );
 }
+
+#[tokio::test]
+async fn conversation_sends_new_local_tool_results() {
+    use ferrin_spec::language_model::prompt::ToolPromptPart;
+    use ferrin_spec::language_model::prompt::ToolResultOutput;
+    use ferrin_spec::language_model::prompt::ToolResultPart;
+
+    let test = TestProvider::start().await;
+    let mut options =
+        CallOptions::new(vec![PromptMessage::tool(vec![ToolPromptPart::ToolResult(
+            ToolResultPart {
+                tool_call_id: "call-1".into(),
+                tool_name: "weather".into(),
+                output: ToolResultOutput::json(json!({"temperature": 21})),
+                provider_options: None,
+            },
+        )])]);
+    options.provider_options = openai_options(json!({"conversation": "conv_1"}));
+    let prepared = prepare_request(test.provider.config(), "gpt-4.1", &options).unwrap();
+    assert_eq!(
+        serde_json::to_value(prepared.body).unwrap()["input"],
+        json!([{
+            "type": "function_call_output",
+            "call_id": "call-1",
+            "output": "{\"temperature\":21}"
+        }])
+    );
+}
