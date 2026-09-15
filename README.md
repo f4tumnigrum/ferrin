@@ -12,7 +12,7 @@
 
 Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI, and any OpenAI-compatible endpoint.
 
-The project is in the 0.1.x series. Version 0.1.0 was published to crates.io on 2026-09-14; the public API may change before 1.0. See [Project status](#project-status).
+This checkout prepares version 0.1.1 (unreleased). Version 0.1.0 was published to crates.io on 2026-09-14; the public API may change before 1.0. The unreleased schema transformation APIs now return `Result`; see [ADR 0019](docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md) for the breaking change. See [Project status](#project-status).
 
 ## Features
 
@@ -29,7 +29,7 @@ The project is in the 0.1.x series. Version 0.1.0 was published to crates.io on 
 
 ## Quick start
 
-Requires Rust 1.98 or later.
+Requires Rust 1.98 or later. The crates.io dependency below uses the published 0.1 series; the git dependency follows the unreleased checkout.
 
 ```toml
 [dependencies]

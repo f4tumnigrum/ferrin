@@ -6,7 +6,7 @@ members = ["crates/ferrin", "crates/ferrin-*", "crates/providers/*", "xtask", "e
 exclude = ["verification"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.98"
 license = "Apache-2.0"
@@ -15,23 +15,23 @@ authors = ["Ferrin contributors"]
 
 [workspace.dependencies]
 # ---- internal crates (path + version so members can be published) ----
-ferrin-spec = { path = "crates/ferrin-spec", version = "0.1.0" }
-ferrin-schema = { path = "crates/ferrin-schema", version = "0.1.0" }
-ferrin-message = { path = "crates/ferrin-message", version = "0.1.0" }
-ferrin-provider-util = { path = "crates/ferrin-provider-util", version = "0.1.0", default-features = false }
-ferrin-tool = { path = "crates/ferrin-tool", version = "0.1.0" }
-ferrin-core = { path = "crates/ferrin-core", version = "0.1.0", default-features = false }
-ferrin-mcp = { path = "crates/ferrin-mcp", version = "0.1.0" }
-ferrin-otel = { path = "crates/ferrin-otel", version = "0.1.0" }
+ferrin-spec = { path = "crates/ferrin-spec", version = "0.1.1" }
+ferrin-schema = { path = "crates/ferrin-schema", version = "0.1.1" }
+ferrin-message = { path = "crates/ferrin-message", version = "0.1.1" }
+ferrin-provider-util = { path = "crates/ferrin-provider-util", version = "0.1.1", default-features = false }
+ferrin-tool = { path = "crates/ferrin-tool", version = "0.1.1" }
+ferrin-core = { path = "crates/ferrin-core", version = "0.1.1", default-features = false }
+ferrin-mcp = { path = "crates/ferrin-mcp", version = "0.1.1" }
+ferrin-otel = { path = "crates/ferrin-otel", version = "0.1.1" }
 # Path only: it is used exclusively as a dev-dependency, so Cargo strips it
 # from the published manifests and publishing never has to resolve it first.
 ferrin-testing = { path = "crates/ferrin-testing" }
-ferrin-macros = { path = "crates/ferrin-macros", version = "0.1.0" }
-ferrin = { path = "crates/ferrin", version = "0.1.0" }
-ferrin-openai = { path = "crates/providers/ferrin-openai", version = "0.1.0" }
-ferrin-anthropic = { path = "crates/providers/ferrin-anthropic", version = "0.1.0" }
-ferrin-openai-compatible = { path = "crates/providers/ferrin-openai-compatible", version = "0.1.0" }
-ferrin-google = { path = "crates/providers/ferrin-google", version = "0.1.0" }
+ferrin-macros = { path = "crates/ferrin-macros", version = "0.1.1" }
+ferrin = { path = "crates/ferrin", version = "0.1.1" }
+ferrin-openai = { path = "crates/providers/ferrin-openai", version = "0.1.1" }
+ferrin-anthropic = { path = "crates/providers/ferrin-anthropic", version = "0.1.1" }
+ferrin-openai-compatible = { path = "crates/providers/ferrin-openai-compatible", version = "0.1.1" }
+ferrin-google = { path = "crates/providers/ferrin-google", version = "0.1.1" }
 
 # ---- external: versions verified 2026-09-13, see docs/03-engineering/01-toolchain-and-dependencies.md ----
 # async runtime and streams

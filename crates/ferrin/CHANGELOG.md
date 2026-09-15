@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Coordinate the unreleased workspace version and re-export the breaking schema
+  transformation APIs that now return `Result` (ADR 0019).
+
 ### Added
 
 - `end_to_end` benchmark (feature `openai`): `stream_text` through the

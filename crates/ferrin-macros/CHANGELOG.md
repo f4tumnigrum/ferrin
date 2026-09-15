@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Align the development version with workspace 0.1.1; no macro API changes.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added
