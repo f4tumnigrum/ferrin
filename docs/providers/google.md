@@ -107,3 +107,5 @@ Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and e
 [Decision] Live API function outputs retain JSON objects directly and wrap other JSON values or plain text in `response.result`, because the wire response must be an object without discarding valid tool output. Regression: `tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text` (2026-09-15).
 
 [Decision] Schema conversion maps `true` to an unconstrained object schema (`{}`) and rejects `false` with `UnsupportedFunctionality`, including property, item, union and reference positions; the supported OpenAPI subset cannot express a schema accepting no values. Regression: `tests/suite/unit.rs::boolean_schemas_keep_their_validation_meaning` (2026-09-15).
+
+[Fact] Executable code and its result carry `serverToolType: "code_execution"` metadata and replay as `executableCode`/`codeExecutionResult` parts, including with an application tool alias. Regression: `tests/suite/prompt.rs::generated_code_execution_roundtrips_with_its_result_and_alias` and the code-execution stream fixture (2026-09-15).

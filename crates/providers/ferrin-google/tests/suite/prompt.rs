@@ -306,3 +306,87 @@ async fn generated_files_replay_their_thought_signatures() {
         ]})]
     );
 }
+
+#[tokio::test]
+async fn generated_code_execution_roundtrips_with_its_result_and_alias() {
+    use ferrin_google::output::OutputMapper;
+    use ferrin_google::stream::GoogleStreamState;
+    use ferrin_provider_util::http::ParseResult;
+    use ferrin_provider_util::stream_driver::StreamMachine;
+    use ferrin_spec::Content;
+    use ferrin_spec::StreamPart;
+
+    let test = TestProvider::start().await;
+    let mapping = ToolNameMapping::default().with_pair("python", "code_execution");
+    let mut mapper = OutputMapper::new(test.provider.config().clone(), mapping.clone());
+    let wire = json!([
+        {"executableCode":{"language":"PYTHON", "code":"print(1)"}, "thoughtSignature":"code-signature"},
+        {"codeExecutionResult":{"outcome":"OUTCOME_OK", "output":"1\n"}, "thoughtSignature":"result-signature"}
+    ]);
+    let output = mapper
+        .map_parts(
+            &serde_json::from_value::<Vec<ferrin_google::api_types::Part>>(wire.clone()).unwrap(),
+        )
+        .unwrap();
+    let mapper = OutputMapper::new(test.provider.config().clone(), mapping.clone());
+    let mut state = GoogleStreamState::new(mapper);
+    let raw =
+        json!({"candidates":[{"content":{"role":"model", "parts":wire}, "finishReason":"STOP"}]});
+    let streamed = state
+        .handle(
+            ParseResult::Ok {
+                value: serde_json::from_value(raw.clone()).unwrap(),
+                raw,
+            },
+            false,
+        )
+        .into_iter()
+        .filter_map(|part| match part {
+            StreamPart::ToolCall(call) => Some(Content::ToolCall(call)),
+            StreamPart::ToolResult(result) => Some(Content::ToolResult(result)),
+            _ => None,
+        })
+        .collect();
+    for output in [output, streamed] {
+        let mut parts = Vec::new();
+        for content in output {
+            parts.push(match content {
+                Content::ToolCall(call) => {
+                    assert_eq!(call.tool_name.as_str(), "python");
+                    AssistantPromptPart::ToolCall(ToolCallPart {
+                        tool_call_id: call.tool_call_id,
+                        tool_name: call.tool_name,
+                        input: serde_json::from_str(&call.input).unwrap(),
+                        provider_executed: call.provider_executed,
+                        provider_options: call.provider_metadata,
+                    })
+                }
+                Content::ToolResult(result) => {
+                    assert_eq!(result.tool_name.as_str(), "python");
+                    AssistantPromptPart::ToolResult(ToolResultPart {
+                        tool_call_id: result.tool_call_id,
+                        tool_name: result.tool_name,
+                        output: ToolResultOutput::Json {
+                            value: result.result,
+                            provider_options: None,
+                        },
+                        provider_options: result.provider_metadata,
+                    })
+                }
+                other => panic!("expected code execution content, got {other:?}"),
+            });
+        }
+        let converted = convert_prompt(
+            test.provider.config(),
+            &[PromptMessage::assistant(parts)],
+            capabilities("gemini-3-pro-preview"),
+            &mapping,
+        )
+        .unwrap();
+        assert_eq!(
+            converted.contents,
+            vec![json!({"role":"model", "parts":wire})]
+        );
+        assert!(converted.warnings.is_empty());
+    }
+}

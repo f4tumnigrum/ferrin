@@ -194,6 +194,15 @@ impl OutputMapper {
     /// Maps a code execution part to a provider-executed tool call.
     #[must_use]
     pub fn code_execution_call(&mut self, language: Option<&str>, code: Option<&str>) -> ToolCall {
+        self.code_execution_call_with_signature(language, code, None)
+    }
+
+    pub(crate) fn code_execution_call_with_signature(
+        &mut self,
+        language: Option<&str>,
+        code: Option<&str>,
+        signature: Option<&str>,
+    ) -> ToolCall {
         let id = self.generate_id();
         self.last_code_execution_id = Some(id.clone());
         let mut call = ToolCall::new(
@@ -202,6 +211,7 @@ impl OutputMapper {
             json!({"language": language, "code": code}).to_string(),
         );
         call.provider_executed = true;
+        call.provider_metadata = Some(self.code_execution_metadata(signature));
         call
     }
 
@@ -211,6 +221,15 @@ impl OutputMapper {
         &mut self,
         outcome: Option<&str>,
         output: Option<&str>,
+    ) -> ProviderToolResult {
+        self.code_execution_result_with_signature(outcome, output, None)
+    }
+
+    pub(crate) fn code_execution_result_with_signature(
+        &mut self,
+        outcome: Option<&str>,
+        output: Option<&str>,
+        signature: Option<&str>,
     ) -> ProviderToolResult {
         let id = self
             .last_code_execution_id
@@ -223,8 +242,20 @@ impl OutputMapper {
             is_error: false,
             preliminary: false,
             dynamic: false,
-            provider_metadata: None,
+            provider_metadata: Some(self.code_execution_metadata(signature)),
         }
+    }
+
+    fn code_execution_metadata(&self, signature: Option<&str>) -> ProviderMetadata {
+        let mut object = JsonObject::new();
+        object.insert(
+            "serverToolType".to_owned(),
+            JsonValue::from("code_execution"),
+        );
+        if let Some(signature) = signature {
+            object.insert("thoughtSignature".to_owned(), JsonValue::from(signature));
+        }
+        self.metadata(object)
     }
 
     /// Maps a function call part.
@@ -349,15 +380,20 @@ impl OutputMapper {
         for part in parts {
             let signature = part.thought_signature.as_deref();
             if let Some(code) = &part.executable_code {
-                content.push(Content::ToolCall(
-                    self.code_execution_call(code.language.as_deref(), code.code.as_deref()),
-                ));
+                content.push(Content::ToolCall(self.code_execution_call_with_signature(
+                    code.language.as_deref(),
+                    code.code.as_deref(),
+                    signature,
+                )));
             }
             if let Some(result) = &part.code_execution_result {
-                content.push(Content::ToolResult(self.code_execution_result(
-                    result.outcome.as_deref(),
-                    result.output.as_deref(),
-                )));
+                content.push(Content::ToolResult(
+                    self.code_execution_result_with_signature(
+                        result.outcome.as_deref(),
+                        result.output.as_deref(),
+                        signature,
+                    ),
+                ));
             }
             if let Some(text) = &part.text {
                 if text.is_empty() {

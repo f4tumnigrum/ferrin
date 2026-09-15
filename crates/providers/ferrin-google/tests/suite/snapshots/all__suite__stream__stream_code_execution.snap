@@ -16,7 +16,12 @@ expression: parts
     "tool_call_id": "id-0",
     "tool_name": "code_execution",
     "input": "{\"language\":\"PYTHON\",\"code\":\"print(2 + 2)\"}",
-    "provider_executed": true
+    "provider_executed": true,
+    "provider_metadata": {
+      "google": {
+        "serverToolType": "code_execution"
+      }
+    }
   },
   {
     "type": "tool-result",
@@ -25,6 +30,11 @@ expression: parts
     "result": {
       "outcome": "OUTCOME_OK",
       "output": "4\n"
+    },
+    "provider_metadata": {
+      "google": {
+        "serverToolType": "code_execution"
+      }
     }
   },
   {
