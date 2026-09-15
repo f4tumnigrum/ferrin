@@ -245,12 +245,16 @@ impl Inner {
                 let inner = Arc::clone(self);
                 let cancellation = self.cancellation.child_token();
                 let max_event_bytes = self.config.max_event_bytes;
+                let request_cancellation = options.cancellation.clone();
                 self.spawn(async move {
-                    let result = pump_sse(response, max_event_bytes, &cancellation, |event| {
+                    let pump = pump_sse(response, max_event_bytes, &cancellation, |event| {
                         emit_message_event(&event, &inner.events);
-                    })
-                    .await;
+                    });
+                    let result = with_cancellation(request_cancellation.as_ref(), pump).await;
                     if let Err(error) = result {
+                        if matches!(error, McpError::Cancelled) {
+                            return;
+                        }
                         inner.events.emit(TransportEvent::Error(error));
                     }
                 });
