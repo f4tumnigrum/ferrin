@@ -32,6 +32,7 @@ module-size:
 
 deny:
     cargo deny check
+    cargo deny --manifest-path verification/Cargo.toml check advisories
 
 shear:
     cargo shear --deny-warnings

@@ -41,6 +41,7 @@ jobs:
           {
             echo '```'
             cargo deny check advisories 2>&1 || status=$?
+            cargo deny --manifest-path verification/Cargo.toml check advisories 2>&1 || status=$?
             echo '```'
           } > advisories.md
           if [ "$status" -ne 0 ]; then
