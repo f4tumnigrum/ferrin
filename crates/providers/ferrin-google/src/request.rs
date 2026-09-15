@@ -224,10 +224,10 @@ fn generation_config(
     }
     let mut thinking = google.thinking_config.clone().unwrap_or_default();
     if let Some(resolved) = resolve_thinking(options.reasoning, model_id, capabilities, warnings) {
-        if resolved.thinking_level.is_some() {
+        if thinking.thinking_level.is_none() {
             thinking.thinking_level = resolved.thinking_level;
         }
-        if resolved.thinking_budget.is_some() {
+        if thinking.thinking_budget.is_none() {
             thinking.thinking_budget = resolved.thinking_budget;
         }
     }

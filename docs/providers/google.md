@@ -99,3 +99,5 @@ Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and e
 [Pending verification] (PV-031) Handwritten official-schema fixtures need real-response recording.
 
 [Decision] SSE EOF is successful only after an explicit provider terminal response or finish reason (including a Google prompt block). Earlier EOF emits `InvalidResponseData`, closes open parts through the stream driver, and never flushes incomplete tool arguments into executable calls. Source: stream EOF fixture-boundary regressions (2026-09-15); no live API verification.
+
+[Fact] Explicit `thinkingConfig` budget/level fields override generic reasoning; missing fields still inherit its mapping. Regression coverage: `tests/suite/request.rs::explicit_thinking_fields_override_generic_reasoning` (2026-09-15).

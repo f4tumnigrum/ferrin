@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve explicit thinking budgets and levels when generic reasoning is also set.
+
 - Report and enforce a single-image call limit so core can split multi-image requests.
 - Reject truncated SSE streams that end without an explicit completion signal.
 

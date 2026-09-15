@@ -261,3 +261,36 @@ async fn unknown_option_keys_are_rejected() {
         "{error:?}"
     );
 }
+
+#[tokio::test]
+async fn explicit_thinking_fields_override_generic_reasoning() {
+    let test = TestProvider::start().await;
+    for (model, thinking) in [
+        (
+            "gemini-2.5-flash",
+            json!({"thinkingBudget": 1024, "includeThoughts": false}),
+        ),
+        (
+            "gemini-3-flash-preview",
+            json!({"thinkingLevel": "low", "includeThoughts": false}),
+        ),
+    ] {
+        let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+        options.reasoning = ReasoningEffort::High;
+        options.provider_options = google_options(json!({"thinkingConfig": thinking}));
+        let prepared = prepare(&test, model, &options);
+        assert_eq!(
+            prepared.body["generationConfig"]["thinkingConfig"],
+            thinking
+        );
+    }
+    let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+    options.reasoning = ReasoningEffort::High;
+    options.provider_options =
+        google_options(json!({"thinkingConfig": {"includeThoughts": false}}));
+    let prepared = prepare(&test, "gemini-2.5-flash", &options);
+    assert_eq!(
+        prepared.body["generationConfig"]["thinkingConfig"],
+        json!({"thinkingBudget": 24576, "includeThoughts": false})
+    );
+}
