@@ -99,3 +99,5 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
 
 【决策】SSE EOF 仅在收到显式 provider 终止响应或结束原因（包括 Google 提示词拦截）后表示成功；提前 EOF 产生 `InvalidResponseData`，由流驱动关闭开放的内容块，且不把未完成工具参数转换成可执行调用。来源：流 EOF fixture 边界回归测试（2026-09-15）；未进行 live API 验证。
+
+【事实】 显式 `thinkingConfig` 预算与级别优先于通用推理设置，缺失字段仍使用通用映射。回归覆盖：`tests/suite/request.rs::explicit_thinking_fields_override_generic_reasoning`（2026-09-15）。
