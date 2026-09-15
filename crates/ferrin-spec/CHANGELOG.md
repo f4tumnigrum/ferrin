@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-15
+
 ### Fixed
 
 - SPEC: Redact Realtime WebSocket URLs and protocols in `Debug` output so

@@ -5,9 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-15
+
 ### Changed
 
-- Coordinate the unreleased workspace version and re-export the breaking schema
+- Coordinate workspace version 0.1.1 and re-export the breaking schema
   transformation APIs that now return `Result` (ADR 0019).
 
 ### Added

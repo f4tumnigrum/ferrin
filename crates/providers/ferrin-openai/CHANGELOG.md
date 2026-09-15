@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-15
+
 ### Fixed
 
 - Apply fallible strict schema transforms to Responses and Chat tool inputs and structured outputs.

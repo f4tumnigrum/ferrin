@@ -74,8 +74,10 @@ Breaking spec changes (required fields, trait signatures, serialization) require
 
 [Decision] Crate versions carry specification evolution without runtime parallel interfaces or upgrade adapters ([ADR 0011](../04-decisions/2026-09-13-0011-spec-versioning-by-crate-version.md)); this warrants stronger review gates ([CI](05-ci-and-quality-gates.md), section 2, item 11).
 
-## 9. Unreleased 0.1.1 preparation
+## 9. Release 0.1.1 (2026-09-15)
 
-[Fact] Workspace manifests and internal dependencies are coordinated at 0.1.1, while changes remain under `Unreleased`; this preparation does not create a tag or publish packages (source: `Cargo.toml`, `Cargo.lock`, and crate changelogs).
+[Fact] Workspace manifests and versioned internal dependencies use 0.1.1. The root and all 15 crate changelogs record its changes under `[0.1.1] - 2026-09-15`, retaining empty `Unreleased` sections for future work (source: `Cargo.toml`, `Cargo.lock`, and crate changelogs). These release files do not establish registry publication success; that requires a verified release-workflow and registry result.
 
-[Decision] This preparation includes the breaking schema APIs recorded in [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md); the version number does not imply backward compatibility for these unreleased changes. Callers must propagate or handle the new `Result` values.
+[Decision] The maintainer explicitly selected and authorized publication of 0.1.1 after the breaking schema APIs in [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) were explained. This release is an exception to section 1's compatible-patch rule; its version number must not be interpreted as backward API compatibility with 0.1.0. Callers must propagate or handle the new `Result` values from `Schema::transformed`, `SchemaTransform::apply`/`applied`, and `to_openai_strict`. The general versioning policy remains in effect for subsequent releases.
+
+[Fact] Preparation commit `6b6d88b` passed all 14 jobs of [CI run 34944988012](https://github.com/f4tumnigrum/ferrin/actions/runs/34944988012), including tests on three platforms and package verification. This run predates the dated release-documentation changes and does not verify registry uploads or docs.rs builds for 0.1.1.

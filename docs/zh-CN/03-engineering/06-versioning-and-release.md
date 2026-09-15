@@ -74,8 +74,10 @@
 
 【决策】Ferrin 不在运行时维护多个规范版本共存（不设并行的版本化接口与升级适配器），而以 crate 版本承载规范演进（[ADR 0011](../04-decisions/2026-09-13-0011-spec-versioning-by-crate-version.md)），因此规范变更的评审门槛更高，见 [CI 与质量门禁](05-ci-and-quality-gates.md)第 2 节第 11 条。
 
-## 9. 尚未发布的 0.1.1 准备
+## 9. 0.1.1 发布（2026-09-15）
 
-【事实】工作区清单及内部依赖已统一为 0.1.1，变更仍记录在 `Unreleased`；本次准备不创建标签或执行发布（来源：`Cargo.toml`、`Cargo.lock` 和各 crate 的变更记录）。
+【事实】工作区清单与带版本号的内部依赖统一使用 0.1.1。根目录及全部 15 个 crate 的变更日志在 `[0.1.1] - 2026-09-15` 下记录本次变更，保留空的 `Unreleased` 段供后续工作使用（来源：`Cargo.toml`、`Cargo.lock` 和各 crate 变更日志）。这些发布文件不代表注册表上传成功；上传结果须由发布工作流与注册表记录另行验证。
 
-【决策】此准备版本包含 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 记录的破坏性 Schema 接口变化；版本号不代表这些尚未发布的变更向后兼容。调用方必须传播或处理新增的 `Result`。
+【决策】在说明 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 中的破坏性 Schema API 变化后，维护者明确选择并授权发布 0.1.1。本次发布是第 1 节兼容补丁规则的一次例外，版本号不能被理解为与 0.1.0 向后 API 兼容。调用方必须传播或处理 `Schema::transformed`、`SchemaTransform::apply`/`applied` 与 `to_openai_strict` 新增的 `Result`。后续发布仍遵循通用版本策略。
+
+【事实】准备提交 `6b6d88b` 通过 [CI run 34944988012](https://github.com/f4tumnigrum/ferrin/actions/runs/34944988012) 的全部 14 个作业，包括三种平台上的测试与包验证。该运行早于本次带日期的发布文档修改，并未验证 0.1.1 的注册表上传或 docs.rs 构建。

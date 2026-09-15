@@ -12,7 +12,7 @@
 
 Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和任意 OpenAI 兼容端点。
 
-当前检出版本正在准备 0.1.1（尚未发布）。首个版本 0.1.0 已于 2026-09-14 发布到 crates.io，公共 API 在 1.0 之前可能变化。尚未发布的 Schema 变换接口现返回 `Result`，兼容性变化见 [ADR 0019](docs/zh-CN/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。当前状态见[项目状态](#项目状态)。
+当前检出版本包含 0.1.1 发布内容，[变更日志日期为 2026-09-15](CHANGELOG.md#011---2026-09-15)。**0.1.1 包含破坏性 API 变化：**Schema 变换接口现返回 `Result`。本次明确保留 0.1.1 版本号，但这些接口不兼容 0.1.0；迁移说明见 [ADR 0019](docs/zh-CN/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。注册表发布状态另见[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#9-011-发布2026-09-15)。当前状态见[项目状态](#项目状态)。
 
 ## 特性
 
@@ -29,7 +29,7 @@ Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大�
 
 ## 快速开始
 
-需要 Rust 1.98 及以上。下方 crates.io 依赖使用已发布的 0.1 系列；git 依赖跟随尚未发布的当前检出版本。
+需要 Rust 1.98 及以上。下方 crates.io 依赖选择可用的 0.1 版本；git 依赖跟随仓库检出版本。
 
 ```toml
 [dependencies]
