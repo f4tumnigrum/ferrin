@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject pre-cancelled local process creation, supervise spawned processes
+  independently of `wait`, and cancel file/stdout/stderr streams throughout
+  their lifetimes.
+
 ### Added
 
 - `fingerprint` benchmark: `canonical_json`, `fingerprint_tools` for 5 and 20

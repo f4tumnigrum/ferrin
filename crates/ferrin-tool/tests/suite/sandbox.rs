@@ -133,3 +133,109 @@ async fn commands_run_and_spawn() {
     assert_eq!(error.kind(), std::io::ErrorKind::Interrupted);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[tokio::test]
+async fn file_stream_cancellation_is_checked_after_open_and_between_chunks() {
+    for read_first in [false, true] {
+        let root = temp_root(if read_first {
+            "cancel-file-chunks"
+        } else {
+            "cancel-file-open"
+        });
+        let sandbox = LocalProcessSandbox::new(&root);
+        std::fs::write(root.join("bytes"), vec![1; 24 * 1024]).unwrap();
+        let cancellation = tokio_util::sync::CancellationToken::new();
+        let mut stream = sandbox
+            .read_file(ReadFileOptions {
+                cancellation: cancellation.clone(),
+                ..ReadFileOptions::new("bytes")
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        if read_first {
+            assert!(!stream.next().await.unwrap().unwrap().is_empty());
+        }
+        cancellation.cancel();
+        assert_eq!(
+            stream.next().await.unwrap().unwrap_err().kind(),
+            std::io::ErrorKind::Interrupted
+        );
+        assert!(stream.next().await.is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn pre_cancelled_spawn_and_run_do_not_start_a_process() {
+    let root = temp_root("cancel-before-spawn");
+    let sandbox = LocalProcessSandbox::new(&root);
+    let cancellation = tokio_util::sync::CancellationToken::new();
+    cancellation.cancel();
+    let options = ProcessOptions {
+        cancellation,
+        ..ProcessOptions::new("printf side-effect > created")
+    };
+    let Err(error) = sandbox.spawn(options.clone()).await else {
+        panic!("cancelled spawn must fail before process creation");
+    };
+    assert_eq!(error.kind(), std::io::ErrorKind::Interrupted);
+    assert_eq!(
+        sandbox.run(options).await.unwrap_err().kind(),
+        std::io::ErrorKind::Interrupted
+    );
+    assert!(!root.join("created").exists());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn cancellation_wakes_output_consumers_before_wait_is_polled() {
+    let root = temp_root("cancel-process-output");
+    let sandbox = LocalProcessSandbox::new(&root);
+    let cancellation = tokio_util::sync::CancellationToken::new();
+    let mut process = sandbox
+        .spawn(ProcessOptions {
+            cancellation: cancellation.clone(),
+            ..ProcessOptions::new("printf ready; printf ready >&2; while :; do :; done")
+        })
+        .await
+        .unwrap();
+    let mut stdout = process.take_stdout().unwrap();
+    let mut stderr = process.take_stderr().unwrap();
+    assert_eq!(
+        stdout.next().await.unwrap().unwrap(),
+        Bytes::from_static(b"ready")
+    );
+    assert_eq!(
+        stderr.next().await.unwrap().unwrap(),
+        Bytes::from_static(b"ready")
+    );
+    // Register both read wakers before cancelling; neither pipe has more data.
+    let mut output = Box::pin(futures_util::future::join(stdout.next(), stderr.next()));
+    let first_poll =
+        std::future::poll_fn(|cx| std::task::Poll::Ready(output.as_mut().poll(cx))).await;
+    assert!(first_poll.is_pending());
+    cancellation.cancel();
+    let (out, err) = tokio::time::timeout(std::time::Duration::from_secs(2), output)
+        .await
+        .unwrap();
+    assert_eq!(
+        out.unwrap().unwrap_err().kind(),
+        std::io::ErrorKind::Interrupted
+    );
+    assert_eq!(
+        err.unwrap().unwrap_err().kind(),
+        std::io::ErrorKind::Interrupted
+    );
+    assert!(stdout.next().await.is_none());
+    assert!(stderr.next().await.is_none());
+    assert_eq!(
+        process.wait().await.unwrap_err().kind(),
+        std::io::ErrorKind::Interrupted
+    );
+    process.kill().await.unwrap();
+    process.kill().await.unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+}
