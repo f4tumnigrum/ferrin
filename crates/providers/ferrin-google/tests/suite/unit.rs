@@ -176,3 +176,37 @@ fn json_accumulator_without_arguments_finalizes_to_an_empty_object() {
     assert_eq!(final_json, "{}");
     assert_eq!(closing, "{}");
 }
+
+#[test]
+fn boolean_schemas_keep_their_validation_meaning() {
+    for (schema, expected) in [
+        (json!(true), json!({})),
+        (
+            json!({"type":"object", "properties":{"anything":true}}),
+            json!({"type":"object", "properties":{"anything":{}}}),
+        ),
+        (
+            json!({"type":"array", "items":true}),
+            json!({"type":"array", "items":{}}),
+        ),
+        (
+            json!({"$ref":"#/$defs/Anything", "$defs":{"Anything":true}}),
+            json!({}),
+        ),
+    ] {
+        assert_eq!(
+            convert_json_schema_to_openapi_schema(&schema).unwrap(),
+            Some(expected)
+        );
+    }
+    for schema in [
+        json!(false),
+        json!({"type":"object", "properties":{"forbidden":false}}),
+        json!({"type":"array", "items":false}),
+        json!({"anyOf":[false, {"type":"string"}]}),
+        json!({"$ref":"#/$defs/Never", "$defs":{"Never":false}}),
+    ] {
+        let error = convert_json_schema_to_openapi_schema(&schema).unwrap_err();
+        assert_eq!(error.functionality, "false JSON Schema");
+    }
+}

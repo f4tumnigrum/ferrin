@@ -105,3 +105,5 @@ Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and e
 [Fact] Assistant file and reasoning-file replay retains the generated `thoughtSignature`; verified by `tests/suite/prompt.rs::generated_files_replay_their_thought_signatures` (2026-09-15).
 
 [Decision] Live API function outputs retain JSON objects directly and wrap other JSON values or plain text in `response.result`, because the wire response must be an object without discarding valid tool output. Regression: `tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text` (2026-09-15).
+
+[Decision] Schema conversion maps `true` to an unconstrained object schema (`{}`) and rejects `false` with `UnsupportedFunctionality`, including property, item, union and reference positions; the supported OpenAPI subset cannot express a schema accepting no values. Regression: `tests/suite/unit.rs::boolean_schemas_keep_their_validation_meaning` (2026-09-15).
