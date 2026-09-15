@@ -136,3 +136,5 @@ PruneOptions::new()
 [Decision] The normalized prepared tool choice also governs response validation in both generation loops; filtering away every tool removes the requirement for that step.
 
 [Decision] A custom `DownloadFn` receives all collected URLs with their model-support flags, including prompts whose URLs are all supported. Only the default downloader skips that case; custom downloaders can inline authenticated files or preserve individual URLs by returning `None`.
+
+[Decision] Each generate/stream invocation caches successful downloads by URL. Later steps reuse those bytes even after switching models, keeping one invocation consistent. `None` results and failures are not cached: a later model with different URL support may need to download a previously preserved URL. Separate invocations have independent caches.
