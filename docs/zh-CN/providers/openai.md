@@ -114,3 +114,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【决策】SSE EOF 仅在收到显式 provider 终止响应或结束原因（包括 Google 提示词拦截）后表示成功；提前 EOF 产生 `InvalidResponseData`，由流驱动关闭开放的内容块，且不把未完成工具参数转换成可执行调用。来源：流 EOF fixture 边界回归测试（2026-09-15）；未进行 live API 验证。
 
 【事实】DALL-E 图片编辑发送单个 multipart `image` 并显式请求 `response_format=b64_json`；GPT 图片编辑使用 `image[]` 及默认 base64 响应。DALL-E 多张输入图片会在请求前被拒绝。来源：`image/mod.rs` 和 `image_edits_use_model_specific_file_fields_and_response_format`（2026-09-15）。
+
+【事实】Chat 非流式和流式生成均在 `Usage.raw` 保留上游完整 `usage` 对象，包括音频计数及未纳入归一化用量类型的字段。来源：`chat/mod.rs`、`chat/stream.rs`；回归测试 `raw_usage_preserves_unmodeled_fields_in_generate_and_stream`（2026-09-15）。

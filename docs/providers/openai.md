@@ -114,3 +114,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Decision] SSE EOF is successful only after an explicit provider terminal response or finish reason (including a Google prompt block). Earlier EOF emits `InvalidResponseData`, closes open parts through the stream driver, and never flushes incomplete tool arguments into executable calls. Source: stream EOF fixture-boundary regressions (2026-09-15); no live API verification.
 
 [Fact] DALL-E image edits send a single multipart `image` and explicitly request `response_format=b64_json`; GPT image edits use `image[]` and the default base64 response. Multiple DALL-E input images are rejected before the request. Source: `image/mod.rs` and `image_edits_use_model_specific_file_fields_and_response_format` (2026-09-15).
+
+[Fact] Chat generation and streaming retain the complete upstream `usage` object in `Usage.raw`, including audio counters and fields not modeled by normalized usage. Source: `chat/mod.rs`, `chat/stream.rs`; regression `raw_usage_preserves_unmodeled_fields_in_generate_and_stream` (2026-09-15).

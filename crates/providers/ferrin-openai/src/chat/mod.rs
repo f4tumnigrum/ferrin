@@ -412,7 +412,17 @@ impl LanguageModel for OpenAiChatLanguageModel {
         result.usage = body
             .usage
             .as_ref()
-            .map(|usage| map_chat_usage(usage, None))
+            .map(|usage| {
+                map_chat_usage(
+                    usage,
+                    response
+                        .raw
+                        .as_ref()
+                        .and_then(|raw| raw.get("usage"))
+                        .and_then(JsonValue::as_object)
+                        .cloned(),
+                )
+            })
             .unwrap_or_default();
         result.provider_metadata = Some(metadata(
             &self.config.provider_options_key,

@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve complete raw Chat usage in both generated and streamed results.
+
 - Request base64 image edits and the single-image multipart field for DALL-E models.
 
 - Reject truncated SSE streams that end without an explicit completion signal.
