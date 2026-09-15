@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- SPEC: Redact Realtime WebSocket URLs and protocols in `Debug` output so
+  connection credentials remain secret ([ADR 0009](../../docs/04-decisions/2026-09-13-0009-http-transport-and-secure-url.md)).
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

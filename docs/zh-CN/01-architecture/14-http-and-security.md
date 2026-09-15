@@ -218,3 +218,5 @@ Ferrin 链路：应用头 → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 【事实】2026-09-15 SSE BOM 检测在解析首行前完成，支持 BOM 跨块；回归测试枚举 BOM、CRLF 和事件分隔符之间的全部两处分块边界（来源：`crates/ferrin-provider-util/tests/suite/sse.rs`）。
 
 【决策】2026-09-15 `json_lines_response_handler::<T>().with_max_line_bytes(n)` 限制每个物理行在 LF 前的字节数，包括结尾 CR（默认 16 MiB）。解析按块增量消费，不复制尚未处理的其他行；超限仅产生一次不可重试的 `BodyTooLarge` 错误并立即释放响应体。无终止换行和纯空白行同样受限，批结果总量仍采用流式处理（来源：`crates/ferrin-provider-util/src/http/json_lines.rs` 及其回归测试）。
+
+【决策】`WebSocketConfig` 的调试输出对完整 URL 和协议列表脱敏，因为 Realtime 凭据可能出现在任一位置。连接值保持不变；调试格式不能泄露传给供应商 `websocket_config` 的令牌。

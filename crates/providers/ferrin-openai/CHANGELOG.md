@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Verify that Realtime WebSocket configuration debug output redacts its token
+  while retaining the authentication subprotocol for the connection.
+
 ### Added
 
 - `responses` benchmark: `do_generate` and `do_stream` against the fixture

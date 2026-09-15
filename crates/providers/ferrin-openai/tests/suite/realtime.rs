@@ -123,6 +123,8 @@ async fn websocket_config_carries_the_token_as_sub_protocol() {
     let model = test.provider.realtime().realtime_model("gpt-realtime");
     let url = Url::parse("wss://api.openai.com/v1/realtime?model=gpt-realtime").unwrap();
     let config = model.websocket_config("ek_abc", &url);
+    assert!(!format!("{config:?}").contains("ek_abc"));
+    assert!(!format!("{config:#?}").contains("ek_abc"));
     assert_eq!(config.url, url);
     assert_eq!(
         config.protocols,
