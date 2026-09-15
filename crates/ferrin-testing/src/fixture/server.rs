@@ -174,7 +174,9 @@ impl FixtureServer {
         fixture: Fixture,
         times: usize,
     ) {
-        self.mount_route(method, path.into(), fixture, Some(times));
+        if times != 0 {
+            self.mount_route(method, path.into(), fixture, Some(times));
+        }
     }
 
     /// Mounts `fixture` for the next matching request only.

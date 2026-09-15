@@ -176,3 +176,33 @@ fn loads_fixtures_from_files() {
     assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn finite_routes_respect_zero_one_and_multiple_counts() {
+    for times in [0, 1, 3] {
+        let server = FixtureServer::start().await.unwrap();
+        server.mount_times(
+            Method::GET,
+            "/count",
+            Fixture::complete(StatusCode::OK, "text/plain", "limited"),
+            times,
+        );
+        server.mount(
+            Method::GET,
+            "/count",
+            Fixture::complete(StatusCode::OK, "text/plain", "fallback"),
+        );
+        let transport = ReqwestTransport::new().unwrap();
+        let mut bodies = Vec::new();
+        for _ in 0..=times {
+            let response = transport
+                .execute(HttpRequest::get(server.url().join("count").unwrap()))
+                .await
+                .unwrap();
+            bodies.push(concat(&body_chunks(response).await));
+        }
+        let mut expected = vec!["limited"; times];
+        expected.push("fallback");
+        assert_eq!(bodies, expected);
+    }
+}
