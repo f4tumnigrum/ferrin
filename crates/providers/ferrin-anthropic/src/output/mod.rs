@@ -343,7 +343,8 @@ impl OutputMapper {
                     self.json_response_from_tool = true;
                     return vec![Content::text(input.to_string())];
                 }
-                let mut call = ToolCall::new(id.as_str(), name.as_str(), input.to_string());
+                let mut call =
+                    ToolCall::new(id.as_str(), self.custom_name(name), input.to_string());
                 call.provider_metadata = caller_metadata(caller.as_ref());
                 vec![Content::ToolCall(call)]
             }

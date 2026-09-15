@@ -250,3 +250,70 @@ async fn unsupported_tools_and_strict_produce_warnings() {
         Warning::Unsupported { feature, .. } if feature == "tool: mystery"
     ));
 }
+
+#[tokio::test]
+async fn provider_tool_aliases_roundtrip_through_choices_and_calls() {
+    use ferrin_anthropic::output::OutputMapper;
+    use ferrin_anthropic::prepare_tools::tool_name_mapping;
+    use ferrin_anthropic::stream::AnthropicStreamState;
+    use ferrin_provider_util::http::ParseResult;
+    use ferrin_provider_util::stream_driver::StreamMachine;
+    use ferrin_spec::Content;
+    use ferrin_spec::StreamPart;
+    use ferrin_spec::ToolCall;
+
+    let test = TestProvider::start().await;
+    let tools = vec![definition(&AnthropicTools::new().bash_20250124(), "shell")];
+    let prepared = prepare_tools(
+        test.provider.config(),
+        &tools,
+        Some(&ToolChoice::Tool {
+            tool_name: "shell".into(),
+        }),
+        settings(),
+        &mut CacheControlValidator::new(),
+    );
+    assert_eq!(
+        prepared.tool_choice,
+        Some(json!({"type":"tool", "name":"bash"}))
+    );
+    assert_eq!(prepared.tools.unwrap()[0]["name"], json!("bash"));
+    let wire = json!({"type":"tool_use", "id":"call-1", "name":"bash", "input":{"command":"pwd"}});
+    let mut mapper = OutputMapper::new(test.provider.config().clone(), tool_name_mapping(&tools));
+    assert_eq!(
+        mapper.map_block(&serde_json::from_value(wire.clone()).unwrap()),
+        vec![Content::ToolCall(ToolCall::new(
+            "call-1",
+            "shell",
+            "{\"command\":\"pwd\"}"
+        ))]
+    );
+    for chunks in [
+        vec![json!({"type":"message_start", "message":{"id":"msg-1", "content":[wire]}})],
+        vec![
+            json!({"type":"content_block_start", "index":0, "content_block":wire}),
+            json!({"type":"content_block_stop", "index":0}),
+        ],
+    ] {
+        let mapper = OutputMapper::new(test.provider.config().clone(), tool_name_mapping(&tools));
+        let mut state = AnthropicStreamState::new(mapper, None);
+        let names: Vec<_> = chunks
+            .into_iter()
+            .flat_map(|raw| {
+                state.handle(
+                    ParseResult::Ok {
+                        value: serde_json::from_value(raw.clone()).unwrap(),
+                        raw,
+                    },
+                    false,
+                )
+            })
+            .filter_map(|part| match part {
+                StreamPart::ToolInputStart { tool_name, .. } => Some(tool_name),
+                StreamPart::ToolCall(call) => Some(call.tool_name),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names, vec!["shell", "shell"]);
+    }
+}
