@@ -103,3 +103,5 @@ Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and e
 [Fact] Explicit `thinkingConfig` budget/level fields override generic reasoning; missing fields still inherit its mapping. Regression coverage: `tests/suite/request.rs::explicit_thinking_fields_override_generic_reasoning` (2026-09-15).
 
 [Fact] Assistant file and reasoning-file replay retains the generated `thoughtSignature`; verified by `tests/suite/prompt.rs::generated_files_replay_their_thought_signatures` (2026-09-15).
+
+[Decision] Live API function outputs retain JSON objects directly and wrap other JSON values or plain text in `response.result`, because the wire response must be an object without discarding valid tool output. Regression: `tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text` (2026-09-15).

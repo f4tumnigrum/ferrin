@@ -446,10 +446,13 @@ fn serialize_event(
                 name,
                 output,
             } => {
-                let response = serde_json::from_str::<JsonValue>(&output)
-                    .ok()
-                    .filter(JsonValue::is_object)
-                    .unwrap_or_else(|| JsonValue::Object(JsonObject::new()));
+                let value = serde_json::from_str::<JsonValue>(&output)
+                    .unwrap_or_else(|_| JsonValue::from(output));
+                let response = if value.is_object() {
+                    value
+                } else {
+                    json!({"result": value})
+                };
                 let mut function_response = JsonObject::new();
                 function_response.insert("id".to_owned(), JsonValue::from(call_id));
                 if let Some(name) = name {
