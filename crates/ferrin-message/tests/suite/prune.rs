@@ -201,3 +201,27 @@ fn empty_messages_can_be_kept() {
         messages
     );
 }
+
+#[test]
+fn protected_tail_keeps_the_complete_approval_chain() {
+    let chain = [
+        Message::assistant_parts([call("call-1", "weather")]),
+        Message::assistant_parts([AssistantPart::ToolApprovalRequest(
+            ToolApprovalRequest::new("approval-1", "call-1"),
+        )]),
+        Message::tool([ToolPart::ToolApprovalResponse(
+            ToolApprovalResponse::approved("approval-1"),
+        )]),
+        Message::tool([result("call-1", "weather")]),
+    ];
+    // Each boundary protects a request, response, or result respectively.
+    for end in 2..=chain.len() {
+        let messages = chain[..end].to_vec();
+        for options in [
+            PruneOptions::new().tool_calls(PruneScope::before_last_message()),
+            PruneOptions::new().tool_calls_for(PruneScope::before_last_message(), ["weather"]),
+        ] {
+            assert_eq!(prune(messages.clone(), &options), messages);
+        }
+    }
+}
