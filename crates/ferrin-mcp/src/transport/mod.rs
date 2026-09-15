@@ -14,6 +14,7 @@ mod common;
 mod headers;
 mod http;
 mod http_config;
+mod http_stream;
 mod sse;
 #[cfg(feature = "stdio")]
 mod stdio;
@@ -65,6 +66,13 @@ pub enum TransportEvent {
     /// A failure that did not close the transport (parse error, failed
     /// inbound stream).
     Error(McpError),
+    /// A request-scoped transport or protocol failure.
+    RequestError {
+        /// The request whose response stream failed.
+        id: crate::protocol::RequestId,
+        /// Why no response could be delivered.
+        error: McpError,
+    },
     /// The transport is closed; no further events follow.
     Closed,
 }

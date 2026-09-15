@@ -389,6 +389,13 @@ impl ClientInner {
             match event {
                 TransportEvent::Message(message) => self.handle_message(message, &mut handlers),
                 TransportEvent::Error(error) => self.report(error),
+                TransportEvent::RequestError { id, error } => {
+                    if !self.resolve(&id, Err(error)) {
+                        self.report(McpError::protocol(format!(
+                            "received a failure for unknown request id {id}"
+                        )));
+                    }
+                }
                 TransportEvent::Closed => break,
                 #[allow(unreachable_patterns, reason = "TransportEvent is non-exhaustive")]
                 _ => {}

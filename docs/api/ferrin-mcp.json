@@ -2496,6 +2496,7 @@
       "variants": [
         "Message(JsonRpcMessage)",
         "Error(McpError)",
+        "RequestError { id: RequestId, error: McpError }",
         "Closed"
       ],
       "traits": [

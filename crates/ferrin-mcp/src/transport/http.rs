@@ -43,6 +43,7 @@ use super::common::validate;
 use super::headers::encode_header_value;
 use super::http_config::HttpTransportConfig;
 use super::http_config::RedirectMode;
+use super::http_stream::pump_response;
 use super::lock;
 use super::with_cancellation;
 use crate::error::McpError;
@@ -238,24 +239,32 @@ impl Inner {
                 }
                 return Err(status_error("request failed", status, &url, Some(text)));
             }
-            if !matches!(message, JsonRpcMessage::Request(_)) {
+            let JsonRpcMessage::Request(request) = &message else {
                 return Ok(());
-            }
+            };
             if content_type_is(&response.headers, "text/event-stream") {
                 let inner = Arc::clone(self);
                 let cancellation = self.cancellation.child_token();
                 let max_event_bytes = self.config.max_event_bytes;
                 let request_cancellation = options.cancellation.clone();
+                let request_id = request.id.clone();
                 self.spawn(async move {
-                    let pump = pump_sse(response, max_event_bytes, &cancellation, |event| {
-                        emit_message_event(&event, &inner.events);
-                    });
+                    let pump = pump_response(
+                        response,
+                        max_event_bytes,
+                        &cancellation,
+                        &inner.events,
+                        &request_id,
+                    );
                     let result = with_cancellation(request_cancellation.as_ref(), pump).await;
                     if let Err(error) = result {
                         if matches!(error, McpError::Cancelled) {
                             return;
                         }
-                        inner.events.emit(TransportEvent::Error(error));
+                        inner.events.emit(TransportEvent::RequestError {
+                            id: request_id,
+                            error,
+                        });
                     }
                 });
                 return Ok(());

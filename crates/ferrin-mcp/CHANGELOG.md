@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Resolve HTTP SSE requests with their own error on EOF or decoding failure before a matching response.
+
 - Release request SSE bodies when either the request or connection is cancelled.
 
 - Apply MCP request deadlines to sending and input rounds; cancellation cleanup never blocks timeout delivery. Failed-connect cleanup has a separate one-second bound and preserves the original error.

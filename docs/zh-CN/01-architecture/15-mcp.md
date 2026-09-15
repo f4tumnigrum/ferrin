@@ -244,3 +244,5 @@ mcp.close().await?;
 【决策】2026-09-15 同一有效截止时间覆盖传输发送、响应接收和全部 `input_required` 轮次及处理器。请求取消也中断发送；丢弃请求会清除待处理登记并取消其私有传输令牌。超时与取消通知通过公开客户端句柄持有的任务尽力发送，独立限制在一秒内；弱引用避免循环，最后一个句柄被丢弃时中止清理，避免通知发送阻塞原始错误返回（回归覆盖：`crates/ferrin-mcp/tests/suite/client_deadlines.rs`，使用暂停的 Tokio 时钟）。 启动或初始化失败后的传输清理同样独立限制在一秒内，即使自定义 close 或 HTTP 会话 DELETE 挂起也保留原始失败；协议清理等待前先停止本地待处理工作。
 
 【决策】2026-09-15 请求级 HTTP SSE 读取任务同时监听 `SendOptions.cancellation` 和传输取消。客户端请求结束时取消私有令牌，即使传输保持打开也会释放响应体（回归覆盖：`crates/ferrin-mcp/tests/suite/http_stream_lifecycle.rs`，使用响应体析构通知）。
+
+【决策】2026-09-15 `TransportEvent::RequestError { id, error }` 将响应流失败归属到具体待处理请求。HTTP 请求 SSE 在收到匹配的 JSON-RPC 响应或错误后停止；无匹配响应的 EOF、无效消息和响应体或解码错误会使该请求失败，即使未配置超时。通知和其他请求 ID 不算完成（来源：`crates/ferrin-mcp/src/transport/http_stream.rs`）。
