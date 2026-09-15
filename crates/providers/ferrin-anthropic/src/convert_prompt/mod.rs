@@ -58,7 +58,7 @@ pub(crate) struct Converter<'a> {
     pub(crate) config: &'a AnthropicConfig,
     pub(crate) mapping: &'a ToolNameMapping,
     pub(crate) send_reasoning: bool,
-    pub(crate) cache: CacheControlValidator,
+    pub(crate) cache: &'a mut CacheControlValidator,
     pub(crate) betas: BTreeSet<String>,
     pub(crate) warnings: Vec<Warning>,
 }
@@ -159,11 +159,25 @@ pub fn convert_prompt(
     mapping: &ToolNameMapping,
     send_reasoning: bool,
 ) -> Result<ConvertedPrompt, ProviderError> {
+    let mut cache = CacheControlValidator::new();
+    let mut converted =
+        convert_prompt_with_cache(config, prompt, mapping, send_reasoning, &mut cache)?;
+    converted.warnings.extend(cache.into_warnings());
+    Ok(converted)
+}
+
+pub(crate) fn convert_prompt_with_cache(
+    config: &AnthropicConfig,
+    prompt: &[PromptMessage],
+    mapping: &ToolNameMapping,
+    send_reasoning: bool,
+    cache: &mut CacheControlValidator,
+) -> Result<ConvertedPrompt, ProviderError> {
     let mut converter = Converter {
         config,
         mapping,
         send_reasoning,
-        cache: CacheControlValidator::new(),
+        cache,
         betas: BTreeSet::new(),
         warnings: Vec::new(),
     };
@@ -193,12 +207,8 @@ pub fn convert_prompt(
         }
     }
     let Converter {
-        cache,
-        betas,
-        mut warnings,
-        ..
+        betas, warnings, ..
     } = converter;
-    warnings.extend(cache.into_warnings());
     Ok(ConvertedPrompt {
         system,
         messages,

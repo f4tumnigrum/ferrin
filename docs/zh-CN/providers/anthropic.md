@@ -88,3 +88,5 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 【事实】 结构化输出清理保留 `$ref` 的同级 `$id`、`$defs` 与 `definitions`，清理定义但不展开递归引用。回归：`tests/suite/unit.rs::schema_references_retain_definitions_and_scope`（2026-09-15）。
 
 【事实】 供应商定义工具的别名在强制选择中转换为供应商名称，非流式、流式与预填充工具调用均恢复注册时的名称。回归：`tests/suite/tools.rs::provider_tool_aliases_roundtrip_through_choices_and_calls`（2026-09-15）。
+
+【事实】 每个请求的所有提示部件与工具定义共享四个缓存断点的上限，超出部分被移除并产生警告。回归：`tests/suite/messages_request.rs::cache_breakpoint_limit_is_shared_across_prompt_and_tools`（2026-09-15）。

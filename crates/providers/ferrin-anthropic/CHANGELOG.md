@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Share the four-cache-breakpoint limit across prompt parts and tool definitions.
+
 - Restore provider tool aliases in generated and streamed calls and map forced tool choices.
 
 - Preserve definitions and reference scopes while sanitizing structured-output schemas.
