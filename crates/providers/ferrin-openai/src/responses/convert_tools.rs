@@ -40,8 +40,24 @@ pub const PROVIDER_TOOL_TYPES: &[(&str, &str)] = &[
 /// Builds the tool name mapping (custom name ↔ provider name).
 #[must_use]
 pub fn tool_name_mapping(tools: &[ToolDefinition]) -> ToolNameMapping {
-    let names: HashMap<&str, &str> = PROVIDER_TOOL_TYPES.iter().copied().collect();
-    ToolNameMapping::new(tools, &names)
+    let names: HashMap<&str, &str> = PROVIDER_TOOL_TYPES
+        .iter()
+        .copied()
+        .filter(|(id, _)| *id != "openai.custom")
+        .collect();
+    let mut mapping = ToolNameMapping::new(tools, &names);
+    for tool in tools {
+        if let ToolDefinition::Provider { id, name, args } = tool
+            && id == "openai.custom"
+        {
+            let provider_name = args
+                .get("name")
+                .and_then(JsonValue::as_str)
+                .unwrap_or(name.as_str());
+            mapping = mapping.with_pair(name.as_str(), provider_name);
+        }
+    }
+    mapping
 }
 
 /// Converted tools.

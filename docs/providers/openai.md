@@ -102,3 +102,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Fact] Live verification on 2026-09-14: default `store` true sends previous assistant/provider-tool items as `item_reference`. A third-party proxy returned 502 for references but accepted full items. Use {"openai":{"`store`":false}} for endpoints not storing items; convert_prompt then sends complete content. This run did not test the official OpenAI endpoint.
 
 [Decision] A configured Responses `conversation` does not imply that local tool results have been uploaded: tool messages always send their function/custom/provider-defined outputs. Source: `responses/convert_tool_results.rs`; regression `conversation_sends_new_local_tool_results` (2026-09-15).
+
+[Decision] Each `openai.custom` tool maps its application alias to `args.name` independently for calls, results, forced choice, and response names; the tool type `custom` is not a function name. Source: `responses/convert_tools.rs`; regression `custom_tool_aliases_roundtrip_calls_results_and_choice` (2026-09-15).

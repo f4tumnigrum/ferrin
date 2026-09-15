@@ -102,3 +102,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【事实】（2026-09-14，真实凭据验证）`store` 为真（默认）时，多步调用把上一轮的助手消息与供应商执行的工具项以 `item_reference` 回传（节省请求体）；某第三方 OpenAI 兼容代理端点对含 `item_reference` 的请求返回 502，去掉引用项后同一请求成功。对不保存响应项的端点，应设置供应商选项 `{"openai": {"store": false}}`，此时 `ferrin-openai` 回传完整项而不使用引用（`responses/convert_prompt.rs`）。真实 OpenAI 端点未在本次验证中测试。
 
 【决策】 Responses 设置 `conversation` 不表示本地工具结果已上传：工具消息始终发送函数、自定义及 provider-defined 工具输出。来源：`responses/convert_tool_results.rs`；回归测试 `conversation_sends_new_local_tool_results`（2026-09-15）。
+
+【决策】 每个 `openai.custom` 工具独立将应用别名映射到 `args.name`，用于调用、结果、强制选择及回包名称；工具类型 `custom` 不是函数名。来源：`responses/convert_tools.rs`；回归测试 `custom_tool_aliases_roundtrip_calls_results_and_choice`（2026-09-15）。
