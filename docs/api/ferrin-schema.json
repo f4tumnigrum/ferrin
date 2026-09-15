@@ -89,7 +89,7 @@
         "fn from_json_schema(schema: Value) -> Self",
         "fn json_schema(&self) -> &Value",
         "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
-        "fn transformed(&self, transform: SchemaTransform) -> Self",
+        "fn transformed(&self, transform: SchemaTransform) -> Result<Self, SchemaError>",
         "fn typed_from_json_schema(schema: Value) -> Self",
         "fn validate(&self, value: Value) -> Result<T, TypeValidationError>",
         "fn with_json_schema_and_validator(json_schema: Value, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
@@ -139,6 +139,7 @@
       "variants": [
         "JsonParse(JsonParseError)",
         "TypeValidation(TypeValidationError)",
+        "UnsupportedTransform { transform: &'static str, keyword: &'static str }",
         "InvalidSchema { message: String }"
       ],
       "traits": [
@@ -165,8 +166,8 @@
       ],
       "methods": [
         "fn additional_properties_false() -> Self",
-        "fn applied(self, schema: Value) -> Value",
-        "fn apply(self, schema: &mut Value)",
+        "fn applied(self, schema: Value) -> Result<Value, SchemaError>",
+        "fn apply(self, schema: &mut Value) -> Result<(), SchemaError>",
         "fn openai_strict() -> Self"
       ],
       "traits": [
@@ -402,7 +403,7 @@
         "fn from_json_schema(schema: Value) -> Self",
         "fn json_schema(&self) -> &Value",
         "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
-        "fn transformed(&self, transform: SchemaTransform) -> Self",
+        "fn transformed(&self, transform: SchemaTransform) -> Result<Self, SchemaError>",
         "fn typed_from_json_schema(schema: Value) -> Self",
         "fn validate(&self, value: Value) -> Result<T, TypeValidationError>",
         "fn with_json_schema_and_validator(json_schema: Value, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
@@ -436,8 +437,8 @@
       ],
       "methods": [
         "fn additional_properties_false() -> Self",
-        "fn applied(self, schema: Value) -> Value",
-        "fn apply(self, schema: &mut Value)",
+        "fn applied(self, schema: Value) -> Result<Value, SchemaError>",
+        "fn apply(self, schema: &mut Value) -> Result<(), SchemaError>",
         "fn openai_strict() -> Self"
       ],
       "traits": [
@@ -463,7 +464,7 @@
     {
       "path": "ferrin_schema::transform::to_openai_strict",
       "kind": "function",
-      "signature": "fn to_openai_strict(schema: &mut Value)"
+      "signature": "fn to_openai_strict(schema: &mut Value) -> Result<(), SchemaError>"
     },
     {
       "path": "ferrin_schema::validation",

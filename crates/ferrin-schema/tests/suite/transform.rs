@@ -94,7 +94,7 @@ fn additional_properties_false_matches_reference_behaviour() {
 #[test]
 fn openai_strict_requires_everything_and_nullifies_optionals() {
     let mut strict = SchemaDialect::Draft07.generate::<WeatherInput>();
-    to_openai_strict(&mut strict);
+    to_openai_strict(&mut strict).unwrap();
 
     assert_eq!(
         strict["required"],
@@ -129,10 +129,12 @@ fn openai_strict_requires_everything_and_nullifies_optionals() {
         assert_eq!(variant["additionalProperties"], false);
     }
 
-    let applied = SchemaTransform::openai_strict().applied(json!({
-        "properties": { "a": { "$ref": "#/definitions/X" } },
-        "propertyNames": {},
-    }));
+    let applied = SchemaTransform::openai_strict()
+        .applied(json!({
+            "properties": { "a": { "$ref": "#/definitions/X" } },
+            "propertyNames": {},
+        }))
+        .unwrap();
     assert_eq!(
         applied,
         json!({
@@ -173,13 +175,45 @@ fn optional_constraints_accept_null_without_widening_non_null_values() {
         let mut schema = json!({
             "type": "object", "properties": {"value": constraint}
         });
-        to_openai_strict(&mut schema);
+        to_openai_strict(&mut schema).unwrap();
         let validator = Validator::compile(&schema).unwrap();
         assert!(validator.is_valid(&json!({"value": null})), "{schema}");
         assert!(validator.is_valid(&json!({"value": valid})), "{schema}");
         assert!(!validator.is_valid(&json!({"value": invalid})), "{schema}");
         assert!(!validator.is_valid(&json!({})), "{schema}");
     }
+}
+
+#[test]
+fn strict_rejects_dictionaries_without_mutating_the_input() {
+    use ferrin_schema::Schema;
+    use ferrin_schema::SchemaError;
+
+    let dictionary = json!({"type": "object", "additionalProperties": {"type": "integer"}});
+    for original in [
+        dictionary.clone(),
+        json!({"type": "object", "additionalProperties": true}),
+        json!({"type": "object", "patternProperties": {"^a": {"type": "integer"}}}),
+        json!({"type": "object", "properties": {"map": dictionary}}),
+        json!({"$defs": {"Map": dictionary}}),
+        json!({"anyOf": [{"type": "null"}, dictionary]}),
+        json!({"dependencies": {"trigger": {"properties": {"bag": dictionary}}}}),
+    ] {
+        let mut schema = original.clone();
+        assert!(matches!(
+            SchemaTransform::OpenAiStrict.apply(&mut schema),
+            Err(SchemaError::UnsupportedTransform { .. })
+        ));
+        assert_eq!(schema, original);
+        assert!(
+            Schema::from_json_schema(original)
+                .transformed(SchemaTransform::OpenAiStrict)
+                .is_err()
+        );
+    }
+    let mut derived_default = dictionary.clone();
+    add_additional_properties_false(&mut derived_default);
+    assert_eq!(derived_default, dictionary);
 }
 
 #[cfg(feature = "json-schema-validation")]
@@ -201,7 +235,7 @@ fn strict_nullability_preserves_local_reference_targets() {
         });
         let original = Validator::compile(&schema).unwrap();
         assert!(original.is_valid(&json!({name: 1, "copy": 2})));
-        to_openai_strict(&mut schema);
+        to_openai_strict(&mut schema).unwrap();
         let strict = Validator::compile(&schema).unwrap();
         assert!(strict.is_valid(&json!({name: 1, "copy": 2})), "{schema}");
         assert!(strict.is_valid(&json!({name: null, "copy": 2})), "{schema}");
@@ -239,7 +273,7 @@ fn strict_reference_relocation_respects_nested_resource_scopes() {
     });
     let original = Validator::compile(&schema).unwrap();
     assert!(original.is_valid(&json!({"value": {"number": 1}})));
-    to_openai_strict(&mut schema);
+    to_openai_strict(&mut schema).unwrap();
     let strict = Validator::compile(&schema).unwrap();
     assert!(
         strict.is_valid(&json!({"value": {"number": 1}})),
@@ -276,7 +310,7 @@ fn reference_relocation_keeps_anchor_and_annotation_scopes() {
     });
     let value = json!({"target": 1, "anchored": 2, "annotated": 3});
     assert!(Validator::compile(&schema).unwrap().is_valid(&value));
-    to_openai_strict(&mut schema);
+    to_openai_strict(&mut schema).unwrap();
     let strict = Validator::compile(&schema).unwrap();
     assert!(strict.is_valid(&value), "{schema}");
     assert!(
@@ -316,7 +350,7 @@ fn absolute_and_relative_references_to_declared_resources_are_relocated() {
     let value =
         json!({"value": 1, "resource": {"number": 2}, "absolute": 3, "relative": 4, "anchored": 5});
     assert!(Validator::compile(&schema).unwrap().is_valid(&value));
-    to_openai_strict(&mut schema);
+    to_openai_strict(&mut schema).unwrap();
     let strict = Validator::compile(&schema).unwrap();
     assert!(strict.is_valid(&value), "{schema}");
     assert!(!strict.is_valid(&json!({"value": 1, "resource": {"number": 2}, "absolute": "bad", "relative": 4, "anchored": 5})), "{schema}");

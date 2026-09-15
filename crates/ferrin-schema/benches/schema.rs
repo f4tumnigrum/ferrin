@@ -91,7 +91,7 @@ fn bench_openai_strict(c: &mut Criterion) {
     c.bench_function("schema/openai_strict", |b| {
         b.iter_batched(
             || base.clone(),
-            |schema| black_box(SchemaTransform::openai_strict().applied(schema)),
+            |schema| black_box(SchemaTransform::openai_strict().applied(schema).unwrap()),
             BatchSize::SmallInput,
         );
     });

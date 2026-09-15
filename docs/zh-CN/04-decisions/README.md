@@ -24,6 +24,7 @@
 | [0016](2026-09-14-0016-inline-encoding-no-spawn-blocking.md) | 编码与序列化在异步任务内直接执行，不使用 `spawn_blocking` | accepted | 2026-09-14 |
 | [0017](2026-09-14-0017-apache-2-license-and-attribution.md) | 许可改为 Apache-2.0 单许可并署名派生代码 | accepted | 2026-09-14 |
 | [0018](2026-09-14-0018-english-primary-documentation.md) | 英文作为文档主版本 | accepted | 2026-09-14 |
+| [0019](2026-09-15-0019-fallible-schema-transforms.md) | 可失败的供应商 Schema 转换 | accepted | 2026-09-15 |
 
 ## 编辑性修订
 

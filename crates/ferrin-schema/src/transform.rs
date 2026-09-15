@@ -8,6 +8,8 @@ use crate::transform_refs::child_path;
 use crate::transform_refs::rewrite_local_references;
 use crate::transform_refs::visit_children;
 
+use crate::SchemaError;
+
 /// A rewrite applied to a JSON Schema before it is sent to a provider.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -37,20 +39,30 @@ impl SchemaTransform {
         Self::AdditionalPropertiesFalse
     }
 
-    /// Applies the transform in place.
-    pub fn apply(self, schema: &mut Value) {
+    /// Applies the transform in place, leaving the input unchanged on error.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SchemaError::UnsupportedTransform`] for dictionaries that
+    /// OpenAI strict mode cannot represent.
+    pub fn apply(self, schema: &mut Value) -> Result<(), SchemaError> {
         match self {
             Self::AdditionalPropertiesFalse => add_additional_properties_false(schema),
             Self::RemovePropertyNames => remove_property_names(schema),
-            Self::OpenAiStrict => to_openai_strict(schema),
+            Self::OpenAiStrict => return to_openai_strict(schema),
         }
+        Ok(())
     }
 
-    /// Applies the transform to a copy and returns it.
-    #[must_use]
-    pub fn applied(self, mut schema: Value) -> Value {
-        self.apply(&mut schema);
-        schema
+    /// Applies the transform to an owned schema and returns it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SchemaError::UnsupportedTransform`] for dictionaries that
+    /// OpenAI strict mode cannot represent.
+    pub fn applied(self, mut schema: Value) -> Result<Value, SchemaError> {
+        self.apply(&mut schema)?;
+        Ok(schema)
     }
 }
 
@@ -100,10 +112,73 @@ pub fn remove_property_names(schema: &mut Value) {
 /// optional become nullable (the complete schema is wrapped in
 /// `anyOf: [original, {type: null}]`). Objects are recognized by `type` or by
 /// the presence of `properties`.
-pub fn to_openai_strict(schema: &mut Value) {
+///
+/// # Errors
+///
+/// Returns [`SchemaError::UnsupportedTransform`] for schema-valued or
+/// explicitly true `additionalProperties`, or `patternProperties`. The input
+/// is unchanged on error; arbitrary dictionary values are never discarded.
+pub fn to_openai_strict(schema: &mut Value) -> Result<(), SchemaError> {
+    validate_strict_maps(schema)?;
     let mut moves = Vec::new();
     rewrite_openai_strict(schema, "", &mut moves);
     rewrite_local_references(schema, &moves);
+    Ok(())
+}
+
+fn validate_strict_maps(schema: &Value) -> Result<(), SchemaError> {
+    let Value::Object(obj) = schema else {
+        return Ok(());
+    };
+    for keyword in ["additionalProperties", "patternProperties"] {
+        let unsupported = matches!(obj.get(keyword), Some(Value::Object(_) | Value::Bool(true)));
+        if unsupported {
+            return Err(SchemaError::UnsupportedTransform {
+                transform: "openai strict",
+                keyword,
+            });
+        }
+    }
+    for key in [
+        "properties",
+        "definitions",
+        "$defs",
+        "dependentSchemas",
+        "dependencies",
+    ] {
+        if let Some(Value::Object(map)) = obj.get(key) {
+            for child in map.values() {
+                validate_strict_maps(child)?;
+            }
+        }
+    }
+    for key in [
+        "items",
+        "additionalItems",
+        "anyOf",
+        "allOf",
+        "oneOf",
+        "prefixItems",
+        "not",
+        "if",
+        "then",
+        "else",
+        "contains",
+        "unevaluatedItems",
+        "unevaluatedProperties",
+    ] {
+        if let Some(child) = obj.get(key) {
+            match child {
+                Value::Array(children) => {
+                    for child in children {
+                        validate_strict_maps(child)?;
+                    }
+                }
+                child => validate_strict_maps(child)?,
+            }
+        }
+    }
+    Ok(())
 }
 
 fn rewrite_openai_strict(schema: &mut Value, path: &str, moves: &mut Vec<String>) {
@@ -136,12 +211,7 @@ fn rewrite_openai_strict(schema: &mut Value, path: &str, moves: &mut Vec<String>
             }
             obj.insert("required".to_owned(), json!(names));
         }
-        match obj.get_mut("additionalProperties") {
-            Some(Value::Object(_)) => {}
-            _ => {
-                obj.insert("additionalProperties".to_owned(), Value::Bool(false));
-            }
-        }
+        obj.insert("additionalProperties".to_owned(), Value::Bool(false));
     }
     visit_children(obj, path, &mut |child, child_path| {
         rewrite_openai_strict(child, child_path, moves);

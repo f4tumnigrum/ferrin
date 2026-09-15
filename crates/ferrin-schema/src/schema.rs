@@ -55,7 +55,11 @@ impl<T: DeserializeOwned + JsonSchema + 'static> Schema<T> {
     #[must_use]
     pub fn derived_with(dialect: SchemaDialect) -> Self {
         Self::lazy(
-            move || SchemaTransform::AdditionalPropertiesFalse.applied(dialect.generate::<T>()),
+            move || {
+                let mut schema = dialect.generate::<T>();
+                crate::transform::add_additional_properties_false(&mut schema);
+                schema
+            },
             deserialize_into::<T>,
         )
     }
@@ -149,16 +153,18 @@ impl<T: 'static> Schema<T> {
     }
 
     /// Returns a copy whose JSON Schema is rewritten by `transform`
-    /// (lazily); validation is unchanged.
-    #[must_use]
-    pub fn transformed(&self, transform: SchemaTransform) -> Self {
-        let source = Arc::clone(&self.json_schema);
-        Self {
-            json_schema: Arc::new(LazyValue::new(Box::new(move || {
-                transform.applied((**source).clone())
-            }))),
+    /// immediately; validation is unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::SchemaError::UnsupportedTransform`] if the schema
+    /// cannot be represented by the requested transform.
+    pub fn transformed(&self, transform: SchemaTransform) -> Result<Self, crate::SchemaError> {
+        let transformed = transform.applied(self.json_schema().clone())?;
+        Ok(Self {
+            json_schema: Arc::new(LazyValue::new(Box::new(move || transformed))),
             validate: Arc::clone(&self.validate),
-        }
+        })
     }
 
     /// Returns a `Schema<Value>` that runs this schema's validation but
