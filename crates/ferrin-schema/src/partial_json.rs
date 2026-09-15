@@ -68,6 +68,7 @@ enum State {
     InsideNumber,
     InsideObjectStart,
     InsideObjectKey,
+    InsideObjectKeyEscape,
     InsideObjectAfterKey,
     InsideObjectBeforeValue,
     InsideObjectAfterValue,
@@ -84,6 +85,8 @@ struct Repairer<'a> {
     last_valid_end: usize,
     literal_start: usize,
     unicode_escape_digits: u8,
+    unicode_escape_value: u16,
+    pending_high_surrogate: bool,
 }
 
 impl Repairer<'_> {
@@ -172,10 +175,13 @@ impl Repairer<'_> {
                     self.replace_top(State::InsideObjectKey);
                 }
             }
-            State::InsideObjectKey => {
-                if ch == '"' {
-                    self.replace_top(State::InsideObjectAfterKey);
-                }
+            State::InsideObjectKey => match ch {
+                '"' => self.replace_top(State::InsideObjectAfterKey),
+                '\\' => self.stack.push(State::InsideObjectKeyEscape),
+                _ => {}
+            },
+            State::InsideObjectKeyEscape => {
+                self.stack.pop();
             }
             State::InsideObjectAfterKey => {
                 if ch == ':' {
@@ -222,23 +228,33 @@ impl Repairer<'_> {
                 self.stack.pop();
                 if ch == 'u' {
                     self.unicode_escape_digits = 0;
+                    self.unicode_escape_value = 0;
                     self.stack.push(State::InsideStringUnicodeEscape);
                 } else {
                     self.last_valid_end = end;
                 }
             }
             State::InsideStringUnicodeEscape => {
-                if ch.is_ascii_hexdigit() {
+                if let Some(digit) = ch.to_digit(16) {
+                    self.unicode_escape_value = (self.unicode_escape_value << 4) | digit as u16;
                     self.unicode_escape_digits += 1;
                     if self.unicode_escape_digits == 4 {
                         self.stack.pop();
-                        self.last_valid_end = end;
+                        if (0xD800..=0xDBFF).contains(&self.unicode_escape_value) {
+                            // A high surrogate alone is not a Unicode scalar.
+                            self.pending_high_surrogate = true;
+                        } else if !self.pending_high_surrogate
+                            || (0xDC00..=0xDFFF).contains(&self.unicode_escape_value)
+                        {
+                            self.pending_high_surrogate = false;
+                            self.last_valid_end = end;
+                        }
                     }
                 }
             }
             State::InsideNumber => match ch {
                 '0'..='9' => self.last_valid_end = end,
-                'e' | 'E' | '-' | '.' => {}
+                'e' | 'E' | '-' | '+' | '.' => {}
                 ',' => {
                     self.stack.pop();
                     if self.top() == State::InsideArrayAfterValue {
@@ -310,6 +326,7 @@ impl Repairer<'_> {
                 State::Root
                 | State::Finish
                 | State::InsideStringEscape
+                | State::InsideObjectKeyEscape
                 | State::InsideStringUnicodeEscape
                 | State::InsideNumber => {}
             }
@@ -329,6 +346,8 @@ pub fn repair(input: &str) -> Cow<'_, str> {
         last_valid_end: 0,
         literal_start: 0,
         unicode_escape_digits: 0,
+        unicode_escape_value: 0,
+        pending_high_surrogate: false,
     };
     for (start, ch) in input.char_indices() {
         let end = start + ch.len_utf8();

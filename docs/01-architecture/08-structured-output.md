@@ -136,3 +136,5 @@ while let Some(partial) = partials.next().await {
 - [Decision] Keep deep `Value` equality rather than text hashing: comparison is roughly an order of magnitude cheaper than parsing, and hashing is slower. If performance becomes an issue, optimize incremental parsing.
 
 [Decision] Dynamic JSON Schema validation selects the dialect declared by `$schema`; only schemas without a declaration default to draft-07. Dialect-specific constraints must be evaluated rather than silently treated as unknown keywords.
+
+[Decision] Partial JSON repair tracks escaped object-key quotes and commits a Unicode escape only after a complete scalar value, including both halves of a surrogate pair. Positive signs in number exponents remain part of the number, including complete documents and truncated prefixes. Prefix tests include signed exponents, arbitrary serialized keys and explicitly escaped Unicode so incomplete keys and scalar values cannot produce invalid repaired JSON.

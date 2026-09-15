@@ -77,8 +77,15 @@ fn json_value() -> impl Strategy<Value = Value> {
     leaf.prop_recursive(4, 24, 4, |inner| {
         prop_oneof![
             prop::collection::vec(inner.clone(), 0..4).prop_map(Value::Array),
-            prop::collection::vec(("[a-z ]{0,5}", inner), 0..4)
-                .prop_map(|entries| { Value::Object(entries.into_iter().collect()) }),
+            prop::collection::vec(
+                (
+                    prop::collection::vec(any::<char>(), 0..8)
+                        .prop_map(|chars| chars.into_iter().collect::<String>()),
+                    inner
+                ),
+                0..4
+            )
+            .prop_map(|entries| { Value::Object(entries.into_iter().collect()) }),
         ]
     })
 }
@@ -87,12 +94,13 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(256))]
 
     #[test]
-    fn every_prefix_of_valid_json_repairs_to_valid_json(value in json_value(), pretty in any::<bool>()) {
+    fn every_prefix_of_valid_json_repairs_to_valid_json(value in json_value(), pretty in any::<bool>(), escaped in any::<bool>()) {
         let text = if pretty {
             serde_json::to_string_pretty(&value).unwrap()
         } else {
             serde_json::to_string(&value).unwrap()
         };
+        let text = if escaped { escape_unicode(&text) } else { text };
         for (index, _) in text.char_indices().skip(1) {
             let prefix = &text[..index];
             let trimmed = prefix.trim();
@@ -108,4 +116,66 @@ proptest! {
         let full = repair(&text);
         prop_assert_eq!(serde_json::from_str::<Value>(&full).unwrap(), value);
     }
+}
+
+fn escape_unicode(text: &str) -> String {
+    use std::fmt::Write;
+
+    let mut escaped = String::new();
+    for ch in text.chars() {
+        if ch.is_ascii() {
+            escaped.push(ch);
+        } else {
+            for unit in ch.encode_utf16(&mut [0; 2]) {
+                write!(escaped, "\\u{unit:04X}").unwrap();
+            }
+        }
+    }
+    escaped
+}
+
+#[test]
+fn escaped_keys_and_surrogate_prefixes_always_repair() {
+    for text in [
+        r#"{"a\":1":"value","b\\\":2":[1,2]}"#,
+        r#"{"\uD83D\uDE00":"\uD83D\uDE00\u0061","x":"a\uD834\uDD1Eb"}"#,
+    ] {
+        let original: Value = serde_json::from_str(text).unwrap();
+        for end in 1..=text.len() {
+            let prefix = &text[..end];
+            let repaired = repair(prefix);
+            assert!(
+                serde_json::from_str::<Value>(&repaired).is_ok(),
+                "prefix {prefix:?} repaired to {repaired:?}"
+            );
+        }
+        assert_eq!(
+            serde_json::from_str::<Value>(&repair(text)).unwrap(),
+            original
+        );
+    }
+    assert_eq!(repair(r#""a\uD83D"#), r#""a""#);
+    assert_eq!(repair(r#""a\uD83D\uDE"#), r#""a""#);
+    assert_eq!(repair(r#""a\uD83D\uDE00"#), r#""a\uD83D\uDE00""#);
+}
+
+#[test]
+fn positive_exponents_keep_complete_numbers_and_repair_every_prefix() {
+    for text in ["1e+2", "-1E+20", r#"{"n":1e+2}"#, "[1e+2, -3.5E+4]"] {
+        assert_eq!(repair(text), text);
+        for end in 1..=text.len() {
+            let prefix = &text[..end];
+            if prefix == "-" {
+                continue;
+            }
+            let repaired = repair(prefix);
+            assert!(
+                serde_json::from_str::<Value>(&repaired).is_ok(),
+                "prefix {prefix:?} repaired to {repaired:?}"
+            );
+        }
+    }
+    assert_eq!(repair(r#"{"n":1e+2"#), r#"{"n":1e+2}"#);
+    assert_eq!(repair("[1e+2"), "[1e+2]");
+    assert_eq!(repair("[1e+"), "[1]");
 }
