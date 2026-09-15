@@ -123,3 +123,5 @@ Proptest covers:
 - [Fact] Workspace-wide criterion flags fail on libtest harnesses without bench declarations (sample-size rejected by `ferrin-spec` on 2026-09-14). Both accept name filters, so just bench passes only a filter; target-specific criterion options use `cargo bench -p <crate> --bench <name> -- --save-baseline <tag>`.
 
 [Fact] `StreamContractChecker` remembers text, reasoning and tool-input IDs after their end events and rejects reuse within one provider call. Independent checker instances allow reuse across calls. Regression: `closed_part_ids_cannot_be_reused` (2026-09-15, review I02).
+
+[Fact] `FixtureServer::mount_times(..., 0)` mounts no route, so the next matching request reaches the fallback or returns 404. Regression coverage checks zero, one and multiple responses (2026-09-15, review I03).

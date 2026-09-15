@@ -123,3 +123,5 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 - 【事实】`cargo bench --workspace -- <criterion 选项>` 会失败：没有 `[[bench]]` 的 lib 目标仍以 libtest harness 运行，libtest 拒绝 criterion 的选项（`error: Unrecognized option: 'sample-size'`，2026-09-14 以 `ferrin-spec` 验证）；位置参数形式的名称过滤两者都接受。因此 `just bench [filter]` 只传过滤器，criterion 选项须限定单个目标：`cargo bench -p <crate> --bench <name> -- --save-baseline <tag>`。
 
 【事实】`StreamContractChecker` 在结束事件后仍记住文本、推理和工具输入 ID，拒绝同一次供应商调用内复用 ID；不同调用使用独立检查器时可以复用。回归测试：`closed_part_ids_cannot_be_reused`（2026-09-15，审查 I02）。
+
+【事实】`FixtureServer::mount_times(..., 0)` 不挂载路由，下一条匹配请求会使用后备路由或返回 404。回归测试覆盖零次、一次和多次响应（2026-09-15，审查 I03）。
