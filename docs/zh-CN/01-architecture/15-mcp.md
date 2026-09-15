@@ -246,3 +246,5 @@ mcp.close().await?;
 【决策】2026-09-15 请求级 HTTP SSE 读取任务同时监听 `SendOptions.cancellation` 和传输取消。客户端请求结束时取消私有令牌，即使传输保持打开也会释放响应体（回归覆盖：`crates/ferrin-mcp/tests/suite/http_stream_lifecycle.rs`，使用响应体析构通知）。
 
 【决策】2026-09-15 `TransportEvent::RequestError { id, error }` 将响应流失败归属到具体待处理请求。HTTP 请求 SSE 在收到匹配的 JSON-RPC 响应或错误后停止；无匹配响应的 EOF、无效消息和响应体或解码错误会使该请求失败，即使未配置超时。通知和其他请求 ID 不算完成（来源：`crates/ferrin-mcp/src/transport/http_stream.rs`）。
+
+【决策】2026-09-15 OAuth 单流程协调使用析构守卫，在成功、失败或认证 future 被丢弃时复位运行标志并推进及唤醒代次。取消元数据请求后，后续 401 处理不会永久等待已经中止的流程（回归覆盖：`crates/ferrin-mcp/tests/suite/oauth.rs`）。
