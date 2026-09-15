@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Embedding telemetry gives each chunk and retry attempt a distinct correlation
+  ID and balances failed attempt events, preserving concurrent token metrics.
+
 - Video polling deadlines cover in-flight status calls and retry waits, including
   webhook status checks; cancellation interrupts pending status requests.
 

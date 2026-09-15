@@ -278,7 +278,7 @@ impl ChunkCall {
             telemetry,
             call_id,
         } = self;
-        let outcome = retry(&retry_policy, &cancellation, |_| {
+        let outcome = retry(&retry_policy, &cancellation, |attempt| {
             let values = values.clone();
             let model = &model;
             let identity = &identity;
@@ -286,7 +286,7 @@ impl ChunkCall {
             let provider_options = &provider_options;
             let cancellation = &cancellation;
             let telemetry = &telemetry;
-            let call_id = &call_id;
+            let call_id = format!("{call_id}/attempt/{attempt}");
             async move {
                 let started = Instant::now();
                 telemetry.on_embed_start(&EmbedStartEvent {
@@ -303,28 +303,25 @@ impl ChunkCall {
                         cancellation: cancellation.child_token(),
                     })
                     .await
-                    .map_err(Error::from)?;
-                telemetry.on_embed_end(&EmbedEndEvent {
-                    call_id: call_id.clone(),
-                    embedding_count: result.embeddings.len(),
-                    tokens: result.usage.map(|usage| usage.tokens),
-                    duration: started.elapsed(),
-                });
-                Ok(result)
+                    .map_err(Error::from);
+                match &result {
+                    Ok(result) => telemetry.on_embed_end(&EmbedEndEvent {
+                        call_id: call_id.clone(),
+                        embedding_count: result.embeddings.len(),
+                        tokens: result.usage.map(|usage| usage.tokens),
+                        duration: started.elapsed(),
+                    }),
+                    Err(error) => telemetry.on_error(&ErrorEvent {
+                        call_id: &call_id,
+                        error,
+                        phase: ErrorPhase::ModelCall,
+                    }),
+                }
+                result
             }
         })
         .await;
-        let result = match outcome {
-            Ok(result) => result,
-            Err(error) => {
-                telemetry.on_error(&ErrorEvent {
-                    call_id: &call_id,
-                    error: &error,
-                    phase: ErrorPhase::ModelCall,
-                });
-                return Err(error);
-            }
-        };
+        let result = outcome?;
         if result.embeddings.len() != values.len() {
             return Err(invalid_count(values.len(), result.embeddings.len()));
         }
@@ -387,7 +384,7 @@ async fn run_calls(
     } else {
         1
     };
-    let make_call = |values: Vec<String>| ChunkCall {
+    let make_call = |index: usize, values: Vec<String>| ChunkCall {
         model: Arc::clone(&model),
         identity: identity.clone(),
         values,
@@ -396,14 +393,14 @@ async fn run_calls(
         retry_policy: base.retry_policy.clone(),
         cancellation: cancellation.clone(),
         telemetry: telemetry.clone(),
-        call_id: call_id.clone(),
+        call_id: format!("{call_id}/chunk/{index}"),
     };
 
     let mut results: Vec<Option<ModelEmbedResult>> = (0..chunks.len()).map(|_| None).collect();
     let indexed: Vec<(usize, Vec<String>)> = chunks.into_iter().enumerate().collect();
     for window in indexed.chunks(parallel) {
         if let [(index, values)] = window {
-            let result = make_call(values.clone()).run().await?;
+            let result = make_call(*index, values.clone()).run().await?;
             if let Some(slot) = results.get_mut(*index) {
                 *slot = Some(result);
             }
@@ -411,7 +408,7 @@ async fn run_calls(
         }
         let mut tasks: JoinSet<(usize, Result<ModelEmbedResult, Error>)> = JoinSet::new();
         for (index, values) in window {
-            let call = make_call(values.clone());
+            let call = make_call(*index, values.clone());
             let index = *index;
             tasks.spawn(async move { (index, call.run().await) });
         }
