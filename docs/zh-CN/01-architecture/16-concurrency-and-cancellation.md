@@ -75,3 +75,5 @@ flowchart TD
 - 【事实】（PV-020，`verification/pv020-sleep-reset`，release 构建）每个分片执行一次 `Sleep::poll` + `reset` 的开销为 73 ns（`Instant::now()` 为 17 ns），每秒数百至数千分片时占用可忽略。
 - 【决策】`chunk` 超时保持 `Sleep::reset` 方案，不采用固定间隔轮询。
 - 【决策】通道容量默认 64 与并发下载上限 8 已由 PV-006、PV-003 的结论确定，见[生成循环与流式](07-generation-loop-and-streaming.md)第 5 节与 [Prompt 转换](05-prompt-conversion.md)第 7 节。
+
+【决策】 挂起的工具输出流在每次轮询时同时轮询拥有令牌的取消 future，即使未配置工具超时，也注册取消唤醒。取消会唤醒执行器，并在调用终止时销毁挂起的工具 future。
