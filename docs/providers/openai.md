@@ -110,3 +110,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Fact] Responses and Chat request preparation resolve uploaded file references with `OpenAiConfig.name`, independently of the provider options key. Standalone prompt-conversion helpers retain the default `openai` name. Source: regression `uploaded_files_roundtrip_with_custom_provider_name` (2026-09-15).
 
 [Decision] Provider tool argument conversion renames only documented API fields and traverses known configuration objects; headers, metadata, schemas, and unknown argument values remain opaque. This preserves user dictionary keys and HTTP header spelling. Source: `responses/convert_tools.rs`; regression `provider_tool_options_preserve_opaque_dictionary_keys` (2026-09-15).
+
+[Decision] SSE EOF is successful only after an explicit provider terminal response or finish reason (including a Google prompt block). Earlier EOF emits `InvalidResponseData`, closes open parts through the stream driver, and never flushes incomplete tool arguments into executable calls. Source: stream EOF fixture-boundary regressions (2026-09-15); no live API verification.

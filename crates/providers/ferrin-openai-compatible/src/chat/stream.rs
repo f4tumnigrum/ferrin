@@ -442,10 +442,6 @@ impl StreamMachine for ChatStreamState {
 
     fn finish(mut self) -> Vec<StreamPart> {
         let mut parts = Vec::new();
-        self.end_reasoning(&mut parts);
-        self.end_text(&mut parts);
-        let tracker = std::mem::take(&mut self.tool_calls);
-        tracker.flush(&self.metadata_key, &mut parts);
         let Some(finish_reason) = self.finish_reason.take() else {
             let error: ProviderError = InvalidResponseDataError::new(
                 "response stream ended without a finish reason",
@@ -455,6 +451,10 @@ impl StreamMachine for ChatStreamState {
             parts.push(StreamPart::error(&error));
             return parts;
         };
+        self.end_reasoning(&mut parts);
+        self.end_text(&mut parts);
+        let tracker = std::mem::take(&mut self.tool_calls);
+        tracker.flush(&self.metadata_key, &mut parts);
         let mut provider_metadata = metadata_under(
             &self.metadata_key,
             self.usage

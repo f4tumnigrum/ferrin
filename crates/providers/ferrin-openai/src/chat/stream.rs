@@ -171,6 +171,7 @@ impl ToolCallTracker {
 pub struct ChatStreamState {
     config: SharedConfig,
     finish_reason: FinishReason,
+    received_finish_reason: bool,
     usage: Option<ChatUsage>,
     metadata_extracted: bool,
     text_active: bool,
@@ -185,6 +186,7 @@ impl ChatStreamState {
         Self {
             config,
             finish_reason: FinishReason::new(ferrin_spec::FinishReasonKind::Other),
+            received_finish_reason: false,
             usage: None,
             metadata_extracted: false,
             text_active: false,
@@ -219,6 +221,7 @@ impl ChatStreamState {
             return;
         };
         if let Some(reason) = &choice.finish_reason {
+            self.received_finish_reason = true;
             self.finish_reason = map_chat_finish_reason(reason);
         }
         if let Some(content) = choice.logprobs.as_ref().and_then(|l| l.content.clone()) {
@@ -292,6 +295,14 @@ impl StreamMachine for ChatStreamState {
     }
 
     fn finish(mut self) -> Vec<StreamPart> {
+        if !self.received_finish_reason {
+            return vec![StreamPart::error(&ProviderError::from(
+                InvalidResponseDataError::new(
+                    "chat stream ended before a finish reason was received",
+                    JsonValue::Null,
+                ),
+            ))];
+        }
         let mut parts = Vec::new();
         if self.text_active {
             parts.push(StreamPart::TextEnd {

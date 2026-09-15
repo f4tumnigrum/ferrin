@@ -84,3 +84,5 @@ Area fixtures replay through FixtureServer; streaming cases use `-stream` except
 Forty-three tests snapshot requests/prompts/events and cover option keys, inferred errors, headers/query, and all four extension hooks.
 
 [Pending verification] (PV-031) Handwritten official-schema fixtures need real-response recording.
+
+[Decision] Chat and Completion SSE EOF requires an explicit finish reason; otherwise the stream closes open parts and emits `InvalidResponseData`. Chat checks completion before flushing buffered tools, so truncated arguments never become executable calls. Source: `stream_eof` fixture-boundary regressions (2026-09-15); no live API verification.

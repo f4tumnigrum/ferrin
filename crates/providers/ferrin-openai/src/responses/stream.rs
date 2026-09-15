@@ -7,6 +7,8 @@ use ferrin_provider_util::ParseResult;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Usage;
+use ferrin_spec::error::InvalidResponseDataError;
+use ferrin_spec::error::ProviderError;
 use ferrin_spec::language_model::Content;
 use ferrin_spec::language_model::FinishReason;
 use ferrin_spec::language_model::FinishReasonKind;
@@ -103,6 +105,7 @@ pub struct ResponsesStreamState {
     active_item_ids: HashMap<u64, String>,
     approval_ids_from_stream: HashMap<String, String>,
     encountered_error: bool,
+    received_terminal_response: bool,
 }
 
 impl std::fmt::Debug for ResponsesStreamState {
@@ -135,6 +138,7 @@ impl ResponsesStreamState {
             active_item_ids: HashMap::new(),
             approval_ids_from_stream: HashMap::new(),
             encountered_error: false,
+            received_terminal_response: false,
         }
     }
 
@@ -400,6 +404,7 @@ impl ResponsesStreamState {
             }
             "response.completed" | "response.incomplete" => {
                 if let Some(response) = chunk.response() {
+                    self.received_terminal_response = true;
                     if !self.encountered_error {
                         let reason = response
                             .incomplete_details
@@ -424,6 +429,7 @@ impl ResponsesStreamState {
             }
             "response.failed" => {
                 if let Some(response) = chunk.response() {
+                    self.received_terminal_response = true;
                     let reason = response
                         .incomplete_details
                         .as_ref()
@@ -470,6 +476,14 @@ impl ResponsesStreamState {
     /// Emits the closing parts of the stream.
     #[must_use]
     pub fn finish_parts(self) -> Vec<StreamPart> {
+        if !self.received_terminal_response {
+            return vec![StreamPart::error(&ProviderError::from(
+                InvalidResponseDataError::new(
+                    "responses stream ended before a terminal response was received",
+                    JsonValue::Null,
+                ),
+            ))];
+        }
         let usage = self.usage.as_ref().map_or_else(Usage::default, |usage| {
             map_usage(usage, self.raw_usage.clone())
         });

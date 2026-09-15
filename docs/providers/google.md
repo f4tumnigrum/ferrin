@@ -97,3 +97,5 @@ Area fixtures replay through FixtureServer; chunks use encoded data events with 
 Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and events. The ≥20 MB JSONL upload path lacks fixture coverage.
 
 [Pending verification] (PV-031) Handwritten official-schema fixtures need real-response recording.
+
+[Decision] SSE EOF is successful only after an explicit provider terminal response or finish reason (including a Google prompt block). Earlier EOF emits `InvalidResponseData`, closes open parts through the stream driver, and never flushes incomplete tool arguments into executable calls. Source: stream EOF fixture-boundary regressions (2026-09-15); no live API verification.

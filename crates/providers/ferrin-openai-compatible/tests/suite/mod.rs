@@ -9,3 +9,4 @@ mod live_chat;
 mod options;
 mod prompt;
 mod provider;
+mod stream_eof;

@@ -16,5 +16,6 @@ mod responses_request;
 mod responses_stream;
 mod skills;
 mod speech;
+mod stream_eof;
 mod tools;
 mod transcription;
