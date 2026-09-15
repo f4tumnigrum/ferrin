@@ -29,7 +29,7 @@ PR 合并的必要条件（GitHub 分支保护）：
 2. `cargo clippy --workspace --all-targets --all-features -- -D warnings` 通过（Linux）。
 3. `cargo nextest run --workspace --all-features --no-fail-fast` 与 `cargo test --workspace --all-features --doc`（nextest 不运行 doctest）在 Linux、macOS、Windows 通过。
 4. `RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo doc --workspace --no-deps --all-features` 通过（`missing_docs` 在 CI 通过 `RUSTFLAGS=-D missing_docs` 对发布 crate 提升为错误）。
-5. `cargo deny check`（advisories、licenses、bans、sources）通过。
+5. 根工作区的 `cargo deny check`（advisories、licenses、bans、sources）与独立验证工作区的 advisories 检查均通过。
 6. `cargo shear --deny-warnings` 通过。
 7. `cargo hack check --workspace --each-feature --no-dev-deps` 通过（feature 独立可编译）。
 8. `cargo +1.98.0 check --workspace --all-features --locked`（MSRV 作业；`rust-version = "1.98"` 对应 1.98.0，工具链固定 1.98.1）。
@@ -123,3 +123,5 @@ unknown-git = "deny"
 【决策】规则集不设绕过者、不含必需状态检查。依据：无绕过者时误操作的强推会被拒绝，而有意的历史重写只需临时停用规则集；必需状态检查会拒绝未经 CI 的直接推送，与当前直接向 `main` 推送的工作方式冲突，采用 PR 工作流后再加入。
 
 【事实】每周安全审计工作流先保存 `cargo deny` 的退出状态，再关闭 Markdown 代码块；审计失败时设置创建安全问题所需的输出。2026-09-15 使用分别返回成功和失败状态的 shell 替身验证（审查 I01）。
+
+【决策】单独审计 `verification/Cargo.lock`，因为 Cargo 工作区依赖图不包含嵌套的独立工作区。`just deny` 和 CI 的 deny 作业在检查根工作区全部策略之外，也检查原型依赖的安全公告；每周安全审计工作流在任一工作区失败时均报告问题（审查 I05）。

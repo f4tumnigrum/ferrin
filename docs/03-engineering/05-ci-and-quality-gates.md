@@ -29,7 +29,7 @@ Required conditions for merging (branch protection policy):
 2. Workspace/all-target/all-feature Clippy with denied warnings passes on Linux.
 3. All-feature nextest without fail-fast and separate doctests pass on Linux/macOS/Windows.
 4. All-feature rustdoc with warnings denied and docsrs cfg passes; CI elevates `missing_docs` for published crates.
-5. All four cargo deny checks pass.
+5. All four root cargo deny checks and the separate verification workspace advisory check pass.
 6. `cargo shear --deny-warnings` passes.
 7. Each-feature cargo hack without dev dependencies passes.
 8. MSRV 1.98.0 locked all-feature check passes; development toolchain remains 1.98.1.
@@ -123,3 +123,5 @@ Commit generated files and compare regeneration in CI:
 [Decision] No bypass actors or required checks yet. Accidental force pushes fail; intentional rewriting can disable the rule temporarily. Required checks conflict with current direct-`main` pushes and will be added with the PR workflow.
 
 [Fact] The weekly advisory workflow preserves the exit status of `cargo deny` before closing its Markdown fence, so a failed audit sets the output that creates an advisory issue. Verified with shell stubs returning success and failure on 2026-09-15 (review I01).
+
+[Decision] Audit `verification/Cargo.lock` separately because Cargo workspace graphs do not include nested independent workspaces. `just deny` and the CI deny job check prototype advisories as well as all root policies; the weekly advisory workflow reports a failure from either workspace (review I05).

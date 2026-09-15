@@ -8,6 +8,10 @@ lists releases and cross-crate changes. The format follows
 
 ### Security
 
+- Update the independent verification workspace to `rustls` 0.23.45 as well,
+  removing RUSTSEC-2026-0285 from the prototype dependency lockfile; include
+  prototype advisories in local, CI and weekly audits to prevent missed updates.
+
 - Update transitive `rustls` to 0.23.45 to fix TLS 1.3 handshake encryption-level
   validation (RUSTSEC-2026-0285).
 

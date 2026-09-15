@@ -118,6 +118,7 @@ Append a row for every version check:
 | 2026-09-14 | Reintroduced `criterion` 0.8.2, latest stable on crates.io (released 2026-02-04, Apache-2.0 OR MIT, MSRV 1.86), as dev dependency for nine crates | Shear, four deny checks, each-feature checks passed; bench workflow uses pinned checkout/toolchain/cache/upload actions | Benchmarks |
 | 2026-09-15 | `rustls`, official crates.io API `max_stable_version` and unyanked release metadata | [Fact] 0.23.45 is the latest stable and fixes [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285); update the transitive lockfile from 0.23.44 without changing direct dependency requirements | Security review I04 |
 | 2026-09-15 | `url`, [official crates.io API](https://crates.io/api/v1/crates/url), highest unyanked stable release | [Fact] 2.5.8 remains latest stable (published 2026-01-05) and is already locked; schema now reuses the workspace dependency without a version change | Schema review F03 |
+| 2026-09-15 | `verification/Cargo.lock`, aligned with the already verified root `rustls` version | [Fact] The isolated prototype workspace now also locks 0.23.45 for RUSTSEC-2026-0285; the root workspace audit does not cover this separate lockfile | Additional review I05 |
 
 check-versions compares manifest dependencies with crates.io and reports outdated entries; weekly CI opens an issue (see [CI and quality gates](05-ci-and-quality-gates.md)).
 

@@ -118,6 +118,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-14 | `criterion` 0.8.2（crates.io 最新稳定版，2026-02-04 发布，Apache-2.0 OR MIT，`rust-version` 1.86）重新加入工作区，作为 9 个 crate 的开发依赖用于基准测试 | `cargo shear --deny-warnings` 无报告，`cargo deny check` 四项通过，`cargo hack check --each-feature` 通过；`bench.yml` 只引用已固定 SHA 的 `actions/checkout`、`dtolnay/rust-toolchain`、`Swatinem/rust-cache`、`actions/upload-artifact` | 基准测试阶段 |
 | 2026-09-15 | `rustls`，crates.io 官方 API `max_stable_version` 与未 yank 的发布记录 | 【事实】0.23.45 为最新稳定版，修复 [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285)；将传递依赖锁定版本从 0.23.44 升级，直接依赖约束不变 | 安全审查 I04 |
 | 2026-09-15 | `url`，[crates.io 官方 API](https://crates.io/api/v1/crates/url) 中未 yank 的最高稳定版本 | 【事实】2.5.8 仍为最新稳定版（2026-01-05 发布），现已锁定；schema 复用工作区依赖，不改变版本 | Schema 审查 F03 |
+| 2026-09-15 | `verification/Cargo.lock` 与根工作区已验证的 `rustls` 版本对齐 | 【事实】独立原型工作区也锁定 0.23.45，以修复 RUSTSEC-2026-0285；根工作区审计不会覆盖这份独立锁文件 | 补充审查 I05 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
 
