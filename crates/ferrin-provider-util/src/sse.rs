@@ -95,18 +95,21 @@ impl SseDecoder {
     /// limit; the decoder should be discarded afterwards.
     pub fn feed(&mut self, bytes: &[u8]) -> Result<Vec<SseEvent>, SseError> {
         let mut events = Vec::new();
-        let mut input = bytes;
-        if !self.bom_checked && self.buffer.is_empty() {
-            if input.len() >= 3 {
-                self.bom_checked = true;
-                if input.starts_with(&[0xEF, 0xBB, 0xBF]) {
-                    input = &input[3..];
+        for &byte in bytes {
+            // Resolve a possible BOM before interpreting any line terminator.
+            // Only its first two bytes may remain buffered across feeds.
+            if !self.bom_checked {
+                const BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
+                if byte == BOM[self.buffer.len()] {
+                    self.buffer.push(byte);
+                    if self.buffer.len() == BOM.len() {
+                        self.buffer.clear();
+                        self.bom_checked = true;
+                    }
+                    continue;
                 }
-            } else if !input.is_empty() && input[0] != 0xEF {
                 self.bom_checked = true;
             }
-        }
-        for &byte in input {
             if self.pending_cr {
                 self.pending_cr = false;
                 if byte == b'\n' {
@@ -129,12 +132,6 @@ impl SseDecoder {
                         });
                     }
                 }
-            }
-        }
-        if !self.bom_checked && self.buffer.len() >= 3 {
-            self.bom_checked = true;
-            if self.buffer.starts_with(&[0xEF, 0xBB, 0xBF]) {
-                self.buffer.drain(..3);
             }
         }
         Ok(events)

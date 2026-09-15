@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Decode the first SSE event when the UTF-8 BOM crosses response chunks.
+
 - Ignore unrepresentable `Retry-After` delays instead of panicking.
 
 ### Added

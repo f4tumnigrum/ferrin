@@ -93,3 +93,31 @@ async fn stream_decoder_stamps_time_and_drops_incomplete_tail() {
         .collect();
     assert_eq!(data, vec!["one".to_owned(), "two".to_owned()]);
 }
+
+#[test]
+fn split_bom_and_line_boundaries_preserve_first_event() {
+    for input in [
+        &b"\xEF\xBB\xBFdata: first\r\n\r\ndata: next\n\n"[..],
+        &b"data: first\r\n\r\ndata: next\n\n"[..],
+    ] {
+        for first in 0..=input.len() {
+            for second in first..=input.len() {
+                let mut decoder = SseDecoder::new();
+                let mut events = Vec::new();
+                for chunk in [&input[..first], &input[first..second], &input[second..]] {
+                    events.extend(decoder.feed(chunk).unwrap());
+                }
+                assert_eq!(events, vec![event("first"), event("next")]);
+            }
+        }
+    }
+}
+
+#[test]
+fn incomplete_bom_prefix_does_not_swallow_line_terminator() {
+    for prefix in [&b"\xEF"[..], &b"\xEF\xBB"[..]] {
+        let mut decoder = SseDecoder::new();
+        assert_eq!(decoder.feed(prefix).unwrap(), Vec::<SseEvent>::new());
+        assert_eq!(decoder.feed(b"\ndata: ok\n\n").unwrap(), vec![event("ok")]);
+    }
+}

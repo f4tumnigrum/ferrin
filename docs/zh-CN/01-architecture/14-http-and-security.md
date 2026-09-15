@@ -214,3 +214,5 @@ Ferrin 链路：应用头 → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 - 【决策】`Headers::insert(&str, &str)` 使用 `HeaderValue::from_str`；响应头读取接口提供 `get_str()`（仅 ASCII）与 `get_bytes()`，供应商元数据中的头值以 UTF-8 有损转换后保存。第一方供应商的请求头均为 ASCII，不受影响。
 
 【事实】2026-09-15 重试头解析采用可失败的时长转换，忽略非有限、负数及超出范围的数值；无效的毫秒头仍允许回退到秒数或日期头（来源：`crates/ferrin-provider-util/tests/suite/misc.rs`）。
+
+【事实】2026-09-15 SSE BOM 检测在解析首行前完成，支持 BOM 跨块；回归测试枚举 BOM、CRLF 和事件分隔符之间的全部两处分块边界（来源：`crates/ferrin-provider-util/tests/suite/sse.rs`）。
