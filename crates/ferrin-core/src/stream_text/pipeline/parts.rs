@@ -142,7 +142,7 @@ impl Attempt {
                 title,
                 provider_metadata,
             } => {
-                let tool = self.ctx.execution_tools.get(tool_name.as_str()).cloned();
+                let tool = self.inputs.tools.get(tool_name.as_str()).cloned();
                 let dynamic = dynamic || tool.as_ref().is_some_and(|tool| tool.kind().is_dynamic());
                 let title = title.or_else(|| {
                     tool.as_ref()
@@ -343,7 +343,7 @@ impl Attempt {
     ) -> Result<Vec<StreamEvent>, Error> {
         let parsed = {
             let parse_ctx = ParseContext {
-                tools: &self.ctx.execution_tools,
+                tools: &self.inputs.tools,
                 tool_choice: self.inputs.tool_choice.as_ref(),
                 repair: self.ctx.config.repair_tool_call.as_deref(),
                 refine: &self.ctx.config.refine_tool_inputs,

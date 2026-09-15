@@ -243,3 +243,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 - [Fact] `RefineToolInputs` stores `Arc<dyn Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>>>` by tool name, rewriting input after schema validation and before execution. The replacement updates `ParsedToolCall.input` and response messages.
 - [Fact] `ToolApprovalRequestContent { approval_id, tool_call: ParsedToolCall, reason, is_automatic }` carries the full parsed call. `StepContent::ToolApprovalResponse(ToolApprovalResponseContent { approval_id, tool_call, approved, reason, provider_executed })` records replay decisions. Approval UIs need names and input without searching history again.
 - [Fact] `DescriptionContext::with_tool_context(JsonValue)` resolves dynamic descriptions outside generation loops, including batches and realtime sessions.
+
+[Decision] Parsing and repair use the same caller-filtered, active tool set sent to the provider for that step. Tools hidden behind a local caller remain available to that caller, but a direct model call cannot select them or trigger their input hooks.
