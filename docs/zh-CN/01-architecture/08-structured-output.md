@@ -134,3 +134,5 @@ while let Some(partial) = partials.next().await {
 - 【事实】（PV-004）`schemars` draft-07 对 `Option<T>` 生成 `type: [T, "null"]`（原始类型）或 `anyOf: [$ref, {type: null}]`（引用类型），对枚举生成 `enum`/`oneOf`；适配器变换（OpenAI 严格模式的补全、Anthropic 的 `sanitize_json_schema`）按这些形状处理可空类型与枚举。详见[工具系统](06-tool-system.md)第 10 节。
 - 【事实】（PV-008，`verification/pv008-partial-compare`，release 构建）`serde_json::Value` 深比较耗时：9 KiB 对象 16 µs、96 KiB 对象 135 µs、507 KiB 对象 675 µs；同一对象序列化后哈希的耗时更高（18 µs / 180 µs / 916 µs）；解析耗时是比较的 6–7 倍（93 µs / 936 µs / 4.7 ms）。
 - 【决策】部分输出比较保持 `Value` 深比较，不改为文本哈希。依据：比较成本低于解析成本一个数量级，且哈希方案更慢；若未来出现热点，优化方向是增量解析而非比较方式。
+
+【决策】动态 JSON Schema 校验使用 `$schema` 声明的方言，仅在未声明时默认采用 draft-07。必须执行方言专属约束，不能将其作为未知关键字静默忽略。

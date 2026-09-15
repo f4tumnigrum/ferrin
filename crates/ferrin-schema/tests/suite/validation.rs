@@ -52,6 +52,52 @@ mod dynamic {
     }
 
     #[test]
+    fn declared_dialect_controls_validation() {
+        let modern = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "array",
+            "prefixItems": [{"type": "integer"}],
+            "items": false
+        });
+        let validator = Validator::compile(&modern).unwrap();
+        assert!(validator.is_valid(&json!([1])));
+        assert!(!validator.is_valid(&json!(["bad"])));
+        assert!(!validator.is_valid(&json!([1, 2])));
+
+        let modern = Schema::<Value>::from_json_schema(json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {"allowed": {"type": "integer"}},
+            "unevaluatedProperties": false
+        }));
+        assert!(modern.validate(json!({"allowed": 1})).is_ok());
+        assert!(modern.validate(json!({"extra": 1})).is_err());
+
+        let draft4 = Validator::compile(&json!({
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "type": "number", "minimum": 1, "exclusiveMinimum": true
+        }))
+        .unwrap();
+        assert!(draft4.is_valid(&json!(2)));
+        assert!(!draft4.is_valid(&json!(1)));
+    }
+
+    #[test]
+    fn undeclared_schema_uses_draft_seven() {
+        // Draft-07 evaluates tuple items and ignores 2020-12 prefixItems.
+        let validator = Validator::compile(&json!({
+            "type": "array",
+            "items": [{"type": "integer"}],
+            "additionalItems": false,
+            "prefixItems": [{"type": "string"}]
+        }))
+        .unwrap();
+        assert!(validator.is_valid(&json!([1])));
+        assert!(!validator.is_valid(&json!(["bad"])));
+        assert!(!validator.is_valid(&json!([1, 2])));
+    }
+
+    #[test]
     fn invalid_schema_is_reported() {
         let error = Validator::compile(&json!({ "type": 12 })).unwrap_err();
         assert!(matches!(error, SchemaError::InvalidSchema { .. }));
