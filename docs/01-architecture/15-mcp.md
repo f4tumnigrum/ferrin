@@ -249,3 +249,5 @@ mcp.close().await?;
 [Decision] 2026-09-15 `TransportEvent::RequestError { id, error }` attributes response-stream failures to one pending request. HTTP request SSE parsing stops after a matching JSON-RPC response/error; EOF without one, invalid messages and body/decode errors fail that request even when no timeout is configured. Notifications and other request IDs do not count as completion (source: `crates/ferrin-mcp/src/transport/http_stream.rs`).
 
 [Decision] 2026-09-15 OAuth single-flow coordination uses a destructor guard to reset the in-flight flag and advance/wake its generation on success, failure or dropped authentication futures. Cancelled metadata requests cannot leave later 401 handling waiting on an abandoned flow (regression coverage: `crates/ferrin-mcp/tests/suite/oauth.rs`).
+
+[Fact] 2026-09-15 Streamable HTTP debug output redacts session IDs from both configured and live state, including server-updated values; event resumption IDs are redacted too (source: `crates/ferrin-mcp/tests/suite/http_transport.rs`, `debug_redacts_initial_and_server_updated_session_ids`).

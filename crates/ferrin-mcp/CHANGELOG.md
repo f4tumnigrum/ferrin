@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Redact live HTTP session and event IDs from transport debug output.
+
 - Release OAuth flow coordination when an authentication future is cancelled.
 
 - Resolve HTTP SSE requests with their own error on EOF or decoding failure before a matching response.
