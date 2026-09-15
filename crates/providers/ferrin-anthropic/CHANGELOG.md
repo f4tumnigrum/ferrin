@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Accept documented camelCase block-binding options while preserving the legacy spelling.
+
 ### Added
 
 - `messages` benchmark: `do_generate` and `do_stream` against the fixture

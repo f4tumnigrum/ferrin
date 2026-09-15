@@ -26,8 +26,10 @@ pub struct CacheControl {
 
 /// Prefix mismatch behaviour of block binding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockBinding {
     /// `error` or `drop_block`.
+    #[serde(alias = "prefix_mismatch_behavior")]
     pub prefix_mismatch_behavior: String,
 }
 
