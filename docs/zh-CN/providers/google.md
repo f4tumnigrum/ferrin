@@ -105,3 +105,5 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 【事实】 助手文件与推理文件回放保留生成时的 `thoughtSignature`；验证：`tests/suite/prompt.rs::generated_files_replay_their_thought_signatures`（2026-09-15）。
 
 【决策】 Live API 函数输出直接保留 JSON 对象，其他 JSON 值或普通文本包装为 `response.result`，以满足响应必须为对象的要求并保留工具输出。回归：`tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text`（2026-09-15）。
+
+【决策】 Schema 转换把 `true` 映射为不施加约束的 schema（`{}`），对 `false` 返回 `UnsupportedFunctionality`，包括属性、数组项、联合与引用位置；支持的 OpenAPI 子集无法表达拒绝所有值的 schema。回归：`tests/suite/unit.rs::boolean_schemas_keep_their_validation_meaning`（2026-09-15）。

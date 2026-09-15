@@ -33,7 +33,7 @@ struct Context<'a> {
 ///
 /// Returns [`UnsupportedFunctionalityError`] for `$ref`s that do not point at
 /// a direct child of the root `$defs`/`definitions`, for recursive `$ref`s
-/// and for enums mixing value types.
+/// for enums mixing value types, and for `false` schemas.
 pub fn convert_json_schema_to_openapi_schema(
     schema: &JsonValue,
 ) -> Result<Option<JsonValue>, UnsupportedFunctionalityError> {
@@ -57,9 +57,11 @@ fn convert_definition(
 ) -> Result<Option<JsonValue>, UnsupportedFunctionalityError> {
     let object = match schema {
         JsonValue::Null => return Ok(None),
-        JsonValue::Bool(_) => {
-            return Ok(Some(
-                serde_json::json!({"type": "boolean", "properties": {}}),
+        JsonValue::Bool(true) => return Ok(Some(serde_json::json!({}))),
+        JsonValue::Bool(false) => {
+            return Err(UnsupportedFunctionalityError::with_message(
+                "false JSON Schema",
+                "Google OpenAPI schema conversion cannot represent a schema that rejects every value",
             ));
         }
         JsonValue::Object(object) => object,
@@ -144,7 +146,7 @@ fn convert_definition(
                 .collect::<Result<Vec<_>, _>>()?;
             result.insert("items".to_owned(), JsonValue::Array(converted));
         }
-        Some(items) if !items.is_null() && items != &JsonValue::Bool(false) => {
+        Some(items) if !items.is_null() => {
             if let Some(converted) = convert_definition(items, false, context)? {
                 result.insert("items".to_owned(), converted);
             }

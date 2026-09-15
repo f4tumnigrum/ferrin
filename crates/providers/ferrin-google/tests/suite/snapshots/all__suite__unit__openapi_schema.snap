@@ -58,10 +58,7 @@ expression: converted
     "meta": {
       "type": "object"
     },
-    "flag": {
-      "type": "boolean",
-      "properties": {}
-    },
+    "flag": {},
     "kind": {
       "type": "string",
       "enum": [
