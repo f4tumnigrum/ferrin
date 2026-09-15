@@ -136,13 +136,22 @@ impl std::fmt::Debug for ClientSecret {
     }
 }
 
-/// WebSocket connection parameters.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// WebSocket connection parameters; URL and protocols are redacted in debug output.
+#[derive(Clone, PartialEq, Eq)]
 pub struct WebSocketConfig {
     /// URL to connect to.
     pub url: Url,
     /// Sub-protocols to request.
     pub protocols: Vec<String>,
+}
+
+impl std::fmt::Debug for WebSocketConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WebSocketConfig")
+            .field("url", &"***")
+            .field("protocols", &"***")
+            .finish()
+    }
 }
 
 /// Output modality.
