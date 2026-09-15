@@ -8,6 +8,7 @@ mod generate;
 mod hooks;
 mod middleware;
 mod modalities;
+mod output;
 mod prepare_step;
 #[cfg(feature = "realtime")]
 mod realtime;
