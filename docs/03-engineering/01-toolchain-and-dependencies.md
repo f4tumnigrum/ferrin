@@ -45,7 +45,7 @@ Versions come from crates.io API `max_stable_version` on 2026-09-13. These are w
 | `http` | 1.5.0 | `HeaderMap`, `StatusCode`, `Method` | spec, provider-util |
 | `url` | 2.5.8 | URL parsing | spec, provider-util |
 | `reqwest` | 0.13.5 | Default HTTP transport: `rustls`/`http2`/`stream`, defaults disabled. [Fact] Since 0.13, `rustls` replaces `rustls-tls` (PV-015). [Decision] No `multipart`/`json`/`charset` since 2026-09-13; see HTTP chapter, section 11. | provider-util |
-| `rustls` | 0.23.44 | TLS through reqwest, default aws-lc. [Fact] Removed as a direct workspace dependency on 2026-09-14 because no member uses it directly. | Transitive only |
+| `rustls` | 0.23.45 | TLS through reqwest, default aws-lc. [Fact] Removed as a direct workspace dependency on 2026-09-14 because no member uses it directly. | Transitive only |
 | `rustls-platform-verifier` | 0.7.0 | System certificate verifier. [Fact] Default in reqwest 0.13; `platform-verifier` feature permits direct configuration. `webpki-roots` is unnecessary. | provider-util feature |
 | `tokio-tungstenite` | 0.30.0 | Realtime WebSockets | core `realtime` feature, openai |
 | `chrono` | 0.4.45 | Timestamps with `serde`/`clock`; `Retry-After` date parsing | spec, provider-util |
@@ -114,6 +114,7 @@ Append a row for every version check:
 | 2026-09-14 | All 52 direct external dependencies, `check-versions` against highest unyanked stable sparse-index versions | All locked versions latest stable | Initial `check-versions` run |
 | 2026-09-14 | Shear cleanup removed unused workspace `assert_matches`, `async-stream`, `criterion`, `data-url`, `rustls`, `serde_with`, `subtle`, `tempfile`, `tokio-test`, `uuid`; IDs use IdGenerator and HMAC verify_slice provides constant-time checks. Removed unused core `subtle`/`insta`/`proptest`/`tokio-test`/`assert_matches`/`tracing-subscriber`/`criterion`, provider-util `percent-encoding`/`tracing`/`proptest`/`tokio-test`, testing `futures-core`/`thiserror`/`tracing`, compatible `futures-util`/`regex`; message `serde_json` became dev-only. | No shear warnings | Cleanup |
 | 2026-09-14 | Reintroduced `criterion` 0.8.2, latest stable on crates.io (released 2026-02-04, Apache-2.0 OR MIT, MSRV 1.86), as dev dependency for nine crates | Shear, four deny checks, each-feature checks passed; bench workflow uses pinned checkout/toolchain/cache/upload actions | Benchmarks |
+| 2026-09-15 | `rustls`, official crates.io API `max_stable_version` and unyanked release metadata | [Fact] 0.23.45 is the latest stable and fixes [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285); update the transitive lockfile from 0.23.44 without changing direct dependency requirements | Security review I04 |
 
 check-versions compares manifest dependencies with crates.io and reports outdated entries; weekly CI opens an issue (see [CI and quality gates](05-ci-and-quality-gates.md)).
 

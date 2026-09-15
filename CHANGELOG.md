@@ -6,6 +6,11 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Update transitive `rustls` to 0.23.45 to fix TLS 1.3 handshake encryption-level
+  validation (RUSTSEC-2026-0285).
+
 ### Added
 
 - Complete English documentation as the primary edition, with an independent
