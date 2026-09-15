@@ -114,3 +114,59 @@ async fn foreign_references_are_rejected() {
         "{error:?}"
     );
 }
+
+#[tokio::test]
+async fn uploaded_files_roundtrip_with_custom_provider_name() {
+    use ferrin_spec::CallOptions;
+    use ferrin_spec::FileData;
+    use ferrin_spec::PromptMessage;
+    use ferrin_spec::language_model::prompt::FilePart;
+    use ferrin_spec::language_model::prompt::UserPromptPart;
+
+    let test = TestProvider::start_with(|mut settings| {
+        settings.name = Some("azure".to_owned());
+        settings
+    })
+    .await;
+    test.mount(Method::POST, "/v1/files", "files", "upload");
+    let uploaded = test
+        .provider
+        .files()
+        .upload_file(UploadFileOptions::new(
+            Bytes::from_static(b"%PDF-1.4 test"),
+            "application/pdf",
+        ))
+        .await
+        .unwrap();
+    let options = CallOptions::new(vec![PromptMessage::user(vec![UserPromptPart::File(
+        FilePart::new(
+            FileData::Reference {
+                reference: uploaded.provider_reference,
+            },
+            "application/pdf",
+        ),
+    )])]);
+    let responses = ferrin_openai::responses::request::prepare_request(
+        test.provider.config(),
+        "gpt-4.1",
+        &options,
+    )
+    .unwrap();
+    let chat = test
+        .provider
+        .chat("gpt-4.1")
+        .prepare_request(&options)
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(responses.body).unwrap()["input"][0]["content"],
+        json!([
+            {"type": "input_file", "file_id": "file-abc123"}
+        ])
+    );
+    assert_eq!(
+        serde_json::to_value(chat.body).unwrap()["messages"][0]["content"],
+        json!([
+            {"type": "file", "file": {"file_id": "file-abc123"}}
+        ])
+    );
+}

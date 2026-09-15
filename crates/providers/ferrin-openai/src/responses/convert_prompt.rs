@@ -112,6 +112,14 @@ pub fn convert_prompt(
     prompt: &[PromptMessage],
     ctx: &ConversionContext<'_>,
 ) -> Result<ConvertedInput, ProviderError> {
+    convert_prompt_for_provider(prompt, ctx, "openai")
+}
+
+pub(crate) fn convert_prompt_for_provider(
+    prompt: &[PromptMessage],
+    ctx: &ConversionContext<'_>,
+    provider_name: &str,
+) -> Result<ConvertedInput, ProviderError> {
     let mut out = ConvertedInput::default();
     for message in prompt {
         match message {
@@ -131,7 +139,7 @@ pub fn convert_prompt(
             PromptMessage::User { content, .. } => {
                 let mut parts = Vec::with_capacity(content.len());
                 for (index, part) in content.iter().enumerate() {
-                    parts.push(convert_user_part(part, index, ctx)?);
+                    parts.push(convert_user_part(part, index, ctx, provider_name)?);
                 }
                 out.input
                     .push(message_item(ctx, json!({"role": "user", "content": parts})));
@@ -162,10 +170,11 @@ fn convert_user_part(
     part: &UserPromptPart,
     index: usize,
     ctx: &ConversionContext<'_>,
+    provider_name: &str,
 ) -> Result<JsonValue, ProviderError> {
     match part {
         UserPromptPart::Text(text) => Ok(json!({"type": "input_text", "text": text.text})),
-        UserPromptPart::File(file) => convert_user_file(file, index, ctx),
+        UserPromptPart::File(file) => convert_user_file(file, index, ctx, provider_name),
         #[allow(unreachable_patterns, reason = "UserPromptPart is non-exhaustive")]
         _ => Err(UnsupportedFunctionalityError::new("user prompt part type").into()),
     }
@@ -197,6 +206,7 @@ fn convert_user_file(
     file: &FilePart,
     index: usize,
     ctx: &ConversionContext<'_>,
+    provider_name: &str,
 ) -> Result<JsonValue, ProviderError> {
     let options = part_options(file.provider_options.as_ref(), ctx.provider_options_key)?;
     let is_image = file.media_type.top_level() == "image";
@@ -211,7 +221,7 @@ fn convert_user_file(
     };
     let file_id = match &file.data {
         FileData::Reference { reference } => {
-            Some(resolve_provider_reference(reference, "openai")?.to_owned())
+            Some(resolve_provider_reference(reference, provider_name)?.to_owned())
         }
         FileData::Text { text } => Some(
             file_id_from_text(text, ctx.file_id_prefixes)

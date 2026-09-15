@@ -41,7 +41,7 @@ use serde_json::json;
 
 use self::api_types::ChatRequest;
 use self::api_types::ChatResponse;
-use self::convert_prompt::convert_prompt;
+use self::convert_prompt::convert_prompt_for_provider;
 use self::convert_tools::convert_tools;
 use self::options::ChatProviderOptions;
 use self::output::map_chat_finish_reason;
@@ -144,10 +144,11 @@ impl OpenAiChatLanguageModel {
         } else {
             caps.system_message_mode
         });
-        let messages = convert_prompt(
+        let messages = convert_prompt_for_provider(
             &options.prompt,
             system_message_mode,
             &self.config.provider_options_key,
+            &self.config.name,
         )?;
         warnings.extend(messages.warnings);
         let strict_json_schema = openai.strict_json_schema.unwrap_or(true);

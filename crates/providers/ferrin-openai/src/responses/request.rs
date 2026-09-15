@@ -16,7 +16,7 @@ use serde_json::json;
 
 use super::api_types::ResponsesRequest;
 use super::convert_prompt::ConversionContext;
-use super::convert_prompt::convert_prompt;
+use super::convert_prompt::convert_prompt_for_provider;
 use super::convert_tools::convert_tools;
 use super::convert_tools::tool_name_mapping;
 use super::options::ResponsesProviderOptions;
@@ -153,7 +153,7 @@ pub fn prepare_request(
         provider_options_key: &config.provider_options_key,
         pass_through_unsupported_files: openai.pass_through_unsupported_files.unwrap_or(false),
     };
-    let converted = convert_prompt(&options.prompt, &ctx)?;
+    let converted = convert_prompt_for_provider(&options.prompt, &ctx, &config.name)?;
     warnings.extend(converted.warnings);
     let mut input = converted.input;
 

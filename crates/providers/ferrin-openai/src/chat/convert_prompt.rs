@@ -43,6 +43,15 @@ pub fn convert_prompt(
     system_message_mode: SystemMessageMode,
     provider_options_key: &str,
 ) -> Result<ConvertedMessages, ProviderError> {
+    convert_prompt_for_provider(prompt, system_message_mode, provider_options_key, "openai")
+}
+
+pub(crate) fn convert_prompt_for_provider(
+    prompt: &[PromptMessage],
+    system_message_mode: SystemMessageMode,
+    provider_options_key: &str,
+    provider_name: &str,
+) -> Result<ConvertedMessages, ProviderError> {
     let mut out = ConvertedMessages::default();
     for message in prompt {
         match message {
@@ -68,7 +77,7 @@ pub fn convert_prompt(
                     parts.push(match part {
                         UserPromptPart::Text(text) => json!({"type": "text", "text": text.text}),
                         UserPromptPart::File(file) => {
-                            convert_file(file, index, provider_options_key)?
+                            convert_file(file, index, provider_options_key, provider_name)?
                         }
                         #[allow(unreachable_patterns, reason = "UserPromptPart is non-exhaustive")]
                         _ => {
@@ -178,12 +187,17 @@ pub fn convert_prompt(
     Ok(out)
 }
 
-fn convert_file(file: &FilePart, index: usize, key: &str) -> Result<JsonValue, ProviderError> {
+fn convert_file(
+    file: &FilePart,
+    index: usize,
+    key: &str,
+    provider_name: &str,
+) -> Result<JsonValue, ProviderError> {
     let options = part_options(file.provider_options.as_ref(), key)?;
     match &file.data {
         FileData::Reference { reference } => Ok(json!({
             "type": "file",
-            "file": {"file_id": resolve_provider_reference(reference, "openai")?},
+            "file": {"file_id": resolve_provider_reference(reference, provider_name)?},
         })),
         FileData::Text { .. } => Err(UnsupportedFunctionalityError::new("text file parts").into()),
         FileData::Url { url } => {
