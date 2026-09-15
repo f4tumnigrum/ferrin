@@ -8,6 +8,7 @@ mod prompt;
 mod provider;
 mod realtime;
 mod request;
+mod security;
 mod speech;
 mod stream;
 mod tools;

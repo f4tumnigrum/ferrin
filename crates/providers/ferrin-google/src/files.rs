@@ -5,13 +5,16 @@ use std::time::Instant;
 
 use bytes::Bytes;
 use bytes::BytesMut;
+use ferrin_provider_util::http::HttpRequest;
+use ferrin_provider_util::http::RequestBody;
 use ferrin_provider_util::http::ResponseHandlers;
 use ferrin_provider_util::http::delete;
 use ferrin_provider_util::http::get;
 use ferrin_provider_util::http::json_response_handler;
-use ferrin_provider_util::http::post_bytes;
 use ferrin_provider_util::http::post_json;
+use ferrin_provider_util::http::send;
 use ferrin_provider_util::http::text_response_handler;
+use ferrin_provider_util::secure_url::validate_url;
 use ferrin_spec::Headers;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
@@ -318,25 +321,39 @@ impl GoogleFiles {
                     JsonValue::Null,
                 )))
             })?;
-        let finalize_headers = self
-            .config
-            .unauthenticated_headers(&request.headers)
+        let validated = validate_url(&upload_url, &self.config.url_policy)
+            .await
+            .map_err(|error| {
+                InvalidResponseDataError::new(
+                    format!("google returned an unsafe upload URL: {error}"),
+                    JsonValue::Null,
+                )
+            })?;
+        let mut finalize_headers = if upload_url.origin() == self.config.base_url.origin()
+            || self.config.url_policy.is_credentialed(&upload_url)
+        {
+            self.config.unauthenticated_headers(&request.headers)
+        } else {
+            Headers::new().with_user_agent_suffix([crate::config::USER_AGENT])
+        };
+        finalize_headers.remove(crate::config::API_KEY_HEADER);
+        let finalize_headers = finalize_headers
             .with("x-goog-upload-offset", "0")
             .with("x-goog-upload-command", "upload, finalize");
         let handlers = ResponseHandlers::new(
-            json_response_handler::<FileResponse>(),
-            failed_response_handler(),
+            json_response_handler::<FileResponse>()
+                .with_max_bytes(self.config.url_policy.max_body_bytes),
+            failed_response_handler().with_max_bytes(self.config.url_policy.max_body_bytes),
         );
-        let uploaded = post_bytes(
-            self.config.transport.as_ref(),
-            upload_url.clone(),
-            finalize_headers,
-            &request.media_type,
-            request.data,
-            &handlers,
-            request.cancellation.clone(),
-        )
-        .await?;
+        let finalize = HttpRequest::post(upload_url.clone())
+            .with_headers(finalize_headers)
+            .with_body(RequestBody::Bytes {
+                content_type: request.media_type.clone(),
+                data: request.data,
+            })
+            .with_cancellation(request.cancellation.clone())
+            .with_pinned_addresses(validated.addresses);
+        let uploaded = send(self.config.transport.as_ref(), finalize, None, &handlers).await?;
         let mut file = uploaded.value.into_file();
         let started_at = Instant::now();
         while file.state.as_deref() == Some("PROCESSING") {

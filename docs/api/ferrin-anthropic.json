@@ -31,6 +31,7 @@
         "base_url: Url",
         "credential: Option<Credential>",
         "headers: Headers",
+        "url_policy: UrlPolicy",
         "transport: SharedTransport",
         "id_generator: Arc<dyn IdGenerator>",
         "supports_strict_tools: bool",
@@ -119,6 +120,7 @@
         "auth_token: Option<SecretString>",
         "headers: Headers",
         "name: Option<String>",
+        "url_policy: UrlPolicy",
         "transport: Option<SharedTransport>",
         "id_generator: Option<Arc<dyn IdGenerator>>"
       ],
@@ -768,6 +770,7 @@
         "base_url: Url",
         "credential: Option<Credential>",
         "headers: Headers",
+        "url_policy: UrlPolicy",
         "transport: SharedTransport",
         "id_generator: Arc<dyn IdGenerator>",
         "supports_strict_tools: bool",

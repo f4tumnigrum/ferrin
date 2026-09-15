@@ -4,17 +4,20 @@
 //! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
 //! translated from TypeScript to Rust and modified; see `NOTICE`.
 
+mod download;
 pub mod results;
 
 use std::collections::BTreeSet;
 
 use ferrin_provider_util::batch::normalize_batch_request_counts;
+use ferrin_provider_util::http::HttpRequest;
 use ferrin_provider_util::http::ResponseHandlers;
 use ferrin_provider_util::http::get;
-use ferrin_provider_util::http::json_lines_response_handler;
 use ferrin_provider_util::http::json_response_handler;
 use ferrin_provider_util::http::post_json;
+use ferrin_provider_util::http::send;
 use ferrin_provider_util::provider_options::parse_provider_options;
+use ferrin_provider_util::secure_url::validate_url;
 use ferrin_spec::BatchId;
 use ferrin_spec::Headers;
 use ferrin_spec::JsonObject;
@@ -49,7 +52,6 @@ use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-use self::results::BatchResultLine;
 use self::results::convert_line;
 use crate::config::CANONICAL_OPTIONS_KEY;
 use crate::config::SharedConfig;
@@ -516,23 +518,30 @@ impl Batch for AnthropicBatch {
                 json!({"id": batch.id}),
             )
         })?;
-        let mut headers = self.config.headers(&options.headers, &BTreeSet::new())?;
-        if !self.same_origin(&url) {
-            headers.remove("x-api-key");
-            headers.remove("authorization");
-        }
+        let validated = validate_url(&url, &self.config.url_policy)
+            .await
+            .map_err(|error| {
+                InvalidResponseDataError::new(
+                    format!("Anthropic batch has an unsafe results URL: {error}"),
+                    JsonValue::Null,
+                )
+            })?;
+        let headers = if self.same_origin(&url) || self.config.url_policy.is_credentialed(&url) {
+            self.config.headers(&options.headers, &BTreeSet::new())?
+        } else {
+            Headers::new().with_user_agent_suffix([crate::config::USER_AGENT])
+        };
         let handlers = ResponseHandlers::new(
-            json_lines_response_handler::<BatchResultLine>(),
-            failed_response_handler(),
+            download::ResultsHandler {
+                max_bytes: self.config.url_policy.max_body_bytes,
+            },
+            failed_response_handler().with_max_bytes(self.config.url_policy.max_body_bytes),
         );
-        let response = get(
-            self.config.transport.as_ref(),
-            url,
-            headers,
-            &handlers,
-            options.cancellation,
-        )
-        .await?;
+        let request = HttpRequest::get(url)
+            .with_headers(headers)
+            .with_cancellation(options.cancellation)
+            .with_pinned_addresses(validated.addresses);
+        let response = send(self.config.transport.as_ref(), request, None, &handlers).await?;
         let config = self.config.clone();
         let stream = response.value.map(move |parsed| match parsed {
             ferrin_provider_util::ParseResult::Ok { value, .. } => Ok(convert_line(&config, value)),

@@ -90,3 +90,5 @@ Insta snapshots in tests/suite/snapshots cover requests, prompts, tool wire shap
 [Fact] Provider-defined tool aliases map to provider names in forced tool choices and back to registered names in non-streaming, streamed and prefilled tool calls. Regression: `tests/suite/tools.rs::provider_tool_aliases_roundtrip_through_choices_and_calls` (2026-09-15).
 
 [Fact] The four cache-breakpoint limit is shared by all prompt parts and tool definitions in one request; excess breakpoints are removed with warnings. Regression: `tests/suite/messages_request.rs::cache_breakpoint_limit_is_shared_across_prompt_and_tools` (2026-09-15).
+
+[Fact] Batch result URLs are validated using `url_policy`: HTTPS/public addresses by default, resolved addresses pinned, redirects rejected, and streaming response bytes bounded by `max_body_bytes`. Credentials and caller headers are sent only to the configured origin or explicit `credentialed_origins`. Local test endpoints require explicit `allow_http().trust_origin(...)`. Sources: `src/batch/`, `tests/suite/security.rs` (2026-09-15).
