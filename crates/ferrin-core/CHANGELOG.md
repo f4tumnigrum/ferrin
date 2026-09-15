@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Validate every approved tool context before replay starts and propagate context validation errors throughout tool execution.
+
 - Deduplicate approval responses by approval and tool-call IDs before execution, rejecting conflicting decisions.
 
 - Reject model calls and repaired calls to tools excluded by caller restrictions or the current active tool set.

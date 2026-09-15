@@ -247,3 +247,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 [Decision] Parsing and repair use the same caller-filtered, active tool set sent to the provider for that step. Tools hidden behind a local caller remain available to that caller, but a direct model call cannot select them or trigger their input hooks.
 
 [Decision] Approval replay deduplicates decisions by both approval ID and tool-call ID within one invocation. Conflicting approval or provider-execution decisions fail before any tool executes; repeated identical decisions schedule one execution. This does not provide cross-invocation exactly-once execution.
+
+[Decision] Approval replay validates the current context for every approved executable client tool before starting any execution. Context construction propagates validation failures as `InvalidArgument` for `tools_context`; it never substitutes a missing context after validation fails.

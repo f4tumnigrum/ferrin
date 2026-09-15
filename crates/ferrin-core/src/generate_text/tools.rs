@@ -104,39 +104,36 @@ pub(crate) async fn resolve_call_approval(
     messages: &Arc<[Message]>,
     tools_context: Option<&JsonValue>,
     cancellation: &CallCancellation,
-) -> Option<CallApproval> {
+) -> Result<Option<CallApproval>, Error> {
     if call.invalid {
-        return None;
+        return Ok(None);
     }
     let approval_ctx = ApprovalContext {
         messages,
         tools_context,
     };
     let tool = ctx.execution_tools.get(call.tool_name.as_str());
+    let tool_context = match tool {
+        Some(tool) => ctx.tool_context(
+            tool,
+            &call.tool_call_id,
+            &call.tool_name,
+            messages,
+            tools_context,
+            cancellation,
+        )?,
+        None => ToolContext::new(call.tool_call_id.clone()),
+    };
     let status = resolve_approval(
         call,
         tool.map(AsRef::as_ref),
         ctx.config.tool_approval.as_deref(),
         approval_ctx,
-        || {
-            tool.map_or_else(
-                || ToolContext::new(call.tool_call_id.clone()),
-                |tool| {
-                    ctx.tool_context(
-                        tool,
-                        &call.tool_call_id,
-                        &call.tool_name,
-                        messages,
-                        tools_context,
-                        cancellation,
-                    )
-                },
-            )
-        },
+        || tool_context,
     )
     .await;
     if matches!(status, ApprovalStatus::NotApplicable) {
-        return None;
+        return Ok(None);
     }
     let approval_id = ferrin_spec::ApprovalId::new(ctx.config.id_generator.generate());
     let signature = ctx.config.tool_approval_secret.as_ref().map(|secret| {
@@ -183,11 +180,11 @@ pub(crate) async fn resolve_call_approval(
         ),
         _ => (None, true),
     };
-    Some(CallApproval {
+    Ok(Some(CallApproval {
         request,
         response,
         blocked,
-    })
+    }))
 }
 
 /// Resolves the approval status of every valid tool call.
@@ -197,11 +194,11 @@ pub(crate) async fn resolve_approvals(
     messages: &Arc<[Message]>,
     tools_context: Option<&JsonValue>,
     cancellation: &CallCancellation,
-) -> StepApprovals {
+) -> Result<StepApprovals, Error> {
     let mut approvals = StepApprovals::default();
     for call in calls {
         let Some(approval) =
-            resolve_call_approval(ctx, call, messages, tools_context, cancellation).await
+            resolve_call_approval(ctx, call, messages, tools_context, cancellation).await?
         else {
             continue;
         };
@@ -211,7 +208,7 @@ pub(crate) async fn resolve_approvals(
         approvals.requests.push(approval.request);
         approvals.responses.extend(approval.response);
     }
-    approvals
+    Ok(approvals)
 }
 
 /// Per-task plumbing of one tool execution.
@@ -255,29 +252,30 @@ pub(crate) async fn execute_tools(
     });
     let max = ctx.config.max_tool_concurrency.unwrap_or(usize::MAX);
     let mut tasks: JoinSet<(usize, Result<StepContent, Error>)> = JoinSet::new();
-    let mut spawn_next = |tasks: &mut JoinSet<(usize, Result<StepContent, Error>)>| -> bool {
-        let Some((index, call, tool)) = pending.next() else {
-            return false;
+    let mut spawn_next =
+        |tasks: &mut JoinSet<(usize, Result<StepContent, Error>)>| -> Result<bool, Error> {
+            let Some((index, call, tool)) = pending.next() else {
+                return Ok(false);
+            };
+            let task = ctx.tool_task(
+                &tool,
+                &call,
+                &messages,
+                tools_context.as_ref(),
+                cancellation,
+            )?;
+            let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
+            tasks.spawn(
+                async move {
+                    let result = run_tool_call(call, tool, task, None).await;
+                    (index, result)
+                }
+                .instrument(span),
+            );
+            Ok(true)
         };
-        let task = ctx.tool_task(
-            &tool,
-            &call,
-            &messages,
-            tools_context.as_ref(),
-            cancellation,
-        );
-        let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
-        tasks.spawn(
-            async move {
-                let result = run_tool_call(call, tool, task, None).await;
-                (index, result)
-            }
-            .instrument(span),
-        );
-        true
-    };
     for _ in 0..max {
-        if !spawn_next(&mut tasks) {
+        if !spawn_next(&mut tasks)? {
             break;
         }
     }
@@ -291,7 +289,7 @@ pub(crate) async fn execute_tools(
                 return Err(cancellation.map_error(error));
             }
         }
-        spawn_next(&mut tasks);
+        spawn_next(&mut tasks)?;
     }
     Ok(results.into_iter().flatten().collect())
 }

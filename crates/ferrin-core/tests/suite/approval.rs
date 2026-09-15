@@ -363,3 +363,59 @@ async fn conflicting_approval_decisions_fail_before_model_or_tool_execution() {
         assert_eq!(model.call_count(), 0);
     }
 }
+
+#[tokio::test]
+async fn replay_validates_tool_context_before_side_effects_in_both_loops() {
+    for streaming in [false, true] {
+        let (mut history, approval_id) = request_approval(true).await;
+        history.push(Message::tool([ToolApprovalResponse::approved(approval_id)]));
+        let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let executed = Arc::clone(&count);
+        let tools = ToolSet::new().insert("delete_file",
+            Tool::function_with_schema(Schema::from_json_schema(json!({"type":"object"})))
+                .context_schema(Schema::from_json_schema(json!({
+                    "type":"object", "properties":{"tenant":{"type":"string"}}, "required":["tenant"]
+                })))
+                .needs_approval(NeedsApproval::Always)
+                .execute(move |_: JsonValue, _: ToolContext| {
+                    let executed = Arc::clone(&executed);
+                    async move {
+                        executed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        Ok::<_, ToolError>(json!("side effect"))
+                    }
+                }).build()).unwrap();
+        let model = mock()
+            .generate(text_result("unreachable"))
+            .stream(ferrin_testing::text_parts(
+                ["unreachable"],
+                ferrin_spec::Usage::default(),
+            ))
+            .build_shared();
+        let error = if streaming {
+            match ferrin_core::stream_text(Arc::clone(&model))
+                .messages(history)
+                .tools(tools)
+                .tool_approval_secret(secret())
+                .await
+            {
+                Ok(stream) => stream.consume().await.unwrap_err(),
+                Err(error) => error,
+            }
+        } else {
+            generate_text(Arc::clone(&model))
+                .messages(history)
+                .tools(tools)
+                .tool_approval_secret(secret())
+                .await
+                .unwrap_err()
+        };
+        assert!(matches!(error, Error::InvalidArgument { .. }), "{error:?}");
+        assert_eq!(
+            (
+                count.load(std::sync::atomic::Ordering::SeqCst),
+                model.call_count()
+            ),
+            (0, 0)
+        );
+    }
+}

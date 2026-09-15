@@ -319,10 +319,10 @@ impl Stage {
         let max = ctx.config.max_tool_concurrency.unwrap_or(usize::MAX);
         let mut spawn_next = |tasks: &mut JoinSet<Result<StepContent, Error>>,
                               progress_tx: &mut Option<mpsc::Sender<StepContent>>|
-         -> bool {
+         -> Result<bool, Error> {
             let Some((call, tool)) = pending.next() else {
                 *progress_tx = None;
-                return false;
+                return Ok(false);
             };
             let task = ctx.tool_task(
                 &tool,
@@ -330,14 +330,14 @@ impl Stage {
                 &messages,
                 tools_context.as_ref(),
                 cancellation,
-            );
+            )?;
             let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
             let progress = progress_tx.clone();
             tasks.spawn(run_tool_call(call, tool, task, progress).instrument(span));
-            true
+            Ok(true)
         };
         for _ in 0..max {
-            if !spawn_next(&mut tasks, &mut progress_tx) {
+            if !spawn_next(&mut tasks, &mut progress_tx)? {
                 break;
             }
         }
@@ -366,7 +366,7 @@ impl Stage {
                             return Err(cancellation.map_error(error));
                         }
                     }
-                    spawn_next(&mut tasks, &mut progress_tx);
+                    spawn_next(&mut tasks, &mut progress_tx)?;
                 }
                 else => break,
             }

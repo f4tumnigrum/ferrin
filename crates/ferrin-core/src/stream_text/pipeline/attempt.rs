@@ -203,7 +203,7 @@ impl Attempt {
         tool: &Tool,
         tool_call_id: &ToolCallId,
         tool_name: &ToolName,
-    ) -> ToolContext {
+    ) -> Result<ToolContext, Error> {
         self.ctx.tool_context(
             tool,
             tool_call_id,

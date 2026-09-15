@@ -151,7 +151,7 @@ impl Attempt {
                 if let Some(tool) = &tool
                     && let Some(hook) = &tool.hooks().on_input_start
                 {
-                    hook(self.tool_context_for(tool, &id, &tool_name)).await;
+                    hook(self.tool_context_for(tool, &id, &tool_name)?).await;
                 }
                 self.state.tool_inputs.insert(
                     id.clone(),
@@ -180,7 +180,7 @@ impl Attempt {
                 {
                     hook(
                         delta.clone(),
-                        self.tool_context_for(tool, &id, &info.tool_name),
+                        self.tool_context_for(tool, &id, &info.tool_name)?,
                     )
                     .await;
                 }
@@ -383,7 +383,7 @@ impl Attempt {
         {
             hook(
                 parsed.input.clone(),
-                self.tool_context_for(tool, &parsed.tool_call_id, &parsed.tool_name),
+                self.tool_context_for(tool, &parsed.tool_call_id, &parsed.tool_name)?,
             )
             .await;
         }
@@ -396,7 +396,7 @@ impl Attempt {
             self.inputs.tools_context.as_ref(),
             &self.cancellation,
         )
-        .await
+        .await?
         {
             None => {
                 if executable {
