@@ -30,6 +30,12 @@ lists releases and cross-crate changes. The format follows
 
 ### Changed
 
+- Prepare the coordinated 0.1.1 workspace version without creating a tag or
+  publishing packages; changes remain under `Unreleased`.
+- Breaking schema transformation APIs now return `Result`; callers must handle
+  unsupported strict dictionaries explicitly (ADR 0019). This preparation is
+  not a claim of backward API compatibility.
+
 - Architecture diagrams in the English and Chinese documentation now use
   Mermaid, with the Chinese edition maintained independently.
 

@@ -73,3 +73,9 @@
 4. 变更日志的 `Changed` 段以 `SPEC:` 前缀标注。
 
 【决策】Ferrin 不在运行时维护多个规范版本共存（不设并行的版本化接口与升级适配器），而以 crate 版本承载规范演进（[ADR 0011](../04-decisions/2026-09-13-0011-spec-versioning-by-crate-version.md)），因此规范变更的评审门槛更高，见 [CI 与质量门禁](05-ci-and-quality-gates.md)第 2 节第 11 条。
+
+## 9. 尚未发布的 0.1.1 准备
+
+【事实】工作区清单及内部依赖已统一为 0.1.1，变更仍记录在 `Unreleased`；本次准备不创建标签或执行发布（来源：`Cargo.toml`、`Cargo.lock` 和各 crate 的变更记录）。
+
+【决策】此准备版本包含 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 记录的破坏性 Schema 接口变化；版本号不代表这些尚未发布的变更向后兼容。调用方必须传播或处理新增的 `Result`。

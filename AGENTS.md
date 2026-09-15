@@ -13,7 +13,8 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   are implemented (first complete build: 2026-09-14). Version 0.1.0 of every
   crate was published to crates.io on 2026-09-14 (tag `v0.1.0`); each
   changelog has a `[0.1.0]` section and collects further work under
-  `Unreleased`. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
+  `Unreleased`. The current development version is 0.1.1, not yet published;
+  breaking schema API changes are recorded in ADR 0019. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
   `ferrin-schema` / `ferrin-message` / `ferrin-provider-util` →
   `ferrin-tool` → provider crates and `ferrin-mcp` → `ferrin-core` →
   `ferrin-otel` / `ferrin-testing` → `ferrin`. Each architecture chapter ends

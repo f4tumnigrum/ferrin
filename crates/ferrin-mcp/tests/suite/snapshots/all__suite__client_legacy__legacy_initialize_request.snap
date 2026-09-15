@@ -7,6 +7,6 @@ expression: initialize.params
   "capabilities": {},
   "clientInfo": {
     "name": "ferrin-mcp-client",
-    "version": "0.1.0"
+    "version": "0.1.1"
   }
 }

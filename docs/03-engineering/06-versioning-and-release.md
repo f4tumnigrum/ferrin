@@ -73,3 +73,9 @@ Breaking spec changes (required fields, trait signatures, serialization) require
 4. SPEC-prefixed `Changed` entries in changelogs.
 
 [Decision] Crate versions carry specification evolution without runtime parallel interfaces or upgrade adapters ([ADR 0011](../04-decisions/2026-09-13-0011-spec-versioning-by-crate-version.md)); this warrants stronger review gates ([CI](05-ci-and-quality-gates.md), section 2, item 11).
+
+## 9. Unreleased 0.1.1 preparation
+
+[Fact] Workspace manifests and internal dependencies are coordinated at 0.1.1, while changes remain under `Unreleased`; this preparation does not create a tag or publish packages (source: `Cargo.toml`, `Cargo.lock`, and crate changelogs).
+
+[Decision] This preparation includes the breaking schema APIs recorded in [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md); the version number does not imply backward compatibility for these unreleased changes. Callers must propagate or handle the new `Result` values.
