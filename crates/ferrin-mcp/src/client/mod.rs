@@ -276,7 +276,6 @@ pub(crate) struct ClientInner {
     pub(crate) elicitation: Mutex<Option<Arc<dyn ElicitationHandler>>>,
     next_id: AtomicI64,
     cancellation: CancellationToken,
-    tasks: Mutex<JoinSet<()>>,
 }
 
 impl ClientInner {
@@ -437,6 +436,8 @@ fn outcome_clone(error: &McpError) -> McpError {
 #[derive(Clone)]
 pub struct McpClient {
     pub(crate) inner: Arc<ClientInner>,
+    // Ownership stays with public handles; dispatched futures only own `inner`.
+    tasks: Arc<Mutex<JoinSet<()>>>,
 }
 
 impl std::fmt::Debug for McpClient {
@@ -457,7 +458,10 @@ impl McpClient {
     #[tracing::instrument(skip_all, fields(client = %config.name))]
     pub async fn connect(config: McpClientConfig) -> Result<Self, McpError> {
         let transport = config.transport.clone().build()?;
-        transport.start().await?;
+        if let Err(error) = transport.start().await {
+            let _ = transport.close(CloseOptions::default()).await;
+            return Err(error);
+        }
         let inner = Arc::new(ClientInner {
             transport,
             elicitation: Mutex::new(config.elicitation_handler.clone()),
@@ -466,11 +470,14 @@ impl McpClient {
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicI64::new(1),
             cancellation: CancellationToken::new(),
-            tasks: Mutex::new(JoinSet::new()),
         });
         let incoming = inner.transport.incoming();
-        lock(&inner.tasks).spawn(Arc::clone(&inner).dispatch(incoming));
-        let client = Self { inner };
+        let mut tasks = JoinSet::new();
+        tasks.spawn(Arc::clone(&inner).dispatch(incoming));
+        let client = Self {
+            inner,
+            tasks: Arc::new(Mutex::new(tasks)),
+        };
         if let Err(error) = client.initialize().await {
             let _ = client.close().await;
             return Err(error);
@@ -537,7 +544,7 @@ impl McpClient {
         inner.cancellation.cancel();
         let result = inner.transport.close(CloseOptions::default()).await;
         inner.fail_pending(|| McpError::Closed);
-        lock(&inner.tasks).abort_all();
+        lock(&self.tasks).abort_all();
         result
     }
 }

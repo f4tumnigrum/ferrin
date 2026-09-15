@@ -364,6 +364,13 @@ impl SseTransport {
     }
 }
 
+impl Drop for SseTransport {
+    fn drop(&mut self) {
+        self.inner.cancellation.cancel();
+        lock(&self.inner.tasks).abort_all();
+    }
+}
+
 impl McpTransport for SseTransport {
     fn start(&self) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {

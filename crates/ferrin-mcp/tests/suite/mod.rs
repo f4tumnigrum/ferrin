@@ -1,5 +1,6 @@
 mod apps;
 mod client_legacy;
+mod client_lifecycle;
 mod client_modern;
 mod common;
 mod headers;

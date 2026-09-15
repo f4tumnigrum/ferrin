@@ -306,6 +306,13 @@ impl StdioTransport {
     }
 }
 
+impl Drop for StdioTransport {
+    fn drop(&mut self) {
+        self.inner.cancellation.cancel();
+        lock(&self.inner.tasks).abort_all();
+    }
+}
+
 impl McpTransport for StdioTransport {
     fn start(&self) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {

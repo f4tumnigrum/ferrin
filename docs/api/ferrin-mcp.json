@@ -2198,6 +2198,7 @@
       ],
       "traits": [
         "impl Debug for HttpTransport",
+        "impl Drop for HttpTransport",
         "impl McpTransport for HttpTransport"
       ]
     },
@@ -2341,6 +2342,7 @@
       ],
       "traits": [
         "impl Debug for SseTransport",
+        "impl Drop for SseTransport",
         "impl McpTransport for SseTransport"
       ]
     },
@@ -2438,6 +2440,7 @@
       ],
       "traits": [
         "impl Debug for StdioTransport",
+        "impl Drop for StdioTransport",
         "impl McpTransport for StdioTransport"
       ]
     },
