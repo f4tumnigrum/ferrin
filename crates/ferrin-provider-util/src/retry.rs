@@ -24,14 +24,13 @@ pub fn is_retryable_status(status: StatusCode) -> bool {
 pub fn retry_after(headers: &Headers) -> Option<Duration> {
     if let Some(value) = headers.get_str("retry-after-ms")
         && let Ok(millis) = value.trim().parse::<f64>()
-        && millis.is_finite()
-        && millis >= 0.0
+        && let Ok(delay) = Duration::try_from_secs_f64(millis / 1000.0)
     {
-        return Some(Duration::from_secs_f64(millis / 1000.0));
+        return Some(delay);
     }
     let value = headers.get_str("retry-after")?.trim();
     if let Ok(seconds) = value.parse::<f64>() {
-        return (seconds.is_finite() && seconds >= 0.0).then(|| Duration::from_secs_f64(seconds));
+        return Duration::try_from_secs_f64(seconds).ok();
     }
     let date = DateTime::parse_from_rfc2822(value).ok()?;
     let delay = date.with_timezone(&Utc) - Utc::now();

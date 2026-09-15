@@ -212,3 +212,5 @@ Ferrin chain: application → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 - [Decision] Enable only workspace `rustls`, `http2`, and `stream`. Serialize JSON with `serde_json`, encode multipart locally, and decode response bytes as lossy UTF-8. Removing three features eliminates dependencies such as `mime_guess` and `encoding_rs` while ensuring test, recording, and reqwest transports see identical body bytes.
 - [Fact] (PV-016, `verification/pv016-header-values`) `http` 1.5.0 `HeaderValue::from_str`/`from_bytes` accept 0x80–0xFF and tabs, reject newlines/DEL, and allow UTF-8 construction. `to_str()` rejects non-ASCII values; use `as_bytes()`.
 - [Decision] `Headers::insert(&str, &str)` uses `HeaderValue::from_str`; read through ASCII-only `get_str()` or `get_bytes()`. Store metadata headers with lossy UTF-8 conversion. First-party request headers are ASCII and unaffected.
+
+[Fact] 2026-09-15 retry parsing uses fallible duration conversion, ignoring non-finite, negative and out-of-range numeric delays; an invalid millisecond header still permits the seconds/date fallback (source: `crates/ferrin-provider-util/tests/suite/misc.rs`).

@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Ignore unrepresentable `Retry-After` delays instead of panicking.
+
 ### Added
 
 - `sse` benchmark: `SseDecoder::feed` by chunk size and `decode_stream` over a
