@@ -279,3 +279,87 @@ async fn automatic_policy_decisions_skip_the_user() {
         ]
     );
 }
+
+#[tokio::test]
+async fn duplicate_signed_approval_responses_execute_once_in_both_loops() {
+    for streaming in [false, true] {
+        let (mut history, approval_id) = request_approval(true).await;
+        let response = ToolApprovalResponse::approved(approval_id);
+        history.push(Message::tool([response.clone(), response]));
+        let executions = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = Arc::clone(&executions);
+        let tools = ToolSet::new()
+            .insert(
+                "delete_file",
+                Tool::function_with_schema(Schema::from_json_schema(json!({"type":"object"})))
+                    .needs_approval(NeedsApproval::Always)
+                    .execute(move |_: JsonValue, _: ToolContext| {
+                        let count = Arc::clone(&count);
+                        async move {
+                            count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                            Ok::<_, ToolError>(json!("done"))
+                        }
+                    })
+                    .build(),
+            )
+            .unwrap();
+        let model = mock()
+            .generate(text_result("done"))
+            .stream(ferrin_testing::text_parts(
+                ["done"],
+                ferrin_spec::Usage::default(),
+            ))
+            .build_shared();
+        let result = if streaming {
+            ferrin_core::stream_text(model)
+                .messages(history)
+                .tools(tools)
+                .tool_approval_secret(secret())
+                .await
+                .unwrap()
+                .consume()
+                .await
+                .unwrap()
+        } else {
+            generate_text(model)
+                .messages(history)
+                .tools(tools)
+                .tool_approval_secret(secret())
+                .await
+                .unwrap()
+        };
+        assert_eq!(executions.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert_eq!(
+            result.response_messages()[0]
+                .as_tool()
+                .unwrap()
+                .content
+                .len(),
+            1
+        );
+    }
+}
+
+#[tokio::test]
+async fn conflicting_approval_decisions_fail_before_model_or_tool_execution() {
+    for reverse in [false, true] {
+        let (mut history, approval_id) = request_approval(true).await;
+        let mut responses = vec![
+            ToolApprovalResponse::approved(approval_id.clone()),
+            ToolApprovalResponse::denied(approval_id),
+        ];
+        if reverse {
+            responses.reverse();
+        }
+        history.push(Message::tool(responses));
+        let model = mock().generate(text_result("unreachable")).build_shared();
+        let error = generate_text(Arc::clone(&model))
+            .messages(history)
+            .tools(guarded_tools())
+            .tool_approval_secret(secret())
+            .await
+            .unwrap_err();
+        assert!(matches!(error, Error::InvalidToolApproval { .. }));
+        assert_eq!(model.call_count(), 0);
+    }
+}

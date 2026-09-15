@@ -80,6 +80,8 @@ pub(crate) fn collect_tool_approvals(messages: &[Message]) -> Result<CollectedAp
     }
 
     let mut collected = CollectedApprovals::default();
+    let mut approval_decisions = HashMap::new();
+    let mut call_decisions = HashMap::new();
     for response in responses {
         let Some(request) = requests.get(response.approval_id.as_str()) else {
             return Err(Error::InvalidToolApproval {
@@ -93,6 +95,22 @@ pub(crate) fn collect_tool_approvals(messages: &[Message]) -> Result<CollectedAp
                 approval_id: response.approval_id.clone(),
             });
         };
+        let decision = (response.approved, response.provider_executed);
+        let duplicate_approval = approval_decisions.insert(response.approval_id.as_str(), decision);
+        let duplicate_call = call_decisions.insert(tool_call.tool_call_id.as_str(), decision);
+        if [duplicate_approval, duplicate_call]
+            .into_iter()
+            .flatten()
+            .any(|previous| previous != decision)
+        {
+            return Err(Error::InvalidToolApproval {
+                approval_id: response.approval_id.clone(),
+                message: "conflicting approval decisions for the same tool call".to_owned(),
+            });
+        }
+        if duplicate_approval.is_some() || duplicate_call.is_some() {
+            continue;
+        }
         let existing = results.get(tool_call.tool_call_id.as_str()).copied();
         if let Some(existing) = existing
             && (response.approved

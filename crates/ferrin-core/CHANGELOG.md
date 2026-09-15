@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Deduplicate approval responses by approval and tool-call IDs before execution, rejecting conflicting decisions.
+
 - Reject model calls and repaired calls to tools excluded by caller restrictions or the current active tool set.
 
 - Enforce required and named tool choices consistently after generate and stream model calls.
