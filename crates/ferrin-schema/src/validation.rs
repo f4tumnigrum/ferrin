@@ -74,7 +74,7 @@ impl fmt::Display for ValidationIssues {
 
 impl std::error::Error for ValidationIssues {}
 
-/// A compiled draft-07 JSON Schema validator.
+/// A compiled JSON Schema validator using the declared dialect.
 #[cfg(feature = "json-schema-validation")]
 #[derive(Debug)]
 pub struct Validator {
@@ -90,8 +90,14 @@ impl Validator {
     /// Returns [`SchemaError::InvalidSchema`](crate::SchemaError::InvalidSchema)
     /// when the schema is not a valid JSON Schema.
     pub fn compile(schema: &Value) -> Result<Self, crate::SchemaError> {
-        let inner =
-            jsonschema::draft7::new(schema).map_err(|error| crate::SchemaError::InvalidSchema {
+        let options = if schema.get("$schema").is_some() {
+            jsonschema::options()
+        } else {
+            jsonschema::draft7::options()
+        };
+        let inner = options
+            .build(schema)
+            .map_err(|error| crate::SchemaError::InvalidSchema {
                 message: error.to_string(),
             })?;
         Ok(Self { inner })

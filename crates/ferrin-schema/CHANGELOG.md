@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Honor the declared JSON Schema dialect during dynamic validation, using
+  draft-07 only when `$schema` is absent.
+
 ### Added
 
 - `partial_json` benchmark (`repair`, `parse_partial` on document prefixes,

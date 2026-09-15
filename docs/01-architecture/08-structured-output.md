@@ -134,3 +134,5 @@ while let Some(partial) = partials.next().await {
 - [Fact] (PV-004) `schemars` draft-07 generates `type: [T, "null"]` for optional primitives, `anyOf: [$ref, {type: null}]` for optional references, and `enum`/`oneOf` for enums. OpenAI strict and Anthropic `sanitize_json_schema` transforms handle these shapes; see [Tool system](06-tool-system.md), section 10.
 - [Fact] (PV-008, `verification/pv008-partial-compare`, release build) Deep equality on `serde_json::Value` takes 16 µs for 9 KiB, 135 µs for 96 KiB, and 675 µs for 507 KiB objects. Serializing then hashing is slower (18/180/916 µs); parsing costs 6–7 times more than comparison (93 µs/936 µs/4.7 ms).
 - [Decision] Keep deep `Value` equality rather than text hashing: comparison is roughly an order of magnitude cheaper than parsing, and hashing is slower. If performance becomes an issue, optimize incremental parsing.
+
+[Decision] Dynamic JSON Schema validation selects the dialect declared by `$schema`; only schemas without a declaration default to draft-07. Dialect-specific constraints must be evaluated rather than silently treated as unknown keywords.
