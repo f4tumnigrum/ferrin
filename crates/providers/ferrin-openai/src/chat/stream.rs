@@ -173,6 +173,7 @@ pub struct ChatStreamState {
     finish_reason: FinishReason,
     received_finish_reason: bool,
     usage: Option<ChatUsage>,
+    raw_usage: Option<JsonObject>,
     metadata_extracted: bool,
     text_active: bool,
     provider_metadata: JsonObject,
@@ -188,6 +189,7 @@ impl ChatStreamState {
             finish_reason: FinishReason::new(ferrin_spec::FinishReasonKind::Other),
             received_finish_reason: false,
             usage: None,
+            raw_usage: None,
             metadata_extracted: false,
             text_active: false,
             provider_metadata: JsonObject::new(),
@@ -213,6 +215,7 @@ impl ChatStreamState {
         }
         if let Some(usage) = &value.usage {
             self.usage = Some(usage.clone());
+            self.raw_usage = raw.get("usage").and_then(JsonValue::as_object).cloned();
             for (key, count) in prediction_metadata(usage) {
                 self.provider_metadata.insert(key, JsonValue::from(count));
             }
@@ -311,10 +314,9 @@ impl StreamMachine for ChatStreamState {
             });
         }
         self.tool_calls.flush(&mut parts);
-        let usage = self
-            .usage
-            .as_ref()
-            .map_or_else(Usage::default, |usage| map_chat_usage(usage, None));
+        let usage = self.usage.as_ref().map_or_else(Usage::default, |usage| {
+            map_chat_usage(usage, self.raw_usage.clone())
+        });
         parts.push(StreamPart::Finish {
             finish_reason: self.finish_reason,
             usage,

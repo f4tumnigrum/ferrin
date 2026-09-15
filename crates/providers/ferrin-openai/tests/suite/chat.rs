@@ -308,3 +308,41 @@ fn text_file_parts_are_unsupported() {
         "{error:?}"
     );
 }
+
+#[tokio::test]
+async fn raw_usage_preserves_unmodeled_fields_in_generate_and_stream() {
+    let test = TestProvider::start().await;
+    let usage = json!({
+        "prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30,
+        "prompt_tokens_details": {"cached_tokens": 5, "audio_tokens": 7},
+        "completion_tokens_details": {"reasoning_tokens": 2, "audio_tokens": 4},
+        "future_counter": {"value": 9}
+    });
+    test.mount_fixture(Method::POST, "/v1/chat/completions", ferrin_testing::Fixture::json(&json!({
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+        "usage": usage
+    })));
+    let generated = test
+        .provider
+        .chat("gpt-4.1")
+        .do_generate(CallOptions::new(prompt()))
+        .await
+        .unwrap();
+    assert_eq!(generated.usage.raw, usage.as_object().cloned());
+    test.server.reset();
+    test.mount_fixture(Method::POST, "/v1/chat/completions", ferrin_testing::Fixture::sse_json([
+        &json!({"choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": "stop"}]}),
+        &json!({"choices": [], "usage": usage})
+    ]));
+    let stream = test
+        .provider
+        .chat("gpt-4.1")
+        .do_stream(CallOptions::new(prompt()))
+        .await
+        .unwrap();
+    let parts = collect_checked(stream).await;
+    let Some(StreamPart::Finish { usage: actual, .. }) = parts.last() else {
+        panic!("missing finish")
+    };
+    assert_eq!(actual.raw, usage.as_object().cloned());
+}
