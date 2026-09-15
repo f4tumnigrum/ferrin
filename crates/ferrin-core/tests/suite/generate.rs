@@ -255,7 +255,7 @@ async fn invalid_tool_input_and_unknown_tools_become_tool_errors() {
 }
 
 #[tokio::test]
-async fn tool_choice_violation_is_recorded_as_invalid_call() {
+async fn tool_choice_violation_does_not_satisfy_named_choice() {
     let model = mock()
         .generate(tool_call_result(
             "call-1",
@@ -270,20 +270,17 @@ async fn tool_choice_violation_is_recorded_as_invalid_call() {
             ferrin_tool::Tool::function_with_schema(ferrin_tool::Schema::empty_object()).build(),
         )
         .unwrap();
-    let result = generate_text(Arc::clone(&model))
+    let error = generate_text(Arc::clone(&model))
         .prompt("hi")
         .tools(tools)
         .tool_choice(ToolChoice::tool("other"))
         .stop_when(step_count(5))
         .await
-        .unwrap();
-    match &result.steps[0].content[0] {
-        StepContent::ToolCall(call) => {
-            assert!(call.invalid);
-            assert!(call.error.as_deref().unwrap().contains("other"));
-        }
-        other => panic!("unexpected content {other:?}"),
-    }
+        .unwrap_err();
+    assert!(
+        matches!(error, Error::ToolChoiceNotSatisfied { expected: Some(name) } if name.as_str() == "other")
+    );
+    assert_eq!(model.call_count(), 1);
 }
 
 #[derive(Debug, Deserialize, PartialEq, schemars::JsonSchema)]
@@ -340,4 +337,44 @@ async fn array_and_choice_outputs() {
         .await
         .unwrap();
     assert_eq!(result.output, "yes");
+}
+
+#[tokio::test]
+async fn missing_required_choices_fail_text_and_refusal_in_both_loops() {
+    for choice in [ToolChoice::Required, ToolChoice::tool("get_weather")] {
+        for finish in [
+            ferrin_spec::FinishReason::stop(),
+            ferrin_spec::FinishReason::new(ferrin_spec::FinishReasonKind::ContentFilter),
+        ] {
+            let mut response = text_result("no tool call");
+            response.finish_reason = finish.clone();
+            let model = mock()
+                .generate(response)
+                .stream(vec![
+                    ferrin_spec::StreamPart::stream_start(),
+                    ferrin_spec::StreamPart::finish(finish, ferrin_spec::Usage::default()),
+                ])
+                .build_shared();
+            let generated = generate_text(Arc::clone(&model))
+                .prompt("hi")
+                .tools(weather_tools())
+                .tool_choice(choice.clone())
+                .await
+                .unwrap_err();
+            let streamed = ferrin_core::stream_text(model)
+                .prompt("hi")
+                .tools(weather_tools())
+                .tool_choice(choice.clone())
+                .await
+                .unwrap()
+                .consume()
+                .await
+                .unwrap_err();
+            assert!(
+                matches!(generated, Error::ToolChoiceNotSatisfied { .. }),
+                "{generated:?}"
+            );
+            assert_eq!(generated.to_string(), streamed.to_string());
+        }
+    }
 }

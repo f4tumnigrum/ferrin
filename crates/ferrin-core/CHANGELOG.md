@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Enforce required and named tool choices consistently after generate and stream model calls.
+
 - Clear effective required or named tool choices when step preparation filters out every tool.
 
 ### Added
