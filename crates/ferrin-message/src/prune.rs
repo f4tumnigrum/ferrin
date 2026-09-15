@@ -271,6 +271,20 @@ fn prune_tool_calls(messages: &mut [Message], rule: &ToolCallPrune) {
             }
         }
     }
+    // Protect the entire association component, including earlier approvals
+    // when a trailing result or another approval references the same call.
+    loop {
+        let mut expanded = false;
+        for (approval_id, call_id) in &approval_calls {
+            if kept.approval_ids.contains(approval_id) || kept.tool_call_ids.contains(call_id) {
+                expanded |= kept.approval_ids.insert(approval_id.clone());
+                expanded |= kept.tool_call_ids.insert(call_id.clone());
+            }
+        }
+        if !expanded {
+            break;
+        }
+    }
     for (approval_id, call_id) in approval_calls {
         if let Some(name) = call_tool_names.get(&call_id) {
             kept.approval_tool_names.insert(approval_id, name.clone());

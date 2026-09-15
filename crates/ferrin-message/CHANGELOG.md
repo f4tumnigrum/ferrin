@@ -5,6 +5,11 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve the complete tool-call and approval chain referenced by protected
+  trailing messages when pruning history.
+
 ### Added
 
 - `prune` benchmark over 40- and 200-message conversations with reasoning and
