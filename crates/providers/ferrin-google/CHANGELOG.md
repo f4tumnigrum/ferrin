@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject truncated SSE streams that end without an explicit completion signal.
+
 ### Added
 
 - `generate_content` benchmark: `do_generate` and `do_stream` against the

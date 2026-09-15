@@ -283,3 +283,47 @@ async fn raw_chunks_are_forwarded_when_requested() {
         .count();
     assert_eq!(raw, 3);
 }
+
+#[tokio::test]
+async fn preterminal_fixture_boundaries_report_truncation() {
+    for fixture in ["text", "reasoning", "tool-call-arguments"] {
+        let raw = String::from_utf8(super::common::fixture_bytes(
+            "stream",
+            &format!("{fixture}.chunks.txt"),
+        ))
+        .unwrap();
+        let events: Vec<_> = raw.lines().filter(|line| !line.is_empty()).collect();
+        let terminal = events
+            .iter()
+            .position(|line| line.contains("finishReason"))
+            .unwrap();
+        for end in 0..=terminal {
+            let test = TestProvider::start().await;
+            test.mount_fixture(
+                Method::POST,
+                &path("gemini-3-pro-preview"),
+                ferrin_testing::Fixture::sse(events[..end].iter().copied()),
+            );
+            let parts = stream(&test, "gemini-3-pro-preview", options()).await;
+            let terminal_parts: Vec<_> = parts
+                .iter()
+                .filter_map(|part| match part {
+                    StreamPart::Error { .. } => Some("error"),
+                    StreamPart::Finish { .. } => Some("finish"),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                terminal_parts,
+                vec!["error"],
+                "{fixture} truncated at {end}"
+            );
+            if fixture == "tool-call-arguments" && end < 4 {
+                assert!(
+                    tool_calls(&parts).is_empty(),
+                    "unfinished tool emitted at {end}"
+                );
+            }
+        }
+    }
+}

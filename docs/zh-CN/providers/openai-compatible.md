@@ -84,3 +84,5 @@ fixture 位于 `crates/providers/ferrin-openai-compatible/tests/fixtures/<area>/
 请求体、提示转换与流式部件序列以 `insta` 快照记录于 `tests/suite/snapshots/`；测试共 43 个，另覆盖选项键解析、错误帧推断、请求头、查询参数、`transform_request_body`/`convert_usage`/`metadata_extractor`/`error_structure` 钩子。
 
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
+
+【决策】Chat 和 Completion SSE EOF 必须已有显式结束原因，否则流会关闭开放的内容块并产生 `InvalidResponseData`。Chat 在提交缓存工具之前检查结束信号，避免将截断参数转换成可执行调用。来源：`stream_eof` fixture 边界回归测试（2026-09-15）；未进行 live API 验证。

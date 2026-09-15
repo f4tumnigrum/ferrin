@@ -367,6 +367,7 @@ fn classify_chunk(chunk: &CompletionResponse) -> EarlyChunk {
 struct CompletionStreamState {
     key: String,
     finish_reason: FinishReason,
+    received_finish_reason: bool,
     usage: Option<CompletionUsage>,
     first_chunk: bool,
     provider_metadata: JsonObject,
@@ -428,6 +429,7 @@ impl StreamMachine for CompletionStreamState {
             return parts;
         };
         if let Some(reason) = &choice.finish_reason {
+            self.received_finish_reason = true;
             self.finish_reason = map_chat_finish_reason(reason);
         }
         if let Some(logprobs) = choice.logprobs {
@@ -445,6 +447,14 @@ impl StreamMachine for CompletionStreamState {
     }
 
     fn finish(self) -> Vec<StreamPart> {
+        if !self.received_finish_reason {
+            return vec![StreamPart::error(&ProviderError::from(
+                InvalidResponseDataError::new(
+                    "completion stream ended before a finish reason was received",
+                    JsonValue::Null,
+                ),
+            ))];
+        }
         let mut parts = Vec::new();
         if !self.first_chunk {
             parts.push(StreamPart::TextEnd {
@@ -566,6 +576,7 @@ impl LanguageModel for OpenAiCompletionLanguageModel {
         let state = CompletionStreamState {
             key: self.config.provider_options_key.clone(),
             finish_reason: FinishReason::new(FinishReasonKind::Other),
+            received_finish_reason: false,
             usage: None,
             first_chunk: true,
             provider_metadata: JsonObject::new(),

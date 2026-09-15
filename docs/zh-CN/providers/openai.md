@@ -110,3 +110,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【事实】Responses 和 Chat 请求构建使用 `OpenAiConfig.name` 解析上传文件引用，与 provider options 键相互独立；独立提示词转换辅助函数仍使用默认名称 `openai`。来源：回归测试 `uploaded_files_roundtrip_with_custom_provider_name`（2026-09-15）。
 
 【决策】Provider 工具参数转换仅重命名已知 API 字段并遍历已知配置对象；headers、metadata、Schema 及未知参数值保持原样，以保留用户字典键和 HTTP 头名称。来源：`responses/convert_tools.rs`；回归测试 `provider_tool_options_preserve_opaque_dictionary_keys`（2026-09-15）。
+
+【决策】SSE EOF 仅在收到显式 provider 终止响应或结束原因（包括 Google 提示词拦截）后表示成功；提前 EOF 产生 `InvalidResponseData`，由流驱动关闭开放的内容块，且不把未完成工具参数转换成可执行调用。来源：流 EOF fixture 边界回归测试（2026-09-15）；未进行 live API 验证。

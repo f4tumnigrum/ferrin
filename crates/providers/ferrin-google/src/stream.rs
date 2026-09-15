@@ -12,6 +12,8 @@ use ferrin_spec::PartId;
 use ferrin_spec::ProviderMetadata;
 use ferrin_spec::ToolCall;
 use ferrin_spec::ToolCallId;
+use ferrin_spec::error::InvalidResponseDataError;
+use ferrin_spec::error::ProviderError;
 use ferrin_spec::language_model::Source;
 use ferrin_spec::language_model::StreamPart;
 
@@ -38,6 +40,7 @@ struct ActiveToolCall {
 pub struct GoogleStreamState {
     mapper: OutputMapper,
     finish_reason: FinishReason,
+    received_finish_reason: bool,
     usage: Option<UsageMetadata>,
     raw_usage: Option<JsonObject>,
     provider_metadata: Option<ProviderMetadata>,
@@ -59,6 +62,7 @@ impl GoogleStreamState {
         Self {
             mapper,
             finish_reason: FinishReason::new(FinishReasonKind::Other),
+            received_finish_reason: false,
             usage: None,
             raw_usage: None,
             provider_metadata: None,
@@ -403,6 +407,7 @@ impl GoogleStreamState {
         }
         let Some(candidate) = value.candidate() else {
             if let Some(reason) = value.block_reason() {
+                self.received_finish_reason = true;
                 self.finish_reason =
                     FinishReason::with_raw(FinishReasonKind::ContentFilter, reason);
                 self.provider_metadata = Some(self.finish_metadata(value, None, None));
@@ -434,6 +439,7 @@ impl GoogleStreamState {
         let block_reason = value.block_reason();
         let prompt_blocked = candidate.finish_reason.is_none() && block_reason.is_some();
         if let Some(raw_reason) = candidate.finish_reason.as_deref().or(block_reason) {
+            self.received_finish_reason = true;
             self.finish_reason = if prompt_blocked {
                 FinishReason::with_raw(FinishReasonKind::ContentFilter, raw_reason)
             } else {
@@ -480,6 +486,14 @@ impl StreamMachine for GoogleStreamState {
     }
 
     fn finish(mut self) -> Vec<StreamPart> {
+        if !self.received_finish_reason || !self.active_calls.is_empty() {
+            return vec![StreamPart::error(&ProviderError::from(
+                InvalidResponseDataError::new(
+                    "google stream ended before completion",
+                    JsonValue::Null,
+                ),
+            ))];
+        }
         let mut parts = Vec::new();
         self.end_text(&mut parts);
         self.end_reasoning(&mut parts);

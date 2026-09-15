@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Reject truncated SSE streams that end without an explicit completion signal.
+
 - Preserve opaque dictionary keys when converting provider tool options to wire format.
 
 - Resolve Responses and Chat file references using the configured provider name.

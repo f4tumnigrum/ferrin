@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject truncated Chat and Completion streams before flushing buffered tool calls.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

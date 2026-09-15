@@ -97,3 +97,5 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 请求体、提示转换、工具线格式、schema 转换与流式部件序列以 `insta` 快照记录于 `tests/suite/snapshots/`；测试共 78 个。批处理 ≥ 20 MB 时的 JSONL 上传路径没有 fixture 覆盖。
 
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
+
+【决策】SSE EOF 仅在收到显式 provider 终止响应或结束原因（包括 Google 提示词拦截）后表示成功；提前 EOF 产生 `InvalidResponseData`，由流驱动关闭开放的内容块，且不把未完成工具参数转换成可执行调用。来源：流 EOF fixture 边界回归测试（2026-09-15）；未进行 live API 验证。
