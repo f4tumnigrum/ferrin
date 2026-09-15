@@ -307,7 +307,7 @@ docs/                      design documents, provider docs, API snapshots
 verification/              prototypes behind the pending-verification items (separate workspace)
 ```
 
-分层规则：`ferrin-spec` 不依赖其他 Ferrin crate；供应商 crate 只依赖 `ferrin-spec` 与 `ferrin-provider-util`；应用只需依赖 `ferrin`。`0.y` 阶段所有 crate 共用一个版本号。
+分层规则：`ferrin-spec` 不依赖其他 Ferrin crate；供应商 crate 使用 `ferrin-spec`、`ferrin-provider-util`，并按需复用 `ferrin-schema` 变换；应用只需依赖 `ferrin`。`0.y` 阶段所有 crate 共用一个版本号。
 
 ## 项目状态
 

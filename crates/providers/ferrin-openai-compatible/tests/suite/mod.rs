@@ -10,3 +10,4 @@ mod options;
 mod prompt;
 mod provider;
 mod stream_eof;
+mod strict_schema;

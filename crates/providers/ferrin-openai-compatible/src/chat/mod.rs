@@ -15,6 +15,7 @@ use ferrin_provider_util::reasoning::is_custom_reasoning;
 use ferrin_provider_util::stream_driver::EarlyChunk;
 use ferrin_provider_util::stream_driver::drive_stream;
 use ferrin_provider_util::stream_driver::fail_on_early_error;
+use ferrin_schema::SchemaTransform;
 use ferrin_spec::FinishReason;
 use ferrin_spec::FinishReasonKind;
 use ferrin_spec::JsonObject;
@@ -177,6 +178,11 @@ impl OpenAiCompatibleChatLanguageModel {
                 name: schema_name,
                 description,
             }) if self.config.supports_structured_outputs => {
+                let schema = if strict_json_schema {
+                    SchemaTransform::OpenAiStrict.applied(schema.clone())?
+                } else {
+                    schema.clone()
+                };
                 let mut json_schema = json!({
                     "schema": schema,
                     "strict": strict_json_schema,

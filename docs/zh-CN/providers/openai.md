@@ -116,3 +116,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【事实】DALL-E 图片编辑发送单个 multipart `image` 并显式请求 `response_format=b64_json`；GPT 图片编辑使用 `image[]` 及默认 base64 响应。DALL-E 多张输入图片会在请求前被拒绝。来源：`image/mod.rs` 和 `image_edits_use_model_specific_file_fields_and_response_format`（2026-09-15）。
 
 【事实】Chat 非流式和流式生成均在 `Usage.raw` 保留上游完整 `usage` 对象，包括音频计数及未纳入归一化用量类型的字段。来源：`chat/mod.rs`、`chat/stream.rs`；回归测试 `raw_usage_preserves_unmodeled_fields_in_generate_and_stream`（2026-09-15）。
+
+【决策】Responses/Chat 的函数输入和结构化输出 Schema 在最终 strict 为 true（默认）时使用 `SchemaTransform::OpenAiStrict`。函数 `strict` 覆盖 `strictJsonSchema`；false 保留归一化后的 Schema。严格转换关闭对象、将全部属性设为必需，并使可选受约束值允许 null；无法表示的字典在 HTTP 请求前报错（ADR [0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)）。来源：`strict_schema` 回归测试（2026-09-15），仅验证请求形态。
