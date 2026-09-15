@@ -5,6 +5,12 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `SchemaTransform::apply`/`applied`, `to_openai_strict`, and
+  `Schema::transformed` return `Result`, rejecting unsupported strict
+  dictionaries, including draft-07 schema dependencies, without changing their representation ([ADR 0019](../../docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)).
+
 ### Fixed
 
 - Preserve nullability of optional enum, const, and composed constraints in

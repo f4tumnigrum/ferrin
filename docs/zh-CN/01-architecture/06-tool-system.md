@@ -249,3 +249,5 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 【决策】 审批恢复在单次调用内按审批 ID 与工具调用 ID 对决定去重。审批结论或提供商执行标记冲突时，在执行任何工具之前失败；重复的相同决定只调度一次执行。这不提供跨调用的恰好一次执行保证。
 
 【决策】 审批恢复在启动任何工具执行之前，校验所有已批准且可执行的客户端工具的当前上下文。上下文构造将校验失败作为 `tools_context` 的 `InvalidArgument` 错误向上传递，不能将失败替换为缺失上下文。
+
+【决策】严格 Schema 转换对任意键字典返回错误，不会将其关闭或返回不受支持的 Schema；见 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。`apply`、`applied`、`to_openai_strict` 和 `Schema::transformed` 返回 `Result`；原地转换失败时输入不变。

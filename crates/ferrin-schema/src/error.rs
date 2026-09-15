@@ -15,6 +15,14 @@ pub enum SchemaError {
     /// The value does not match the schema or type.
     #[error(transparent)]
     TypeValidation(#[from] TypeValidationError),
+    /// A valid schema shape cannot be preserved by the requested transform.
+    #[error("unsupported json schema keyword {keyword} for {transform}")]
+    UnsupportedTransform {
+        /// Transform that cannot represent this schema.
+        transform: &'static str,
+        /// Unsupported schema keyword.
+        keyword: &'static str,
+    },
     /// The JSON Schema itself is invalid.
     #[error("invalid json schema: {message}")]
     InvalidSchema {
@@ -28,6 +36,9 @@ impl From<SchemaError> for ProviderError {
         match error {
             SchemaError::JsonParse(error) => Self::from(error),
             SchemaError::TypeValidation(error) => Self::from(error),
+            error @ SchemaError::UnsupportedTransform { .. } => {
+                Self::from(InvalidArgumentError::new("schema", error.to_string()))
+            }
             SchemaError::InvalidSchema { message } => {
                 Self::from(InvalidArgumentError::new("schema", message))
             }

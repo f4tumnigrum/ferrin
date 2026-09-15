@@ -82,7 +82,7 @@ impl<T> Schema<T> {
 }
 ```
 
-[Fact] The 2026-09-13 implementation adds `Schema::<T>::typed_from_json_schema(JsonValue)` (deserialize as `T`, first validating JSON Schema when enabled), `Schema::lazy(FnOnce() -> JsonValue, validator)`, `with_json_schema_and_validator`, `Schema::<JsonValue>::empty_object()`/`any()`, `transformed(SchemaTransform)` (lazy schema rewrite, unchanged validator), and `erased() -> Schema<JsonValue>` (run the original validator, return original JSON). `json_schema` uses `LazyLock<JsonValue, Box<dyn FnOnce>>` shared by `Arc`; clones share cache and validator. Without `json-schema-validation`, `from_json_schema` accepts all values.
+[Fact] The 2026-09-13 implementation adds `Schema::<T>::typed_from_json_schema(JsonValue)` (deserialize as `T`, first validating JSON Schema when enabled), `Schema::lazy(FnOnce() -> JsonValue, validator)`, `with_json_schema_and_validator`, `Schema::<JsonValue>::empty_object()`/`any()`, `transformed(SchemaTransform)` (originally lazy; since 2026-09-15 returns `Result` with an immediate rewrite and unchanged validator, [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)), and `erased() -> Schema<JsonValue>` (run the original validator, return original JSON). `json_schema` uses `LazyLock<JsonValue, Box<dyn FnOnce>>` shared by `Arc`; clones share cache and validator. Without `json-schema-validation`, `from_json_schema` accepts all values.
 ### 5.2 Schema dialect
 
 [Fact] Providers accept JSON Schema subsets, requiring adapter transforms: Anthropic removes unsupported keywords; OpenAI strict mode requires `additionalProperties: false` and all properties in `required`.

@@ -70,7 +70,9 @@ fn erased_and_transformed_share_validation() {
     assert_eq!(erased.validate(value.clone()).unwrap(), value);
     assert!(erased.validate(json!({})).is_err());
 
-    let strict = schema.transformed(SchemaTransform::openai_strict());
+    let strict = schema
+        .transformed(SchemaTransform::openai_strict())
+        .unwrap();
     assert_eq!(strict.json_schema()["required"], json!(["city", "days"]));
     assert_eq!(schema.json_schema()["required"], json!(["city"]));
     assert!(strict.validate(json!({ "city": "Oslo" })).is_ok());

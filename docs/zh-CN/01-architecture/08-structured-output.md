@@ -82,7 +82,7 @@ impl<T> Schema<T> {
 }
 ```
 
-【事实】2026-09-13 实现在此基础上补充：`Schema::<T>::typed_from_json_schema(JsonValue)`（原始 Schema + 反序列化为 `T`，开启 `json-schema-validation` 时先做 JSON Schema 校验）、`Schema::lazy(FnOnce() -> JsonValue, validator)`、`with_json_schema_and_validator`、`Schema::<JsonValue>::empty_object()`/`any()`、`transformed(SchemaTransform)`（惰性重写 Schema、校验不变）与 `erased() -> Schema<JsonValue>`（运行原校验、返回原 JSON 值）。`json_schema` 以 `LazyLock<JsonValue, Box<dyn FnOnce>>` 承载并由 `Arc` 共享，`Clone` 共享缓存与校验器。`from_json_schema` 在 `json-schema-validation` 关闭时不做校验（所有值通过）。
+【事实】2026-09-13 实现在此基础上补充：`Schema::<T>::typed_from_json_schema(JsonValue)`（原始 Schema + 反序列化为 `T`，开启 `json-schema-validation` 时先做 JSON Schema 校验）、`Schema::lazy(FnOnce() -> JsonValue, validator)`、`with_json_schema_and_validator`、`Schema::<JsonValue>::empty_object()`/`any()`、`transformed(SchemaTransform)`（最初惰性重写；自 2026-09-15 返回 `Result` 并立即重写，校验不变，见 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)）与 `erased() -> Schema<JsonValue>`（运行原校验、返回原 JSON 值）。`json_schema` 以 `LazyLock<JsonValue, Box<dyn FnOnce>>` 承载并由 `Arc` 共享，`Clone` 共享缓存与校验器。`from_json_schema` 在 `json-schema-validation` 关闭时不做校验（所有值通过）。
 ### 5.2 Schema 方言
 
 【事实】各供应商只接受 JSON Schema 的子集，适配器需要做供应商特定变换（Anthropic 清理不支持的关键字，OpenAI 严格模式要求 `additionalProperties: false` 与全字段 `required`）。
