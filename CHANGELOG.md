@@ -36,6 +36,8 @@ lists releases and cross-crate changes. The format follows
 
 ### Fixed
 
+- Preserve cargo-deny failures in the weekly advisory workflow so security issues are created.
+
 - `cargo deny` no longer rejects the path-only `ferrin-testing`
   dev-dependency as a wildcard version (`allow-wildcard-paths = true`); the
   `deny` CI job had failed since that dependency change.
