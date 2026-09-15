@@ -120,6 +120,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-15 | `url`，[crates.io 官方 API](https://crates.io/api/v1/crates/url) 中未 yank 的最高稳定版本 | 【事实】2.5.8 仍为最新稳定版（2026-01-05 发布），现已锁定；schema 复用工作区依赖，不改变版本 | Schema 审查 F03 |
 | 2026-09-15 | `verification/Cargo.lock` 与根工作区已验证的 `rustls` 版本对齐 | 【事实】独立原型工作区也锁定 0.23.45，以修复 RUSTSEC-2026-0285；根工作区审计不会覆盖这份独立锁文件 | 补充审查 I05 |
 | 2026-09-15 | Ferrin 工作区版本与 crates.io 官方 API | 【事实】注册表最新稳定版仍为 0.1.0，尚无 0.1.1 发布记录。【决策】按用户选择在本地准备 0.1.1，不执行发布；本次版本准备不改变其他依赖约束或工具链 | 版本准备 |
+| 2026-09-15 | Ferrin 0.1.1，crates.io 官方版本 API 与 docs.rs 状态端点 | 【事实】全部 15 个版本已上架且未 yank，15 个文档构建均成功；见[发布验证](06-versioning-and-release.md#9-011-发布2026-09-15) | 发布验证 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
 
