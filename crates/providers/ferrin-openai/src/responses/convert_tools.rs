@@ -212,26 +212,47 @@ pub fn provider_tool_type(id: &str) -> Option<&'static str> {
         .map(|(_, provider_type)| *provider_type)
 }
 
-fn camel_to_snake(name: &str) -> String {
-    let mut out = String::with_capacity(name.len() + 4);
-    for ch in name.chars() {
-        if ch.is_ascii_uppercase() {
-            out.push('_');
-            out.push(ch.to_ascii_lowercase());
-        } else {
-            out.push(ch);
-        }
-    }
-    out
-}
-
-/// Recursively renames camelCase keys to snake_case.
+/// Converts documented API configuration fields while preserving opaque maps.
 fn snake_case_keys(value: &JsonValue) -> JsonValue {
     match value {
         JsonValue::Object(object) => JsonValue::Object(
             object
                 .iter()
-                .map(|(key, value)| (camel_to_snake(key), snake_case_keys(value)))
+                .map(|(key, value)| {
+                    let name = match key.as_str() {
+                        "allowedDomains" => "allowed_domains",
+                        "blockedDomains" => "blocked_domains",
+                        "allowedTools" => "allowed_tools",
+                        "readOnly" => "read_only",
+                        "toolNames" => "tool_names",
+                        "connectorId" => "connector_id",
+                        "requireApproval" => "require_approval",
+                        "serverDescription" => "server_description",
+                        "serverLabel" => "server_label",
+                        "serverUrl" => "server_url",
+                        "inputFidelity" => "input_fidelity",
+                        "inputImageMask" => "input_image_mask",
+                        "fileId" => "file_id",
+                        "imageUrl" => "image_url",
+                        "outputCompression" => "output_compression",
+                        "outputFormat" => "output_format",
+                        "partialImages" => "partial_images",
+                        "containerId" => "container_id",
+                        "fileIds" => "file_ids",
+                        "memoryLimit" => "memory_limit",
+                        "networkPolicy" => "network_policy",
+                        "displayWidth" => "display_width",
+                        "displayHeight" => "display_height",
+                        "displayNumber" => "display_number",
+                        other => other,
+                    };
+                    let converted = match name {
+                        "allowed_tools" | "require_approval" | "always" | "never"
+                        | "input_image_mask" | "network_policy" => snake_case_keys(value),
+                        _ => value.clone(),
+                    };
+                    (name.to_owned(), converted)
+                })
                 .collect(),
         ),
         JsonValue::Array(list) => JsonValue::Array(list.iter().map(snake_case_keys).collect()),
@@ -321,8 +342,7 @@ fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> Jso
             }
         }
         _ => {
-            // image_generation, mcp, tool_search, ...: pass every argument
-            // through with snake_case keys.
+            // Convert API option names without inspecting user-defined dictionaries.
             if let JsonValue::Object(object) = snake_case_keys(&JsonValue::Object(args.clone())) {
                 for (key, value) in object {
                     item.insert(key, value);

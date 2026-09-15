@@ -108,3 +108,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【事实】本地 `openai.shell` 结果使用 `shell_call_output`，`output` 数组包含 stdout/stderr/outcome，并将 `outcome.exitCode` 转为 `exit_code`；旧版 `openai.local_shell` 保留 `local_shell_call_output`。来源：`responses/convert_tool_results.rs`；回归测试 `local_shell_outputs_use_the_matching_api_generation`（2026-09-15）。
 
 【事实】Responses 和 Chat 请求构建使用 `OpenAiConfig.name` 解析上传文件引用，与 provider options 键相互独立；独立提示词转换辅助函数仍使用默认名称 `openai`。来源：回归测试 `uploaded_files_roundtrip_with_custom_provider_name`（2026-09-15）。
+
+【决策】Provider 工具参数转换仅重命名已知 API 字段并遍历已知配置对象；headers、metadata、Schema 及未知参数值保持原样，以保留用户字典键和 HTTP 头名称。来源：`responses/convert_tools.rs`；回归测试 `provider_tool_options_preserve_opaque_dictionary_keys`（2026-09-15）。

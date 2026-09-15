@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve opaque dictionary keys when converting provider tool options to wire format.
+
 - Resolve Responses and Chat file references using the configured provider name.
 
 - Encode local shell results with the matching Responses shell output wire type.

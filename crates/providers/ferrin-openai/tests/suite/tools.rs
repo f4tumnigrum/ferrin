@@ -143,3 +143,33 @@ fn unknown_provider_tools_produce_a_warning() {
     assert!(converted.tools.is_none());
     assert_eq!(converted.warnings.len(), 1);
 }
+
+#[test]
+fn provider_tool_options_preserve_opaque_dictionary_keys() {
+    let definitions = vec![ToolDefinition::Provider {
+        id: "openai.mcp".to_owned(),
+        name: "remote".into(),
+        args: serde_json::from_value(json!({
+            "serverLabel": "docs", "serverUrl": "https://example.test/mcp",
+            "headers": {"X-API-Key": "test-key", "serverUrl": "opaque"},
+            "metadata": {"readOnly": true},
+            "allowedTools": {"readOnly": true, "toolNames": ["getData"]},
+            "requireApproval": {"never": {"toolNames": ["getData"]}},
+            "parameters": {"type": "object", "properties": {"serverUrl": {"type": "string"}}}
+        }))
+        .unwrap(),
+    }];
+    let mapping = tool_name_mapping(&definitions);
+    let converted = convert_tools(&definitions, None, &mapping, false, "openai").unwrap();
+    assert_eq!(
+        converted.tools,
+        Some(vec![json!({
+            "type": "mcp", "server_label": "docs", "server_url": "https://example.test/mcp",
+            "headers": {"X-API-Key": "test-key", "serverUrl": "opaque"},
+            "metadata": {"readOnly": true},
+            "allowed_tools": {"read_only": true, "tool_names": ["getData"]},
+            "require_approval": {"never": {"tool_names": ["getData"]}},
+            "parameters": {"type": "object", "properties": {"serverUrl": {"type": "string"}}}
+        })])
+    );
+}
