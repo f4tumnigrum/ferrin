@@ -23,7 +23,7 @@ use serde_json::json;
 use crate::cache_control::CacheControlValidator;
 use crate::capabilities::model_capabilities;
 use crate::config::AnthropicConfig;
-use crate::convert_prompt::convert_prompt;
+use crate::convert_prompt::convert_prompt_with_cache;
 use crate::json_schema::sanitize_json_schema;
 use crate::options::ContextEdit;
 use crate::options::Fallbacks;
@@ -189,11 +189,13 @@ pub fn prepare_request(
         ));
     }
     let mapping = tool_name_mapping(&options.tools);
-    let converted = convert_prompt(
+    let mut cache = CacheControlValidator::new();
+    let converted = convert_prompt_with_cache(
         config,
         &options.prompt,
         &mapping,
         anthropic.send_reasoning.unwrap_or(true),
+        &mut cache,
     )?;
     warnings.extend(converted.warnings);
     let mut betas = converted.betas;
@@ -479,7 +481,6 @@ pub fn prepare_request(
     }
 
     let default_eager = stream && anthropic.tool_streaming.unwrap_or(true);
-    let mut cache = CacheControlValidator::new();
     let prepared_tools = match &json_response_tool {
         Some(json_tool) => {
             let mut tools = options.tools.clone();

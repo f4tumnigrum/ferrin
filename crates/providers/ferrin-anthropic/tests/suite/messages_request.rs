@@ -386,3 +386,49 @@ async fn documented_block_binding_options_use_camel_case() {
         );
     }
 }
+
+#[tokio::test]
+async fn cache_breakpoint_limit_is_shared_across_prompt_and_tools() {
+    use ferrin_spec::language_model::prompt::TextPart;
+    use ferrin_spec::language_model::prompt::UserPromptPart;
+
+    let test = TestProvider::start().await;
+    for prompt_count in [0_usize, 3, 4] {
+        let cache = anthropic_options(json!({"cacheControl":{"type":"ephemeral"}}));
+        let content = (0..prompt_count)
+            .map(|index| {
+                let mut text = TextPart::new(format!("Context {index}"));
+                text.provider_options = Some(cache.clone());
+                UserPromptPart::Text(text)
+            })
+            .collect();
+        let mut options = CallOptions::new(vec![PromptMessage::user(content)]);
+        options.tools = (0..2)
+            .map(|index| {
+                let mut tool = ToolDefinition::function(
+                    format!("tool_{index}"),
+                    None,
+                    json!({"type":"object"}),
+                );
+                if let ToolDefinition::Function {
+                    provider_options, ..
+                } = &mut tool
+                {
+                    *provider_options = Some(cache.clone());
+                }
+                tool
+            })
+            .collect();
+        let prepared = prepare(&test, "claude-sonnet-4-5", &options);
+        let kept = json!(prepared.body)
+            .to_string()
+            .matches("cache_control")
+            .count();
+        assert_eq!(kept, (prompt_count + 2).min(4));
+        let warnings = features(&prepared.warnings);
+        assert_eq!(
+            warnings,
+            vec!["cacheControl breakpoint limit"; (prompt_count + 2).saturating_sub(4)]
+        );
+    }
+}
