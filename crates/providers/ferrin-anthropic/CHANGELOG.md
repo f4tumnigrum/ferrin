@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve definitions and reference scopes while sanitizing structured-output schemas.
+
 - Accept documented camelCase block-binding options while preserving the legacy spelling.
 
 ### Added

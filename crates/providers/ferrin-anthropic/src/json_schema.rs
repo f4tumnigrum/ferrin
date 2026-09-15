@@ -41,6 +41,7 @@ const CONSTRAINT_KEYWORDS: &[&str] = &[
 
 const PASSTHROUGH_KEYWORDS: &[&str] = &[
     "$schema",
+    "$ref",
     "$id",
     "title",
     "description",
@@ -56,11 +57,6 @@ pub fn sanitize_json_schema(schema: &JsonValue) -> JsonValue {
     let Some(object) = schema.as_object() else {
         return schema.clone();
     };
-    if let Some(reference) = object.get("$ref") {
-        let mut out = JsonObject::new();
-        out.insert("$ref".to_owned(), reference.clone());
-        return JsonValue::Object(out);
-    }
     let mut out = JsonObject::new();
     for key in PASSTHROUGH_KEYWORDS {
         if let Some(value) = object.get(*key) {

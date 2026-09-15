@@ -84,3 +84,5 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
 
 【事实】 `thinking.blockBinding.prefixMismatchBehavior` 使用 camelCase 选项名称，在线格式中转换为 `thinking.block_binding.prefix_mismatch_behavior`；同时兼容原有 snake_case 选项。回归：`tests/suite/messages_request.rs::documented_block_binding_options_use_camel_case`（2026-09-15）。
+
+【事实】 结构化输出清理保留 `$ref` 的同级 `$id`、`$defs` 与 `definitions`，清理定义但不展开递归引用。回归：`tests/suite/unit.rs::schema_references_retain_definitions_and_scope`（2026-09-15）。

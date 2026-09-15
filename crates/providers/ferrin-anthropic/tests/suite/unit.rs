@@ -207,3 +207,25 @@ fn base_urls_are_normalized() {
     );
     assert!(normalize_base_url("not a url").is_err());
 }
+
+#[test]
+fn schema_references_retain_definitions_and_scope() {
+    for definitions in ["$defs", "definitions"] {
+        let reference = format!("#/{definitions}/Node");
+        let schema = json!({
+            "$id": "https://example.test/schema.json",
+            "$ref": reference,
+            definitions: {"Node": {
+                "type":"object",
+                "properties": {
+                    "next": {"anyOf": [{"$ref":reference}, {"type":"null"}]},
+                    "name": {"$id":"name.json", "$ref":"#/$defs/Name", "$defs":{"Name":{"type":"string"}}}
+                },
+                "required":["name"]
+            }}
+        });
+        let mut expected = schema.clone();
+        expected[definitions]["Node"]["additionalProperties"] = json!(false);
+        assert_eq!(sanitize_json_schema(&schema), expected);
+    }
+}
