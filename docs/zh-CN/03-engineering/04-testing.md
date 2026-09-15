@@ -121,3 +121,5 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 - 【事实】（2026-09-14，开发机 macOS，Rust 1.98.1，参数 `--warm-up-time 0.5 --measurement-time 1 --sample-size 10`，仅验证可运行，非正式测量）11 个目标全部完成。量级：SSE 解码 2000 事件约 1.4 ms（分片 64 字节时约 1.5 ms）；部分 JSON 修复 4 KiB 前缀 2.7–11 µs；200 条消息裁剪 15–35 µs；`generate_text` 单步约 7 µs、双步工具循环约 39 µs；`stream_text` 1000 个增量约 0.7 ms（每增量约 0.7 µs）；三个适配器 `do_generate` 约 60 µs、`do_stream` 90–180 µs（含本地 HTTP 往返）；端到端 200 个增量约 1.6 ms，64 路并发（每路 50 个增量）约 8.3 ms。
 - 【决策】基准结果不入库、不作为 CI 门禁：`ci.yml` 的 `clippy` 作业以 `--all-targets` 编译检查基准代码；`bench.yml` 只能手动触发（输入 `filter`），把 `target/criterion` 作为构建产物保留 30 天。依据：共享 runner 的计时噪声大，回归判定应在同一台机器上以 criterion 基线（`--save-baseline`/`--baseline`）比较。
 - 【事实】`cargo bench --workspace -- <criterion 选项>` 会失败：没有 `[[bench]]` 的 lib 目标仍以 libtest harness 运行，libtest 拒绝 criterion 的选项（`error: Unrecognized option: 'sample-size'`，2026-09-14 以 `ferrin-spec` 验证）；位置参数形式的名称过滤两者都接受。因此 `just bench [filter]` 只传过滤器，criterion 选项须限定单个目标：`cargo bench -p <crate> --bench <name> -- --save-baseline <tag>`。
+
+【事实】`StreamContractChecker` 在结束事件后仍记住文本、推理和工具输入 ID，拒绝同一次供应商调用内复用 ID；不同调用使用独立检查器时可以复用。回归测试：`closed_part_ids_cannot_be_reused`（2026-09-15，审查 I02）。

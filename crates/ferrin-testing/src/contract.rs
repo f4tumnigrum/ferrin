@@ -33,6 +33,8 @@ pub struct StreamContractChecker {
     index: usize,
     started: bool,
     terminated: bool,
+    seen_parts: HashSet<PartId>,
+    seen_tool_inputs: HashSet<ToolCallId>,
     open_text: HashSet<PartId>,
     open_reasoning: HashSet<PartId>,
     open_tool_inputs: HashSet<ToolCallId>,
@@ -72,7 +74,8 @@ impl StreamContractChecker {
                 self.started = true;
             }
             StreamPart::TextStart { id, .. } => {
-                if !self.open_text.insert(id.clone()) {
+                self.open_text.insert(id.clone());
+                if !self.seen_parts.insert(id.clone()) {
                     self.violation(format!("text part `{id}` started twice"));
                 }
             }
@@ -87,7 +90,8 @@ impl StreamContractChecker {
                 }
             }
             StreamPart::ReasoningStart { id, .. } => {
-                if !self.open_reasoning.insert(id.clone()) {
+                self.open_reasoning.insert(id.clone());
+                if !self.seen_parts.insert(id.clone()) {
                     self.violation(format!("reasoning part `{id}` started twice"));
                 }
             }
@@ -102,7 +106,8 @@ impl StreamContractChecker {
                 }
             }
             StreamPart::ToolInputStart { id, .. } => {
-                if !self.open_tool_inputs.insert(id.clone()) {
+                self.open_tool_inputs.insert(id.clone());
+                if !self.seen_tool_inputs.insert(id.clone()) {
                     self.violation(format!("tool input `{id}` started twice"));
                 }
             }

@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject reused stream part IDs after their end events in the contract checker.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added

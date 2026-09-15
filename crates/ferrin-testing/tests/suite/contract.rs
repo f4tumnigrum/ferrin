@@ -111,3 +111,113 @@ async fn check_stream_drains_the_result() {
     assert_eq!(collected, parts);
     assert_eq!(outcome, Ok(()));
 }
+
+#[test]
+fn closed_part_ids_cannot_be_reused() {
+    let pairs = [
+        (
+            StreamPart::TextStart {
+                id: "same".into(),
+                provider_metadata: None,
+            },
+            StreamPart::TextEnd {
+                id: "same".into(),
+                provider_metadata: None,
+            },
+            "part 3: text part `same` started twice",
+        ),
+        (
+            StreamPart::ReasoningStart {
+                id: "same".into(),
+                provider_metadata: None,
+            },
+            StreamPart::ReasoningEnd {
+                id: "same".into(),
+                provider_metadata: None,
+            },
+            "part 3: reasoning part `same` started twice",
+        ),
+        (
+            StreamPart::ToolInputStart {
+                id: "same".into(),
+                tool_name: "tool".into(),
+                provider_executed: false,
+                dynamic: false,
+                title: None,
+                provider_metadata: None,
+            },
+            StreamPart::ToolInputEnd {
+                id: "same".into(),
+                provider_metadata: None,
+            },
+            "part 3: tool input `same` started twice",
+        ),
+    ];
+    for (start, end, violation) in pairs {
+        let parts = vec![
+            StreamPart::stream_start(),
+            start.clone(),
+            end.clone(),
+            StreamPart::finish(FinishReason::stop(), Usage::default()),
+        ];
+        assert_eq!(StreamContractChecker::check(&parts), Ok(()));
+        assert_eq!(StreamContractChecker::check(&parts), Ok(()));
+        let repeated = vec![
+            StreamPart::stream_start(),
+            start.clone(),
+            end.clone(),
+            start,
+            end,
+            StreamPart::finish(FinishReason::stop(), Usage::default()),
+        ];
+        assert_eq!(
+            messages(StreamContractChecker::check(&repeated)),
+            vec![violation]
+        );
+    }
+}
+
+#[test]
+fn text_and_reasoning_share_the_part_id_namespace() {
+    let text = (
+        StreamPart::TextStart {
+            id: "same".into(),
+            provider_metadata: None,
+        },
+        StreamPart::TextEnd {
+            id: "same".into(),
+            provider_metadata: None,
+        },
+    );
+    let reasoning = (
+        StreamPart::ReasoningStart {
+            id: "same".into(),
+            provider_metadata: None,
+        },
+        StreamPart::ReasoningEnd {
+            id: "same".into(),
+            provider_metadata: None,
+        },
+    );
+    for (first, second, violation) in [
+        (
+            &text,
+            &reasoning,
+            "part 3: reasoning part `same` started twice",
+        ),
+        (&reasoning, &text, "part 3: text part `same` started twice"),
+    ] {
+        let parts = [
+            StreamPart::stream_start(),
+            first.0.clone(),
+            first.1.clone(),
+            second.0.clone(),
+            second.1.clone(),
+            StreamPart::finish(FinishReason::stop(), Usage::default()),
+        ];
+        assert_eq!(
+            messages(StreamContractChecker::check(&parts)),
+            vec![violation]
+        );
+    }
+}
