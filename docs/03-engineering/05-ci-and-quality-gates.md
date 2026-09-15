@@ -121,3 +121,5 @@ Commit generated files and compare regeneration in CI:
 - Description/topics are configured; social preview and release/live credentials require web configuration.
 
 [Decision] No bypass actors or required checks yet. Accidental force pushes fail; intentional rewriting can disable the rule temporarily. Required checks conflict with current direct-`main` pushes and will be added with the PR workflow.
+
+[Fact] The weekly advisory workflow preserves the exit status of `cargo deny` before closing its Markdown fence, so a failed audit sets the output that creates an advisory issue. Verified with shell stubs returning success and failure on 2026-09-15 (review I01).

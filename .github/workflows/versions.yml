@@ -37,7 +37,15 @@ jobs:
           tool: cargo-deny
       - id: check
         run: |
-          { echo '```'; cargo deny check advisories 2>&1; echo '```'; } > advisories.md || echo "vulnerable=true" >> "$GITHUB_OUTPUT"
+          status=0
+          {
+            echo '```'
+            cargo deny check advisories 2>&1 || status=$?
+            echo '```'
+          } > advisories.md
+          if [ "$status" -ne 0 ]; then
+            echo "vulnerable=true" >> "$GITHUB_OUTPUT"
+          fi
       - if: steps.check.outputs.vulnerable == 'true'
         uses: peter-evans/create-issue-from-file@fca9117c27cdc29c6c4db3b86c48e4115a786710 # v6.0.0
         with:
