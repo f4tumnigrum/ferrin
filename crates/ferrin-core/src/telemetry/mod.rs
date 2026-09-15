@@ -21,6 +21,8 @@ use crate::error::Error;
 
 pub(crate) mod dispatcher;
 mod events;
+mod redact;
+mod redact_provider;
 pub(crate) mod spans;
 
 pub(crate) use dispatcher::TelemetryDispatcher;

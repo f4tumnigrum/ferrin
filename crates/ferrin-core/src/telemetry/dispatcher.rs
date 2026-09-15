@@ -65,19 +65,113 @@ impl TelemetryDispatcher {
     dispatch!(on_start, StartEvent);
     dispatch!(on_step_start, StepStartEvent);
     dispatch!(on_language_model_call_start, ModelCallStartEvent);
-    dispatch!(on_language_model_call_end, ModelCallEndEvent);
+
     dispatch!(on_tool_execution_start, ToolExecutionStartEvent);
-    dispatch!(on_tool_execution_end, ToolExecutionEndEvent);
-    dispatch!(on_step_end, StepEndEvent);
-    dispatch!(on_end, EndEvent);
+    pub(crate) fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {
+        if !self.options.enabled {
+            return;
+        }
+        let mut recorded = event.clone();
+        if !self.record_outputs() {
+            recorded.output = None;
+            recorded.error = recorded
+                .error
+                .map(|_| crate::generate_text::ToolErrorInfo::text(super::redact::REDACTED));
+        }
+        for integration in &self.options.integrations {
+            integration.on_tool_execution_end(&recorded);
+        }
+    }
+
     dispatch!(on_abort, AbortEvent);
+
+    pub(crate) fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {
+        if !self.options.enabled {
+            return;
+        }
+        let mut recorded = event.clone();
+        if !(self.record_inputs() && self.record_outputs()) {
+            recorded.warnings = super::redact::warnings(&recorded.warnings);
+        }
+        if !self.record_outputs() {
+            recorded.content = None;
+            recorded.response.body = None;
+        }
+        for integration in &self.options.integrations {
+            integration.on_language_model_call_end(&recorded);
+        }
+    }
+
+    pub(crate) fn on_step_end(&self, event: &StepEndEvent) {
+        if !self.options.enabled {
+            return;
+        }
+        let recorded = StepEndEvent {
+            call_id: event.call_id.clone(),
+            step: Arc::new(self.recorded_step(&event.step)),
+        };
+        for integration in &self.options.integrations {
+            integration.on_step_end(&recorded);
+        }
+    }
+
+    pub(crate) fn on_end(&self, event: &EndEvent) {
+        if !self.options.enabled {
+            return;
+        }
+        let recorded = EndEvent {
+            call_id: event.call_id.clone(),
+            steps: event
+                .steps
+                .iter()
+                .map(|step| self.recorded_step(step))
+                .collect(),
+            total_usage: event.total_usage.clone(),
+            output_recorded: self
+                .record_outputs()
+                .then(|| event.output_recorded.clone())
+                .flatten(),
+        };
+        for integration in &self.options.integrations {
+            integration.on_end(&recorded);
+        }
+    }
+
+    /// Filters the telemetry copy without changing application hooks or results.
+    fn recorded_step(
+        &self,
+        step: &crate::generate_text::StepResult,
+    ) -> crate::generate_text::StepResult {
+        let mut recorded = step.clone();
+        if !(self.record_inputs() && self.record_outputs()) {
+            recorded.warnings = super::redact::warnings(&recorded.warnings);
+        }
+        if !self.record_inputs() {
+            recorded.request.body = None;
+            recorded.request.messages = None;
+        }
+        if !self.record_outputs() {
+            recorded.content.clear();
+            recorded.response.body = None;
+            recorded.response.messages.clear();
+            recorded.provider_metadata = None;
+        }
+        recorded
+    }
 
     pub(crate) fn on_error(&self, event: &ErrorEvent<'_>) {
         if !self.options.enabled {
             return;
         }
+        let error = (!(self.record_inputs() && self.record_outputs()))
+            .then(|| super::redact::redact_error(event.error, &self.options));
+        let recorded = ErrorEvent {
+            call_id: event.call_id,
+            error: error.as_ref().unwrap_or(event.error),
+            phase: event.phase,
+        };
         for integration in &self.options.integrations {
-            integration.on_error(event);
+            integration.on_error(&recorded);
         }
     }
 

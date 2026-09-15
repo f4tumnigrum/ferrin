@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Apply telemetry recording flags to nested step/end payloads, response bodies and error payloads/causes and warning descriptions while preserving error classifications and original application results.
+
 - Preserve delta metadata while smoothing text and reasoning, including buffered transitions and metadata-only deltas.
 
 - Cache successful URL downloads across text-generation steps, retaining identical file bytes when prepare_step switches models.

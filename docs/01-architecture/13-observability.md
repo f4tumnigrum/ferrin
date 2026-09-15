@@ -91,7 +91,7 @@ Record content only when `record_inputs`/`record_outputs` is true, using target 
 
 [Fact] Developers need adapter warnings about unsupported options, compatibility mappings, and deprecations, but libraries should not write directly to the console.
 
-[Decision] Log one `tracing::warn!(target: "ferrin::warnings", ...)` event per warning, with `warning.type`, `warning.feature`, `warning.details`, `provider`, and `model_id`. Applications control filters; no global switch.
+[Decision] Log one `tracing::warn!(target: "ferrin::warnings", ...)` event per warning, with `category`, `feature`, `provider`, and `model_id`; omit opaque warning descriptions. Applications control filters; no global switch.
 
 ## 5. Performance metrics
 
@@ -153,3 +153,9 @@ let result = ferrin::generate_text(&model)
 - [Decision] Content recording is off by default. Do not implement input/output message attributes. `OtelTelemetryBuilder::record_tool_content()` enables JSON tool arguments (only if call `record_inputs` supplied them) and results. These convention attributes are opt-in because they may contain sensitive data.
 - [Decision] Resolve Tracer/Meter once at `build()`, using global providers unless explicitly supplied through `tracer_provider`/`meter_provider` (in-memory exporters in tests). `without_metrics()` emits spans only. Scope is `ferrin-otel` plus crate version. Production dependencies are the OpenTelemetry API and `tracing` context bridge; `opentelemetry_sdk` with `testing` is dev-only.
 - [Fact] Modules: `telemetry.rs` (about 480 lines), `metrics.rs`, `semconv.rs`. Fourteen tests in `tests/suite/{spans,metrics}.rs` use in-memory span/metric exporters for generation/streaming/failure/abort spans, tool content opt-in and failures, `tracing` parent relationships, token/duration/first-chunk metrics, embedding/reranking and failed modality metrics, and disabled metrics.
+
+[Decision] Telemetry step/end callbacks receive filtered copies: `record_inputs = false` removes request bodies and messages, and `record_outputs = false` removes step content, response bodies/messages and provider metadata. Model-call-end raw response bodies follow the output flag too. Application step/end hooks and returned results retain their complete values. These flags govern lifecycle event content; execution wrappers still handle the actual typed outcomes they instrument.
+
+[Decision] Telemetry error callbacks retain error variants, status/retry classifications, attempt counts and output usage while redacting excluded request/response payloads. When either recording flag is disabled, opaque messages and nested causes are omitted because their content cannot be separated reliably; structured-output text follows `record_outputs`. Tool failure events retain a failure marker without the error payload when outputs are disabled. Application-facing errors remain unchanged.
+
+[Decision] When either content-recording flag is disabled, telemetry warning copies retain categories and feature/setting names but omit opaque messages/details, which can contain prompt or reasoning text. Unconditional warning tracing always omits these descriptions, independent of recording flags; application warning values remain complete.

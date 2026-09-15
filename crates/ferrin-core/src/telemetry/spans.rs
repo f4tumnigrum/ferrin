@@ -67,25 +67,18 @@ pub(crate) fn modality_span(operation: &'static str, model: &ModelIdentity) -> S
 /// Logs adapter warnings, one event per warning.
 pub(crate) fn log_warnings(warnings: &[Warning], model: &ModelIdentity) {
     for warning in warnings {
-        let (kind, feature, details) = match warning {
-            Warning::Unsupported { feature, details } => {
-                ("unsupported", feature.as_str(), details.as_deref())
-            }
-            Warning::Compatibility { feature, details } => {
-                ("compatibility", feature.as_str(), details.as_deref())
-            }
-            Warning::Deprecated { setting, message } => {
-                ("deprecated", setting.as_str(), Some(message.as_str()))
-            }
-            Warning::Other { message } => ("other", "", Some(message.as_str())),
-            #[allow(unreachable_patterns, reason = "the warning enum is non-exhaustive")]
-            _ => ("other", "", None),
+        // Adapter descriptions can contain prompt or generated text. Keep them
+        // in application-facing warnings, never in unconditional tracing logs.
+        let (kind, feature) = match warning {
+            Warning::Unsupported { feature, .. } => ("unsupported", feature.as_str()),
+            Warning::Compatibility { feature, .. } => ("compatibility", feature.as_str()),
+            Warning::Deprecated { setting, .. } => ("deprecated", setting.as_str()),
+            _ => ("other", ""),
         };
         tracing::warn!(
             target: WARNINGS_TARGET,
             category = kind,
             feature = feature,
-            details = details.unwrap_or(""),
             provider = %model.provider,
             model_id = %model.model_id,
             "provider warning"
