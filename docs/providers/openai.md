@@ -104,3 +104,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Decision] A configured Responses `conversation` does not imply that local tool results have been uploaded: tool messages always send their function/custom/provider-defined outputs. Source: `responses/convert_tool_results.rs`; regression `conversation_sends_new_local_tool_results` (2026-09-15).
 
 [Decision] Each `openai.custom` tool maps its application alias to `args.name` independently for calls, results, forced choice, and response names; the tool type `custom` is not a function name. Source: `responses/convert_tools.rs`; regression `custom_tool_aliases_roundtrip_calls_results_and_choice` (2026-09-15).
+
+[Fact] Local `openai.shell` results use `shell_call_output` with an `output` array of stdout/stderr/outcome entries, converting `outcome.exitCode` to `exit_code`; legacy `openai.local_shell` retains `local_shell_call_output`. Source: `responses/convert_tool_results.rs`; regression `local_shell_outputs_use_the_matching_api_generation` (2026-09-15).

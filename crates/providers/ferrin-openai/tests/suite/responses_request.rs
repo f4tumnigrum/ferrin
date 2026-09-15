@@ -314,3 +314,134 @@ async fn custom_tool_aliases_roundtrip_calls_results_and_choice() {
         ["query", "script"]
     );
 }
+
+#[tokio::test]
+async fn local_shell_outputs_use_the_matching_api_generation() {
+    use ferrin_spec::language_model::prompt::ToolPromptPart;
+    use ferrin_spec::language_model::prompt::ToolResultOutput;
+    use ferrin_spec::language_model::prompt::ToolResultPart;
+
+    let test = TestProvider::start().await;
+    for (id, output, expected) in [
+        (
+            "openai.shell",
+            json!({"output": [
+                {"stdout": "ok", "stderr": "", "outcome": {"type": "exit", "exitCode": 0}},
+                {"stdout": "", "stderr": "slow", "outcome": {"type": "timeout"}}
+            ]}),
+            json!({"type": "shell_call_output", "call_id": "call-1", "output": [
+                {"stdout": "ok", "stderr": "", "outcome": {"type": "exit", "exit_code": 0}},
+                {"stdout": "", "stderr": "slow", "outcome": {"type": "timeout"}}
+            ]}),
+        ),
+        (
+            "openai.local_shell",
+            json!({"output": "ok"}),
+            json!({
+                "type": "local_shell_call_output", "call_id": "call-1", "output": "ok"
+            }),
+        ),
+    ] {
+        let mut options =
+            CallOptions::new(vec![PromptMessage::tool(vec![ToolPromptPart::ToolResult(
+                ToolResultPart {
+                    tool_call_id: "call-1".into(),
+                    tool_name: "terminal".into(),
+                    output: ToolResultOutput::json(output),
+                    provider_options: None,
+                },
+            )])]);
+        options.tools.push(ToolDefinition::Provider {
+            id: id.to_owned(),
+            name: "terminal".into(),
+            args: serde_json::from_value(json!({"environment": {"type": "local"}})).unwrap(),
+        });
+        let prepared = prepare_request(test.provider.config(), "gpt-4.1", &options).unwrap();
+        assert_eq!(
+            serde_json::to_value(prepared.body).unwrap()["input"],
+            json!([expected])
+        );
+    }
+}
+
+#[tokio::test]
+async fn shell_error_and_denial_outputs_never_fall_back_to_function_outputs() {
+    use ferrin_spec::error::ProviderError;
+    use ferrin_spec::language_model::prompt::ToolPromptPart;
+    use ferrin_spec::language_model::prompt::ToolResultOutput;
+    use ferrin_spec::language_model::prompt::ToolResultPart;
+
+    let test = TestProvider::start().await;
+    let shell_options = |id: &str, output| {
+        let mut options =
+            CallOptions::new(vec![PromptMessage::tool(vec![ToolPromptPart::ToolResult(
+                ToolResultPart {
+                    tool_call_id: "call-1".into(),
+                    tool_name: "terminal".into(),
+                    output,
+                    provider_options: None,
+                },
+            )])]);
+        options.tools.push(ToolDefinition::Provider {
+            id: id.to_owned(),
+            name: "terminal".into(),
+            args: serde_json::from_value(json!({"environment": {"type": "local"}})).unwrap(),
+        });
+        options
+    };
+    for output in [
+        ToolResultOutput::text("ok"),
+        ToolResultOutput::error_text("spawn failed"),
+        ToolResultOutput::error_json(json!({"error": "spawn failed"})),
+        ToolResultOutput::execution_denied(Some("denied".to_owned())),
+        ToolResultOutput::json(json!({"output": null})),
+    ] {
+        let options = shell_options("openai.shell", output);
+        assert!(matches!(
+            prepare_request(test.provider.config(), "gpt-4.1", &options),
+            Err(ProviderError::UnsupportedFunctionality(_))
+        ));
+    }
+    let options = shell_options(
+        "openai.shell",
+        ToolResultOutput::error_json(json!({"output": [{
+            "stdout": "", "stderr": "command failed", "outcome": {"type": "exit", "exitCode": 2}
+        }]})),
+    );
+    let body = serde_json::to_value(
+        prepare_request(test.provider.config(), "gpt-4.1", &options)
+            .unwrap()
+            .body,
+    )
+    .unwrap();
+    assert_eq!(
+        body["input"],
+        json!([{"type": "shell_call_output", "call_id": "call-1", "output": [{
+            "stdout": "", "stderr": "command failed", "outcome": {"type": "exit", "exit_code": 2}
+        }]}])
+    );
+    for (output, expected) in [
+        (ToolResultOutput::error_text("spawn failed"), "spawn failed"),
+        (
+            ToolResultOutput::error_json(json!({"output": "command failed"})),
+            "command failed",
+        ),
+        (
+            ToolResultOutput::execution_denied(Some("denied".to_owned())),
+            "denied",
+        ),
+    ] {
+        let options = shell_options("openai.local_shell", output);
+        let body = serde_json::to_value(
+            prepare_request(test.provider.config(), "gpt-4.1", &options)
+                .unwrap()
+                .body,
+        )
+        .unwrap();
+        assert_eq!(
+            body["input"],
+            json!([{"type": "local_shell_call_output", "call_id": "call-1", "output": expected}])
+        );
+    }
+    assert_eq!(test.server.received_count(), 0);
+}

@@ -104,3 +104,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【决策】 Responses 设置 `conversation` 不表示本地工具结果已上传：工具消息始终发送函数、自定义及 provider-defined 工具输出。来源：`responses/convert_tool_results.rs`；回归测试 `conversation_sends_new_local_tool_results`（2026-09-15）。
 
 【决策】 每个 `openai.custom` 工具独立将应用别名映射到 `args.name`，用于调用、结果、强制选择及回包名称；工具类型 `custom` 不是函数名。来源：`responses/convert_tools.rs`；回归测试 `custom_tool_aliases_roundtrip_calls_results_and_choice`（2026-09-15）。
+
+【事实】本地 `openai.shell` 结果使用 `shell_call_output`，`output` 数组包含 stdout/stderr/outcome，并将 `outcome.exitCode` 转为 `exit_code`；旧版 `openai.local_shell` 保留 `local_shell_call_output`。来源：`responses/convert_tool_results.rs`；回归测试 `local_shell_outputs_use_the_matching_api_generation`（2026-09-15）。
