@@ -40,6 +40,8 @@ flowchart TD
     util --> openai[ferrin-openai]
     util --> anthropic[ferrin-anthropic]
     util --> compatible[ferrin-openai-compatible]
+    schema --> openai
+    schema --> compatible
     util --> google[ferrin-google]
     util --> mcp[ferrin-mcp]
     spec --> core[ferrin-core]
@@ -217,3 +219,5 @@ ferrin-openai/
 - 每个 crate 独立版本号；`ferrin-spec` 的破坏性变更会级联到所有供应商 crate 与核心 crate。
 - 门面 crate `ferrin` 的版本跟随 `ferrin-core`。
 - 联动规则与流程见[版本与发布](../03-engineering/06-versioning-and-release.md)。
+
+【事实】2026-09-15，OpenAI 和 OpenAI-compatible 请求编码器复用 `ferrin-schema` 的严格 Schema 变换，在发出请求之前拒绝无法表示的字典结构；来源：两个供应商的 `Cargo.toml` 和严格 Schema 请求回归测试。

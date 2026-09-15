@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Apply fallible strict schema transforms to Responses and Chat tool inputs and structured outputs.
+
 - Preserve complete raw Chat usage in both generated and streamed results.
 
 - Request base64 image edits and the single-image multipart field for DALL-E models.

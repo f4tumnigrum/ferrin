@@ -6,6 +6,7 @@
 use ferrin_provider_util::provider_options::parse_provider_options;
 use ferrin_provider_util::reasoning::is_custom_reasoning;
 use ferrin_provider_util::tool_name_mapping::ToolNameMapping;
+use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
@@ -192,6 +193,11 @@ pub fn prepare_request(
         let format = match schema {
             Some(schema) => {
                 let (normalized, schema_warnings) = normalize_json_schema(schema)?;
+                let normalized = if strict_json_schema {
+                    SchemaTransform::OpenAiStrict.applied(normalized)?
+                } else {
+                    normalized
+                };
                 warnings.extend(schema_warnings);
                 let mut format = json!({
                     "type": "json_schema",

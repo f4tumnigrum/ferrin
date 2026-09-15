@@ -307,7 +307,7 @@ docs/                      design documents, provider docs, API snapshots
 verification/              prototypes behind the pending-verification items (separate workspace)
 ```
 
-Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates depend only on `ferrin-spec` and `ferrin-provider-util`; applications need only `ferrin`. All crates share a version during the `0.y` series.
+Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates use `ferrin-spec`, `ferrin-provider-util`, and shared `ferrin-schema` transforms where needed; applications need only `ferrin`. All crates share a version during the `0.y` series.
 
 ## Project status
 

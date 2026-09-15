@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Apply fallible strict transforms to structured output and explicitly strict tool schemas.
+
 - Reject truncated Chat and Completion streams before flushing buffered tool calls.
 
 ## [0.1.0] - 2026-09-14

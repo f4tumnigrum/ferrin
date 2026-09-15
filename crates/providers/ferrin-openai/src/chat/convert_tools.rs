@@ -1,6 +1,7 @@
 //! Conversion of tool definitions and tool choice for the Chat Completions
 //! API.
 
+use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
 use ferrin_spec::error::ProviderError;
@@ -48,6 +49,11 @@ pub fn convert_tools(
                 ..
             } => {
                 let (parameters, schema_warnings) = normalize_json_schema(input_schema)?;
+                let parameters = if strict.unwrap_or(strict_json_schema) {
+                    SchemaTransform::OpenAiStrict.applied(parameters)?
+                } else {
+                    parameters
+                };
                 out.warnings.extend(schema_warnings);
                 let mut inner = json!({
                     "name": name,

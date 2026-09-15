@@ -40,6 +40,8 @@ flowchart TD
     util --> openai[ferrin-openai]
     util --> anthropic[ferrin-anthropic]
     util --> compatible[ferrin-openai-compatible]
+    schema --> openai
+    schema --> compatible
     util --> google[ferrin-google]
     util --> mcp[ferrin-mcp]
     spec --> core[ferrin-core]
@@ -217,3 +219,5 @@ ferrin-openai/
 - Each crate has its own version; breaking changes in `ferrin-spec` cascade to all provider and core crates.
 - The `ferrin` facade follows `ferrin-core`'s version.
 - See [Versioning and release](../03-engineering/06-versioning-and-release.md) for coordination rules and process.
+
+[Fact] On 2026-09-15, the OpenAI and OpenAI-compatible request encoders reuse strict transforms from `ferrin-schema`, rejecting unrepresentable dictionary schemas before sending requests (source: the two provider manifests and strict-schema request regression tests).

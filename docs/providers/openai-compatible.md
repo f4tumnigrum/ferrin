@@ -86,3 +86,5 @@ Forty-three tests snapshot requests/prompts/events and cover option keys, inferr
 [Pending verification] (PV-031) Handwritten official-schema fixtures need real-response recording.
 
 [Decision] Chat and Completion SSE EOF requires an explicit finish reason; otherwise the stream closes open parts and emits `InvalidResponseData`. Chat checks completion before flushing buffered tools, so truncated arguments never become executable calls. Source: `stream_eof` fixture-boundary regressions (2026-09-15); no live API verification.
+
+[Decision] Supported structured output uses the fallible OpenAI strict transform when `strictJsonSchema` is true (default); false preserves the supplied schema, and disabled `supports_structured_outputs` keeps the `json_object` fallback. Function schemas transform only for explicit `strict: true`; absent/false remains unchanged regardless of the response-format flag. Unsupported strict dictionaries fail before HTTP. Source: `strict_schema` regressions (2026-09-15), [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md); no live API verification.

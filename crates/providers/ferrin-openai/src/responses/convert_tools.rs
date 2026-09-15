@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use ferrin_provider_util::provider_options::parse_provider_options;
 use ferrin_provider_util::tool_name_mapping::ToolNameMapping;
+use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
@@ -114,6 +115,11 @@ pub fn convert_tools(
                     .flatten()
                     .unwrap_or_default();
                 let (parameters, warnings) = normalize_json_schema(input_schema)?;
+                let parameters = if strict.unwrap_or(strict_json_schema) {
+                    SchemaTransform::OpenAiStrict.applied(parameters)?
+                } else {
+                    parameters
+                };
                 out.warnings.extend(warnings);
                 let mut function = JsonObject::new();
                 function.insert("type".to_owned(), JsonValue::from("function"));
