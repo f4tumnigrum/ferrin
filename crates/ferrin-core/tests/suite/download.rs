@@ -117,3 +117,139 @@ async fn custom_downloaders_receive_supported_urls_and_may_preserve_them() {
         }
     }
 }
+
+#[tokio::test]
+async fn successful_downloads_are_cached_per_invocation_across_model_changes() {
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let downloader: Arc<dyn DownloadFn> = Arc::new(RecordingDownloader {
+        requests: Arc::clone(&requests),
+        file: Some(downloaded_file()),
+    });
+    for streaming in [false, true] {
+        let first = mock()
+            .generate(super::common::tool_call_result(
+                "call",
+                "get_weather",
+                &serde_json::json!({"city":"Rome"}),
+            ))
+            .stream(vec![
+                ferrin_spec::StreamPart::stream_start(),
+                ferrin_spec::StreamPart::ToolCall(ferrin_spec::ToolCall::new(
+                    "call",
+                    "get_weather",
+                    "{\"city\":\"Rome\"}",
+                )),
+                ferrin_spec::StreamPart::finish(
+                    ferrin_spec::FinishReason::tool_calls(),
+                    Usage::default(),
+                ),
+            ])
+            .build_shared();
+        let second = mock()
+            .supported_urls(SupportedUrls::all())
+            .generate(text_result("done"))
+            .stream(ferrin_testing::text_parts(["done"], Usage::default()))
+            .build_shared();
+        let next_model = Arc::clone(&second);
+        let prepare = move |ctx: &generate_text::PrepareStepContext<'_>| {
+            if ctx.step_number == 0 {
+                generate_text::StepOverrides::none()
+            } else {
+                generate_text::StepOverrides::none().with_model(Arc::clone(&next_model))
+            }
+        };
+        if streaming {
+            ferrin_core::stream_text(Arc::clone(&first))
+                .messages([image_message()])
+                .tools(super::common::weather_tools())
+                .download(Arc::clone(&downloader))
+                .prepare_step(prepare)
+                .stop_when(ferrin_core::step_count(2))
+                .await
+                .unwrap()
+                .consume()
+                .await
+                .unwrap();
+        } else {
+            generate_text(Arc::clone(&first))
+                .messages([image_message()])
+                .tools(super::common::weather_tools())
+                .download(Arc::clone(&downloader))
+                .prepare_step(prepare)
+                .stop_when(ferrin_core::step_count(2))
+                .await
+                .unwrap();
+        }
+        for call in first
+            .generate_calls()
+            .iter()
+            .chain(first.stream_calls().iter())
+            .chain(second.generate_calls().iter())
+            .chain(second.stream_calls().iter())
+        {
+            assert_eq!(
+                first_file(&call.prompt),
+                &FileData::bytes(downloaded_file().data)
+            );
+        }
+    }
+    // Reusing the same downloader for a separate call starts a new cache.
+    assert_eq!(requests.lock().unwrap().len(), 2);
+}
+
+struct SupportAwareDownloader(Arc<Mutex<Vec<bool>>>);
+impl DownloadFn for SupportAwareDownloader {
+    fn download(
+        &self,
+        requests: Vec<DownloadRequest>,
+        _: CancellationToken,
+    ) -> BoxFuture<'_, Result<Vec<Option<DownloadedFile>>, Error>> {
+        let mut seen = self.0.lock().unwrap();
+        let files = requests
+            .into_iter()
+            .map(|request| {
+                seen.push(request.is_url_supported_by_model);
+                (!request.is_url_supported_by_model).then(downloaded_file)
+            })
+            .collect();
+        Box::pin(async move { Ok(files) })
+    }
+}
+
+#[tokio::test]
+async fn preserved_urls_are_reconsidered_when_the_model_changes() {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let first = mock()
+        .supported_urls(SupportedUrls::all())
+        .generate(super::common::tool_call_result(
+            "call",
+            "get_weather",
+            &serde_json::json!({"city":"Rome"}),
+        ))
+        .build_shared();
+    let second = mock().generate(text_result("done")).build_shared();
+    let next_model = Arc::clone(&second);
+    generate_text(Arc::clone(&first))
+        .messages([image_message()])
+        .tools(super::common::weather_tools())
+        .download(Arc::new(SupportAwareDownloader(Arc::clone(&seen))))
+        .stop_when(ferrin_core::step_count(2))
+        .prepare_step(move |ctx: &generate_text::PrepareStepContext<'_>| {
+            if ctx.step_number == 0 {
+                generate_text::StepOverrides::none()
+            } else {
+                generate_text::StepOverrides::none().with_model(Arc::clone(&next_model))
+            }
+        })
+        .await
+        .unwrap();
+    assert_eq!(*seen.lock().unwrap(), vec![true, false]);
+    assert_eq!(
+        first_file(&first.generate_calls()[0].prompt),
+        &FileData::url(Url::parse("https://example.com/private.png").unwrap())
+    );
+    assert_eq!(
+        first_file(&second.generate_calls()[0].prompt),
+        &FileData::bytes(downloaded_file().data)
+    );
+}

@@ -135,6 +135,7 @@ pub(crate) async fn prepare_step_inputs(
         ConvertContext {
             supported_urls: &supported_urls,
             download: ctx.config.download.as_deref(),
+            cache: Some(&ctx.downloads),
             cancellation: cancellation.token(),
         },
     )

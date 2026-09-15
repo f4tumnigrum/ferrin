@@ -1,6 +1,8 @@
 //! Conversion of application messages into the provider prompt.
 
 use std::collections::HashMap;
+use std::sync::Mutex;
+use std::sync::PoisonError;
 
 use bytes::Bytes;
 use ferrin_message::AssistantContent;
@@ -36,12 +38,17 @@ use super::download::DownloadRequest;
 use super::download::DownloadedFile;
 use crate::error::Error;
 
+/// Successful URL downloads reused across steps of a single invocation.
+pub(crate) type DownloadCache = Mutex<HashMap<String, DownloadedFile>>;
+
 /// Inputs of a conversion.
 pub(crate) struct ConvertContext<'a> {
     /// URL patterns the model fetches itself.
     pub(crate) supported_urls: &'a SupportedUrls,
     /// Download function; `None` uses the default downloader.
     pub(crate) download: Option<&'a dyn DownloadFn>,
+    /// Invocation cache; batch conversions may omit it.
+    pub(crate) cache: Option<&'a DownloadCache>,
     /// Cancellation for downloads.
     pub(crate) cancellation: &'a CancellationToken,
 }
@@ -90,6 +97,9 @@ async fn download_files(
     messages: &[Message],
     ctx: &ConvertContext<'_>,
 ) -> Result<HashMap<String, DownloadedFile>, Error> {
+    let mut downloaded = ctx.cache.map_or_else(HashMap::new, |cache| {
+        cache.lock().unwrap_or_else(PoisonError::into_inner).clone()
+    });
     let mut requests: Vec<DownloadRequest> = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     for message in messages {
@@ -114,7 +124,10 @@ async fn download_files(
             let FileSource::Url { url } = source else {
                 continue;
             };
-            if url.scheme() == "data" || !seen.insert(url.to_string()) {
+            if url.scheme() == "data"
+                || downloaded.contains_key(url.as_str())
+                || !seen.insert(url.to_string())
+            {
                 continue;
             }
             requests.push(DownloadRequest {
@@ -129,7 +142,7 @@ async fn download_files(
                 .iter()
                 .all(|request| request.is_url_supported_by_model))
     {
-        return Ok(HashMap::new());
+        return Ok(downloaded);
     }
     #[allow(
         clippy::needless_collect,
@@ -149,11 +162,18 @@ async fn download_files(
                 .await?
         }
     };
-    Ok(urls
-        .into_iter()
-        .zip(results)
-        .filter_map(|(url, file)| file.map(|file| (url.to_string(), file)))
-        .collect())
+    downloaded.extend(
+        urls.into_iter()
+            .zip(results)
+            .filter_map(|(url, file)| file.map(|file| (url.to_string(), file))),
+    );
+    if let Some(cache) = ctx.cache {
+        cache
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .extend(downloaded.clone());
+    }
+    Ok(downloaded)
 }
 
 async fn convert_user(

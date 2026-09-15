@@ -144,6 +144,7 @@ async fn run_start(builder: StartBatch) -> Result<BatchStartResult, Error> {
                             ConvertContext {
                                 supported_urls: &supported_urls,
                                 download: builder.download.as_deref(),
+                                cache: None,
                                 cancellation: &token,
                             },
                         )

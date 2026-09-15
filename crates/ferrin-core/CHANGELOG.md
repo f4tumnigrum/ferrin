@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Cache successful URL downloads across text-generation steps, retaining identical file bytes when prepare_step switches models.
+
 - Invoke explicit custom downloaders even when the model supports every referenced URL.
 
 - Register cancellation wakeups while tools are pending so cancellation promptly drops execution and ends both generation loops.
