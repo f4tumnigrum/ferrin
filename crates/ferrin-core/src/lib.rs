@@ -27,6 +27,7 @@ pub mod image;
 pub(crate) mod limits;
 pub mod middleware;
 pub(crate) mod modality;
+mod modality_stream;
 pub mod output;
 pub mod prompt;
 #[cfg(feature = "realtime")]

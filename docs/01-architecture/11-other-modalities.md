@@ -214,3 +214,5 @@ This section records actual `ferrin-core` signatures and behavior; deviations fr
 ### 13.9 Speech translation
 
 - [Decision] `stream_speech_translation(model, audio: impl Stream<Item = Bytes> + Send + 'static, input_audio_format: AudioFormat, target_language) -> StreamSpeechTranslation` offers `source_language`, `output_audio_format`, and `include_raw_chunks`, with no retries. Return specification `SpeechTranslationStreamResult`; empty target language is `Error::InvalidArgument`. Required format and target language are positional.
+
+[Fact] Streaming transcription and speech translation apply one total deadline from awaiting the builder through the terminal stream event, including provider stream establishment. Establishment expiry returns `Error::Timeout { scope: Total }`; later expiry emits one terminal stream error with `error_type: "timeout"`. Caller cancellation emits `error_type: "cancelled"`. Completion, timeout, cancellation, and dropping the stream cancel the derived provider token without cancelling the caller token (2026-09-15, `tests/suite/modalities/stream_timeout.rs`).
