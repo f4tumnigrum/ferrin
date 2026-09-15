@@ -268,7 +268,7 @@ impl AnthropicStreamState {
                 .to_string();
             parts.push(StreamPart::ToolInputStart {
                 id: ToolCallId::new(id.clone()),
-                tool_name: name.as_str().into(),
+                tool_name: self.mapper.custom_name(&name),
                 provider_executed: false,
                 dynamic: false,
                 title: None,
@@ -283,7 +283,7 @@ impl AnthropicStreamState {
                 id: ToolCallId::new(id.clone()),
                 provider_metadata: None,
             });
-            let mut call = ToolCall::new(id, name, input);
+            let mut call = ToolCall::new(id, self.mapper.custom_name(&name), input);
             call.provider_metadata = caller_metadata(caller.as_ref());
             parts.push(StreamPart::ToolCall(call));
         }
@@ -367,7 +367,7 @@ impl AnthropicStreamState {
                 };
                 let block = ToolCallBlock {
                     tool_call_id: id,
-                    tool_name: name.into(),
+                    tool_name: self.mapper.custom_name(&name),
                     first_delta: initial.is_empty(),
                     input: initial,
                     provider_executed: false,

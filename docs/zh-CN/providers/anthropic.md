@@ -86,3 +86,5 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 【事实】 `thinking.blockBinding.prefixMismatchBehavior` 使用 camelCase 选项名称，在线格式中转换为 `thinking.block_binding.prefix_mismatch_behavior`；同时兼容原有 snake_case 选项。回归：`tests/suite/messages_request.rs::documented_block_binding_options_use_camel_case`（2026-09-15）。
 
 【事实】 结构化输出清理保留 `$ref` 的同级 `$id`、`$defs` 与 `definitions`，清理定义但不展开递归引用。回归：`tests/suite/unit.rs::schema_references_retain_definitions_and_scope`（2026-09-15）。
+
+【事实】 供应商定义工具的别名在强制选择中转换为供应商名称，非流式、流式与预填充工具调用均恢复注册时的名称。回归：`tests/suite/tools.rs::provider_tool_aliases_roundtrip_through_choices_and_calls`（2026-09-15）。

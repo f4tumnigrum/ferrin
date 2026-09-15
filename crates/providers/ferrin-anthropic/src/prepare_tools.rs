@@ -325,7 +325,9 @@ pub fn prepare_tools(
         }
         Some(ToolChoice::Tool { tool_name }) => {
             prepared.tools = Some(converted);
-            let mut choice = json!({"type": "tool", "name": tool_name.as_str()});
+            let mapping = tool_name_mapping(tools);
+            let mut choice =
+                json!({"type": "tool", "name": mapping.to_provider_tool_name(tool_name.as_str())});
             if settings.disable_parallel_tool_use
                 && let Some(object) = choice.as_object_mut()
             {

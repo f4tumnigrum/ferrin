@@ -86,3 +86,5 @@ Insta snapshots in tests/suite/snapshots cover requests, prompts, tool wire shap
 [Fact] `thinking.blockBinding.prefixMismatchBehavior` uses camelCase option spelling and becomes `thinking.block_binding.prefix_mismatch_behavior` on the wire; the legacy snake_case option remains accepted. Regression: `tests/suite/messages_request.rs::documented_block_binding_options_use_camel_case` (2026-09-15).
 
 [Fact] Structured-output sanitization preserves `$ref` siblings, including `$id`, `$defs` and `definitions`, and sanitizes definitions without expanding recursive references. Regression: `tests/suite/unit.rs::schema_references_retain_definitions_and_scope` (2026-09-15).
+
+[Fact] Provider-defined tool aliases map to provider names in forced tool choices and back to registered names in non-streaming, streamed and prefilled tool calls. Regression: `tests/suite/tools.rs::provider_tool_aliases_roundtrip_through_choices_and_calls` (2026-09-15).
