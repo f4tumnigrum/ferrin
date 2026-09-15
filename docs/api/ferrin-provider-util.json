@@ -561,9 +561,12 @@
       "path": "ferrin_provider_util::http::JsonLinesResponseHandler",
       "kind": "struct",
       "signature": "struct<T>",
-      "source": "handlers::JsonLinesResponseHandler",
+      "source": "json_lines::JsonLinesResponseHandler",
       "fields": [
         "/* private fields */"
+      ],
+      "methods": [
+        "fn with_max_line_bytes(self, max_line_bytes: usize) -> Self"
       ],
       "traits": [
         "impl<T: DeserializeOwned + Send + 'static> ResponseHandler<Pin<Box<dyn Stream<Item = ParseResult<T>> + Send>>> for JsonLinesResponseHandler<T>",
@@ -893,7 +896,7 @@
       "path": "ferrin_provider_util::http::json_lines_response_handler",
       "kind": "function",
       "signature": "fn json_lines_response_handler<T>() -> JsonLinesResponseHandler<T>",
-      "source": "handlers::json_lines_response_handler",
+      "source": "json_lines::json_lines_response_handler",
       "attrs": [
         "must_use"
       ]

@@ -216,3 +216,5 @@ Ferrin chain: application → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 [Fact] 2026-09-15 retry parsing uses fallible duration conversion, ignoring non-finite, negative and out-of-range numeric delays; an invalid millisecond header still permits the seconds/date fallback (source: `crates/ferrin-provider-util/tests/suite/misc.rs`).
 
 [Fact] 2026-09-15 SSE BOM detection completes before the first line is parsed, including a BOM split across chunks; regression tests enumerate every pair of chunk boundaries across BOM, CRLF and event separators (source: `crates/ferrin-provider-util/tests/suite/sse.rs`).
+
+[Decision] 2026-09-15 `json_lines_response_handler::<T>().with_max_line_bytes(n)` bounds each physical line before its LF, including a trailing CR (default 16 MiB). Parsing consumes response chunks incrementally without copying their remaining lines; exceeding the limit emits one non-retryable `BodyTooLarge` error and releases the response body immediately. The limit applies to unterminated and whitespace-only lines too; total batch size remains streaming (source: `crates/ferrin-provider-util/src/http/json_lines.rs` and its regression tests).

@@ -512,7 +512,7 @@ pub fn binary_stream_response_handler() -> BinaryStreamResponseHandler {
     BinaryStreamResponseHandler
 }
 
-fn stream_error(
+pub(super) fn stream_error(
     context: &ResponseContext,
     head: &ResponseHead,
     error: TransportError,
@@ -626,94 +626,4 @@ impl<T: DeserializeOwned + Send + 'static> ResponseHandler<BoxStream<'static, Pa
 #[must_use]
 pub fn event_source_response_handler<T>() -> EventSourceResponseHandler<T> {
     EventSourceResponseHandler::new()
-}
-
-/// Decodes a newline-delimited JSON body into chunks of type `T`.
-pub struct JsonLinesResponseHandler<T> {
-    _marker: PhantomData<fn() -> T>,
-}
-
-impl<T> std::fmt::Debug for JsonLinesResponseHandler<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JsonLinesResponseHandler").finish()
-    }
-}
-
-impl<T> Default for JsonLinesResponseHandler<T> {
-    fn default() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<T: DeserializeOwned + Send + 'static> ResponseHandler<BoxStream<'static, ParseResult<T>>>
-    for JsonLinesResponseHandler<T>
-{
-    fn handle(
-        &self,
-        context: ResponseContext,
-        response: HttpResponse,
-    ) -> BoxFuture<'static, Result<Handled<BoxStream<'static, ParseResult<T>>>, ProviderError>>
-    {
-        Box::pin(async move {
-            if response.headers.get_str("content-length") == Some("0") {
-                return Err(EmptyResponseBodyError::new().into());
-            }
-            let head = response.head();
-            let stream = futures_util::stream::unfold(
-                (response.body, Vec::<u8>::new(), false, context, head),
-                |(mut body, mut buffer, mut done, context, head)| async move {
-                    loop {
-                        if let Some(index) = buffer.iter().position(|byte| *byte == b'\n') {
-                            let mut line = buffer.drain(..=index).collect::<Vec<u8>>();
-                            line.pop();
-                            if line.last() == Some(&b'\r') {
-                                line.pop();
-                            }
-                            let text = String::from_utf8_lossy(&line);
-                            if text.trim().is_empty() {
-                                continue;
-                            }
-                            let item = parse_json_chunk::<T>(&text);
-                            return Some((item, (body, buffer, done, context, head)));
-                        }
-                        if done {
-                            if buffer.iter().all(u8::is_ascii_whitespace) {
-                                return None;
-                            }
-                            let text = String::from_utf8_lossy(&buffer).into_owned();
-                            buffer.clear();
-                            let item = parse_json_chunk::<T>(text.trim_end_matches('\r'));
-                            return Some((item, (body, buffer, done, context, head)));
-                        }
-                        match body.next().await {
-                            Some(Ok(chunk)) => buffer.extend_from_slice(&chunk),
-                            Some(Err(error)) => {
-                                done = true;
-                                let item = ParseResult::Err {
-                                    error: stream_error(&context, &head, error),
-                                    raw: None,
-                                };
-                                return Some((item, (body, buffer, done, context, head)));
-                            }
-                            None => done = true,
-                        }
-                    }
-                },
-            );
-            let value: BoxStream<'static, ParseResult<T>> = Box::pin(stream);
-            Ok(Handled {
-                value,
-                raw: None,
-                headers: response.headers,
-            })
-        })
-    }
-}
-
-/// Builds a [`JsonLinesResponseHandler`].
-#[must_use]
-pub fn json_lines_response_handler<T>() -> JsonLinesResponseHandler<T> {
-    JsonLinesResponseHandler::default()
 }
