@@ -11,7 +11,7 @@ Ferrin 工作流：
 | 工作流 | 触发 | 作业 |
 | --- | --- | --- |
 | `ci.yml` | PR、push 到 main | `fmt`、`clippy`、`test`（3 平台矩阵，nextest + doctest）、`doc`（含 `api-snapshot --check`）、`deny`、`shear`、`examples`、`msrv`、`features`、`docs-lint`、`package`、`lockfile` |
-| `semver.yml` | PR 改动 `Cargo.toml` 或 `crates/**`（含加标签事件） | 以基线分支可达的最近 `v*` tag 为基线运行 `cargo semver-checks`；尚无发布 tag 时输出提示并跳过 |
+| `semver.yml` | PR 改动 `Cargo.toml` 或 `crates/**`（含加标签事件） | 以基线分支可达的最近 `v*` tag 为基线运行 `cargo semver-checks`；尚无发布 tag 时输出提示并跳过；tag 中不存在的 crate 通过 `exclude` 输入排除 |
 | `coverage.yml` | push 到 main、PR | `cargo llvm-cov`；摘要写入作业摘要，lcov 报告作为构建产物保留 14 天 |
 | `live-tests.yml` | 手动触发、每周定时 | 在线测试（需要 secret） |
 | `bench.yml` | 手动触发（输入 `filter`） | `cargo bench --workspace --all-features`（criterion），`target/criterion` 报告作为构建产物保留 30 天；不是门禁，基准代码由 `ci.yml` 的 `clippy` 作业（`--all-targets`）编译检查（见[测试规范](04-testing.md)第 11 节） |
@@ -125,3 +125,5 @@ unknown-git = "deny"
 【事实】每周安全审计工作流先保存 `cargo deny` 的退出状态，再关闭 Markdown 代码块；审计失败时设置创建安全问题所需的输出。2026-09-15 使用分别返回成功和失败状态的 shell 替身验证（审查 I01）。
 
 【决策】单独审计 `verification/Cargo.lock`，因为 Cargo 工作区依赖图不包含嵌套的独立工作区。`just deny` 和 CI 的 deny 作业在检查根工作区全部策略之外，也检查原型依赖的安全公告；每周安全审计工作流在任一工作区失败时均报告问题（审查 I05）。
+
+【事实】2026-09-15：当工作区中的某个包不存在于 `--baseline-rev` 树中时，`cargo semver-checks` 0.50.0 以 `package `<name>` not found in <baseline>` 中止（退出码 101），工作区模式与 `-p` 均如此（新增 `ferrin-policy` 后以 `v0.1.1` 为基线的本机运行）。因此 `semver.yml` 列出 tag 中不存在 `crates/**/Cargo.toml` 的 crate，并传给 Action 的 `exclude` 输入；该输入仅在未设置 `package` 时生效（固定版本的 action.yml）。

@@ -21,6 +21,8 @@ lists releases and cross-crate changes. The format follows
   synchronize tool-choice validation in generated and streamed responses.
 - Keep policy decision reasons, evaluation errors and URL credentials out of
   automatic diagnostics.
+- `semver.yml` excludes crates that do not exist in the baseline tag, because
+  `cargo semver-checks` aborts for packages missing from the baseline.
 
 ## [0.1.1] - 2026-09-15
 

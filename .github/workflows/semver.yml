@@ -18,13 +18,36 @@ jobs:
         with:
           fetch-depth: 0
       - id: baseline
-        name: Find the previous release tag
+        name: Find the previous release tag and the crates it does not contain
         run: |
           tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${{ github.event.pull_request.base.sha }}" 2>/dev/null || true)
           if [ -z "$tag" ]; then
             echo "::notice::no release tag reachable from the base branch; nothing to compare against"
           else
             echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            # cargo-semver-checks fails for a package that does not exist in
+            # the baseline revision, so crates added since the tag are excluded.
+            new=$(python3 - "$tag" <<'EOF'
+          import pathlib, re, subprocess, sys
+          tag = sys.argv[1]
+          def names(files, read):
+              found = set()
+              for file in files:
+                  match = re.search(r'^name\s*=\s*"([^"]+)"', read(file), re.M)
+                  if match:
+                      found.add(match.group(1))
+              return found
+          current = names(pathlib.Path("crates").rglob("Cargo.toml"), lambda f: f.read_text())
+          tracked = subprocess.check_output(["git", "ls-tree", "-r", "--name-only", tag, "--", "crates"]).decode().split()
+          baseline = names([f for f in tracked if f.endswith("Cargo.toml")],
+                           lambda f: subprocess.check_output(["git", "show", f"{tag}:{f}"]).decode())
+          print(",".join(sorted(current - baseline)))
+          EOF
+            )
+            echo "exclude=$new" >> "$GITHUB_OUTPUT"
+            if [ -n "$new" ]; then
+              echo "::notice::crates absent from $tag are excluded from the semver check: $new"
+            fi
           fi
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         if: steps.baseline.outputs.tag != ''
@@ -38,3 +61,4 @@ jobs:
           rust-toolchain: manual
           feature-group: all-features
           baseline-rev: ${{ steps.baseline.outputs.tag }}
+          exclude: ${{ steps.baseline.outputs.exclude }}

@@ -11,7 +11,7 @@ Ferrin workflows:
 | Workflow | Trigger | Jobs |
 | --- | --- | --- |
 | `ci.yml` | PRs and main pushes | `fmt`, `clippy`, three-platform nextest/doctests, `doc`/API snapshot, `deny`, `shear`, `examples`, `msrv`, `features`, `docs-lint`, `package`, `lockfile` |
-| `semver.yml` | PR manifest/crate changes, including label events | Compare with latest `v*` tag reachable from base branch; explain and skip before first release |
+| `semver.yml` | PR manifest/crate changes, including label events | Compare with latest `v*` tag reachable from base branch; explain and skip before first release; crates absent from the tag are excluded (`exclude` input) |
 | `coverage.yml` | Main pushes and PRs | llvm-cov summary and 14-day lcov artifact |
 | `live-tests.yml` | Manual and weekly | Credentialed live tests |
 | `bench.yml` | Manual `filter` input | All-feature criterion, 30-day artifacts; no timing gate, Clippy compiles targets; see [Testing](04-testing.md), section 11 |
@@ -125,3 +125,5 @@ Commit generated files and compare regeneration in CI:
 [Fact] The weekly advisory workflow preserves the exit status of `cargo deny` before closing its Markdown fence, so a failed audit sets the output that creates an advisory issue. Verified with shell stubs returning success and failure on 2026-09-15 (review I01).
 
 [Decision] Audit `verification/Cargo.lock` separately because Cargo workspace graphs do not include nested independent workspaces. `just deny` and the CI deny job check prototype advisories as well as all root policies; the weekly advisory workflow reports a failure from either workspace (review I05).
+
+[Fact] 2026-09-15: `cargo semver-checks` 0.50.0 aborts with `package `<name>` not found in <baseline>` (exit 101) when a workspace package does not exist in the `--baseline-rev` tree, in workspace mode as well as with `-p` (local run against `v0.1.1` after adding `ferrin-policy`). `semver.yml` therefore lists the crates whose `crates/**/Cargo.toml` is absent from the tag and passes them to the action's `exclude` input, which applies only when `package` is unset (action.yml at the pinned revision).
