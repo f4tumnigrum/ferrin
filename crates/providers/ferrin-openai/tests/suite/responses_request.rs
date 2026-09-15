@@ -252,3 +252,65 @@ async fn conversation_sends_new_local_tool_results() {
         }])
     );
 }
+
+#[tokio::test]
+async fn custom_tool_aliases_roundtrip_calls_results_and_choice() {
+    use ferrin_openai::responses::convert_tools::tool_name_mapping;
+    use ferrin_spec::language_model::prompt::AssistantPromptPart;
+    use ferrin_spec::language_model::prompt::ToolCallPart;
+    use ferrin_spec::language_model::prompt::ToolPromptPart;
+    use ferrin_spec::language_model::prompt::ToolResultOutput;
+    use ferrin_spec::language_model::prompt::ToolResultPart;
+
+    let test = TestProvider::start().await;
+    let mut options = CallOptions::new(vec![]);
+    options.provider_options = openai_options(json!({"store": false}));
+    for (alias, wire_name) in [("query", "sql"), ("script", "python")] {
+        options.tools.push(ToolDefinition::Provider {
+            id: "openai.custom".to_owned(),
+            name: alias.into(),
+            args: serde_json::from_value(json!({"name": wire_name})).unwrap(),
+        });
+        options.prompt.extend([
+            PromptMessage::assistant(vec![AssistantPromptPart::ToolCall(ToolCallPart {
+                tool_call_id: alias.into(),
+                tool_name: alias.into(),
+                input: json!("run"),
+                provider_executed: false,
+                provider_options: None,
+            })]),
+            PromptMessage::tool(vec![ToolPromptPart::ToolResult(ToolResultPart {
+                tool_call_id: alias.into(),
+                tool_name: alias.into(),
+                output: ToolResultOutput::text("ok"),
+                provider_options: None,
+            })]),
+        ]);
+    }
+    options.tool_choice = Some(ToolChoice::Tool {
+        tool_name: "query".into(),
+    });
+    let prepared = prepare_request(test.provider.config(), "gpt-4.1", &options).unwrap();
+    let body = serde_json::to_value(prepared.body).unwrap();
+    assert_eq!(
+        body["input"],
+        json!([
+            {"type": "custom_tool_call", "call_id": "query", "name": "sql", "input": "run"},
+            {"type": "custom_tool_call_output", "call_id": "query", "output": "ok"},
+            {"type": "custom_tool_call", "call_id": "script", "name": "python", "input": "run"},
+            {"type": "custom_tool_call_output", "call_id": "script", "output": "ok"}
+        ])
+    );
+    assert_eq!(
+        body["tool_choice"],
+        json!({"type": "custom", "name": "sql"})
+    );
+    let mapping = tool_name_mapping(&options.tools);
+    assert_eq!(
+        [
+            mapping.to_custom_tool_name("sql"),
+            mapping.to_custom_tool_name("python")
+        ],
+        ["query", "script"]
+    );
+}
