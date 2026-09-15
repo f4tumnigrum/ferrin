@@ -214,3 +214,5 @@ Ferrin chain: application → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 - [Decision] `Headers::insert(&str, &str)` uses `HeaderValue::from_str`; read through ASCII-only `get_str()` or `get_bytes()`. Store metadata headers with lossy UTF-8 conversion. First-party request headers are ASCII and unaffected.
 
 [Fact] 2026-09-15 retry parsing uses fallible duration conversion, ignoring non-finite, negative and out-of-range numeric delays; an invalid millisecond header still permits the seconds/date fallback (source: `crates/ferrin-provider-util/tests/suite/misc.rs`).
+
+[Fact] 2026-09-15 SSE BOM detection completes before the first line is parsed, including a BOM split across chunks; regression tests enumerate every pair of chunk boundaries across BOM, CRLF and event separators (source: `crates/ferrin-provider-util/tests/suite/sse.rs`).
