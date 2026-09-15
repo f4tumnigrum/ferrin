@@ -212,3 +212,5 @@ Ferrin 链路：应用头 → `ferrin/<core-version>` → `ferrin-<provider>/<pr
 - 【决策】2026-09-13 实现后 reqwest 只启用 `rustls`（经工作区 feature）、`http2`、`stream`：JSON 序列化由 `serde_json` 直接完成，multipart 由本 crate 编码（见第 1 节），响应体一律按字节读取后有损转换为 UTF-8，`charset` 解码无用武之地。依据：少启用三个 feature 可去掉 `mime_guess`、`encoding_rs` 等传递依赖，并让请求体编码在传输实现之间保持一致（测试传输与录制传输看到与 reqwest 完全相同的字节）。
 - 【事实】（PV-016，`verification/pv016-header-values`）`http` 1.5.0 的 `HeaderValue::from_str` 与 `from_bytes` 都接受 0x80–0xFF 字节（UTF-8 文本可直接构造），拒绝换行与 DEL，接受制表符；`HeaderValue::to_str()` 对含非 ASCII 字节的值返回错误，需用 `as_bytes()` 读取。
 - 【决策】`Headers::insert(&str, &str)` 使用 `HeaderValue::from_str`；响应头读取接口提供 `get_str()`（仅 ASCII）与 `get_bytes()`，供应商元数据中的头值以 UTF-8 有损转换后保存。第一方供应商的请求头均为 ASCII，不受影响。
+
+【事实】2026-09-15 重试头解析采用可失败的时长转换，忽略非有限、负数及超出范围的数值；无效的毫秒头仍允许回退到秒数或日期头（来源：`crates/ferrin-provider-util/tests/suite/misc.rs`）。

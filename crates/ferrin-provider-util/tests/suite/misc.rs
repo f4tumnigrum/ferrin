@@ -214,3 +214,27 @@ fn tracker_emits_full_sequence_once() {
     let kinds: Vec<&str> = parts.iter().map(StreamPart::kind_name).collect();
     assert_eq!(kinds, vec!["tool-input-end", "tool-call"]);
 }
+
+#[test]
+fn retry_after_ignores_unrepresentable_delays() {
+    for name in ["retry-after", "retry-after-ms"] {
+        for value in [
+            "NaN",
+            "inf",
+            "-inf",
+            "-1",
+            "1e300",
+            "18446744073709551616000",
+        ] {
+            assert_eq!(retry_after(&Headers::new().with(name, value)), None);
+        }
+    }
+    assert_eq!(
+        retry_after(
+            &Headers::new()
+                .with("retry-after-ms", "1e300")
+                .with("retry-after", "2")
+        ),
+        Some(Duration::from_secs(2))
+    );
+}
