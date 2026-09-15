@@ -365,3 +365,24 @@ async fn custom_provider_name_reads_options_from_both_keys_and_mirrors_metadata(
     assert_eq!(metadata["anthropic"]["usage"]["input_tokens"], json!(42));
     assert_eq!(metadata["myclaude"]["usage"]["input_tokens"], json!(42));
 }
+
+#[tokio::test]
+async fn documented_block_binding_options_use_camel_case() {
+    let test = TestProvider::start().await;
+    for field in ["prefixMismatchBehavior", "prefix_mismatch_behavior"] {
+        let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+        options.provider_options = anthropic_options(json!({
+            "thinking": {"blockBinding": {field: "error"}}
+        }));
+        let prepared = prepare(&test, "claude-opus-4-6", &options);
+        assert_eq!(
+            prepared.body["thinking"]["block_binding"],
+            json!({"prefix_mismatch_behavior": "error"})
+        );
+        assert!(
+            prepared
+                .betas
+                .contains("thinking-binding-controls-2026-08-01")
+        );
+    }
+}

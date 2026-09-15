@@ -82,3 +82,5 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 请求体、提示转换、工具线格式与流式部件序列以 `insta` 快照记录于 `tests/suite/snapshots/`；测试共 58 个。
 
 【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
+
+【事实】 `thinking.blockBinding.prefixMismatchBehavior` 使用 camelCase 选项名称，在线格式中转换为 `thinking.block_binding.prefix_mismatch_behavior`；同时兼容原有 snake_case 选项。回归：`tests/suite/messages_request.rs::documented_block_binding_options_use_camel_case`（2026-09-15）。

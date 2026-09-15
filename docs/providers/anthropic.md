@@ -82,3 +82,5 @@ Fixtures under `crates/providers/ferrin-anthropic/tests/fixtures/<area>` replay 
 Insta snapshots in tests/suite/snapshots cover requests, prompts, tool wire shapes, and stream parts; 58 tests.
 
 [Pending verification] (PV-031) Handwritten official-schema fixtures still need real-response recording.
+
+[Fact] `thinking.blockBinding.prefixMismatchBehavior` uses camelCase option spelling and becomes `thinking.block_binding.prefix_mismatch_behavior` on the wire; the legacy snake_case option remains accepted. Regression: `tests/suite/messages_request.rs::documented_block_binding_options_use_camel_case` (2026-09-15).
