@@ -176,3 +176,77 @@ fn metrics_can_be_disabled() {
             .is_empty()
     );
 }
+
+#[tokio::test]
+async fn parallel_embedding_chunks_record_all_request_and_token_metrics() {
+    use ferrin_core::TelemetryOptions;
+    use ferrin_core::embed_many;
+    use ferrin_spec::EmbeddingModel;
+    use ferrin_spec::ModelId;
+    use ferrin_spec::ProviderId;
+    use ferrin_spec::embedding_model::EmbedOptions;
+    use ferrin_spec::embedding_model::EmbedResult;
+    use ferrin_spec::embedding_model::EmbeddingUsage;
+    use ferrin_spec::error::ProviderError;
+    use std::sync::Arc;
+    use tokio::sync::Barrier;
+
+    struct ParallelEmbeddings {
+        provider: ProviderId,
+        model: ModelId,
+        barrier: Barrier,
+    }
+    impl EmbeddingModel for ParallelEmbeddings {
+        fn provider(&self) -> &ProviderId {
+            &self.provider
+        }
+        fn model_id(&self) -> &ModelId {
+            &self.model
+        }
+        fn max_embeddings_per_call(&self) -> Option<usize> {
+            Some(1)
+        }
+        fn supports_parallel_calls(&self) -> bool {
+            true
+        }
+        async fn do_embed(&self, options: EmbedOptions) -> Result<EmbedResult, ProviderError> {
+            // Both start events must occur before either end event.
+            self.barrier.wait().await;
+            Ok(EmbedResult {
+                embeddings: options.values.iter().map(|_| vec![1.0]).collect(),
+                usage: Some(EmbeddingUsage { tokens: 10 }),
+                warnings: Vec::new(),
+                provider_metadata: None,
+                response: Default::default(),
+            })
+        }
+    }
+    let harness = Harness::new();
+    let model = Arc::new(ParallelEmbeddings {
+        provider: ProviderId::new("mock"),
+        model: ModelId::new("embedding"),
+        barrier: Barrier::new(2),
+    });
+    let result = embed_many(model, ["a", "b"])
+        .max_parallel_calls(2)
+        .telemetry(TelemetryOptions::enabled().with_integration(Arc::new(harness.telemetry())))
+        .await
+        .unwrap();
+    let usage = harness.histogram_points("gen_ai.client.token.usage");
+    let durations = harness.histogram_points("gen_ai.client.operation.duration");
+    assert_eq!(result.usage.tokens, Some(20));
+    assert_eq!(
+        usage
+            .iter()
+            .map(|point| (point.count, point.sum))
+            .collect::<Vec<_>>(),
+        vec![(2, 20.0)]
+    );
+    assert_eq!(
+        durations
+            .iter()
+            .map(|point| point.count)
+            .collect::<Vec<_>>(),
+        vec![2]
+    );
+}

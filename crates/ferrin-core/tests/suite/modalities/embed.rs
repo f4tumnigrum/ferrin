@@ -113,3 +113,54 @@ fn cosine_similarity_matches_the_definition() {
     assert_eq!(cosine_similarity(&[0.0, 0.0], &[1.0, 1.0]).unwrap(), 0.0);
     assert!(cosine_similarity(&[1.0], &[1.0, 2.0]).is_err());
 }
+
+#[tokio::test]
+async fn embedding_telemetry_pairs_each_chunk_and_retry_attempt() {
+    use ferrin_core::Telemetry;
+    use ferrin_core::TelemetryOptions;
+    use ferrin_core::telemetry::EmbedEndEvent;
+    use ferrin_core::telemetry::EmbedStartEvent;
+    use ferrin_core::telemetry::ErrorEvent;
+    use std::collections::BTreeSet;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    struct Recorder {
+        starts: Mutex<Vec<String>>,
+        ends: Mutex<Vec<String>>,
+        errors: Mutex<Vec<String>>,
+    }
+    impl Telemetry for Recorder {
+        fn on_embed_start(&self, event: &EmbedStartEvent) {
+            self.starts.lock().unwrap().push(event.call_id.clone());
+        }
+        fn on_embed_end(&self, event: &EmbedEndEvent) {
+            self.ends.lock().unwrap().push(event.call_id.clone());
+        }
+        fn on_error(&self, event: &ErrorEvent<'_>) {
+            self.errors.lock().unwrap().push(event.call_id.to_owned());
+        }
+    }
+    let recorder = Arc::new(Recorder::default());
+    let mut model = EmbedMock::new();
+    model.max_per_call = Some(1);
+    model.fail_first = 1;
+    let result = embed_many(Arc::new(model), ["a", "b"])
+        .retry(fast_retry(2))
+        .telemetry(TelemetryOptions::enabled().with_integration(recorder.clone()))
+        .await
+        .unwrap();
+    assert_eq!(result.usage.tokens, Some(2));
+    let starts = recorder.starts.lock().unwrap();
+    let ends = recorder.ends.lock().unwrap();
+    let errors = recorder.errors.lock().unwrap();
+    assert_eq!((starts.len(), ends.len(), errors.len()), (3, 2, 1));
+    let unique: BTreeSet<_> = starts.iter().collect();
+    assert_eq!(unique.len(), starts.len());
+    assert_eq!(unique, ends.iter().chain(errors.iter()).collect());
+    let parents: BTreeSet<_> = starts
+        .iter()
+        .map(|id| id.split("/chunk/").next().unwrap())
+        .collect();
+    assert_eq!(parents.len(), 1);
+}
