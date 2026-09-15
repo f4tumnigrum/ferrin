@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Apply MCP request deadlines to sending and input rounds; cancellation cleanup never blocks timeout delivery. Failed-connect cleanup has a separate one-second bound and preserves the original error.
+
 - Release client and built-in transport tasks when their final public handle is dropped.
 
 ## [0.1.0] - 2026-09-14

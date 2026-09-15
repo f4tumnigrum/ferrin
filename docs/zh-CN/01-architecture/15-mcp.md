@@ -240,3 +240,5 @@ mcp.close().await?;
 - 【决策】范围外：`subscriptions/listen`（现代代的列表变更通知）、除 `last-event-id` 外的恢复令牌（`SendOptions` 无 `resumption_token`）、采样与 roots、OAuth 的 `client_secret_jwt`/`private_key_jwt`。
 
 【决策】2026-09-15 客户端任务由公开客户端句柄持有，与分发和服务端请求 future 共享的状态分离，最后一个句柄被丢弃即中止分发器及其处理器。内置传输的析构函数取消流并中止所属任务，打破任务与状态的循环引用；显式 close 仍负责协议会话终止。启动失败会关闭传输（回归覆盖：`crates/ferrin-mcp/tests/suite/client_lifecycle.rs`）。
+
+【决策】2026-09-15 同一有效截止时间覆盖传输发送、响应接收和全部 `input_required` 轮次及处理器。请求取消也中断发送；丢弃请求会清除待处理登记并取消其私有传输令牌。超时与取消通知通过公开客户端句柄持有的任务尽力发送，独立限制在一秒内；弱引用避免循环，最后一个句柄被丢弃时中止清理，避免通知发送阻塞原始错误返回（回归覆盖：`crates/ferrin-mcp/tests/suite/client_deadlines.rs`，使用暂停的 Tokio 时钟）。 启动或初始化失败后的传输清理同样独立限制在一秒内，即使自定义 close 或 HTTP 会话 DELETE 挂起也保留原始失败；协议清理等待前先停止本地待处理工作。

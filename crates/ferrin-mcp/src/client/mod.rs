@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::Weak;
 use std::sync::atomic::AtomicI64;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -276,6 +277,7 @@ pub(crate) struct ClientInner {
     pub(crate) elicitation: Mutex<Option<Arc<dyn ElicitationHandler>>>,
     next_id: AtomicI64,
     cancellation: CancellationToken,
+    cleanup_tasks: Weak<Mutex<JoinSet<()>>>,
 }
 
 impl ClientInner {
@@ -414,6 +416,16 @@ fn outcome_clone(error: &McpError) -> McpError {
     }
 }
 
+/// Failed connection cleanup has its own bound and preserves the original error.
+async fn close_failed_transport(transport: &SharedMcpTransport) {
+    let cancellation = CancellationToken::new();
+    let _cancel_on_drop = cancellation.clone().drop_guard();
+    let options = CloseOptions {
+        cancellation: Some(cancellation),
+    };
+    let _ = tokio::time::timeout(Duration::from_secs(1), transport.close(options)).await;
+}
+
 /// A connected MCP client.
 ///
 /// # Examples
@@ -453,15 +465,16 @@ impl McpClient {
     ///
     /// # Errors
     ///
-    /// Returns the transport or negotiation failure; the transport is closed
-    /// before the error is returned.
+    /// Returns the transport or negotiation failure after attempting transport
+    /// cleanup for at most one second; cleanup failure does not replace it.
     #[tracing::instrument(skip_all, fields(client = %config.name))]
     pub async fn connect(config: McpClientConfig) -> Result<Self, McpError> {
         let transport = config.transport.clone().build()?;
         if let Err(error) = transport.start().await {
-            let _ = transport.close(CloseOptions::default()).await;
+            close_failed_transport(&transport).await;
             return Err(error);
         }
+        let tasks = Arc::new(Mutex::new(JoinSet::new()));
         let inner = Arc::new(ClientInner {
             transport,
             elicitation: Mutex::new(config.elicitation_handler.clone()),
@@ -470,16 +483,14 @@ impl McpClient {
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicI64::new(1),
             cancellation: CancellationToken::new(),
+            cleanup_tasks: Arc::downgrade(&tasks),
         });
         let incoming = inner.transport.incoming();
-        let mut tasks = JoinSet::new();
-        tasks.spawn(Arc::clone(&inner).dispatch(incoming));
-        let client = Self {
-            inner,
-            tasks: Arc::new(Mutex::new(tasks)),
-        };
+        lock(&tasks).spawn(Arc::clone(&inner).dispatch(incoming));
+        let client = Self { inner, tasks };
         if let Err(error) = client.initialize().await {
-            let _ = client.close().await;
+            client.stop();
+            close_failed_transport(&client.inner.transport).await;
             return Err(error);
         }
         Ok(client)
@@ -533,18 +544,25 @@ impl McpClient {
     /// Returns the transport's close failure (for example a failed legacy
     /// session termination); the client is closed regardless.
     pub async fn close(&self) -> Result<(), McpError> {
-        let inner = &self.inner;
-        {
-            let mut state = lock(&inner.state);
-            if state.closed {
-                return Ok(());
-            }
-            state.closed = true;
+        if self.stop() {
+            self.inner.transport.close(CloseOptions::default()).await
+        } else {
+            Ok(())
         }
+    }
+
+    /// Stops local work before waiting for protocol cleanup.
+    fn stop(&self) -> bool {
+        let inner = &self.inner;
+        let was_open = {
+            let mut state = lock(&inner.state);
+            let was_open = !state.closed;
+            state.closed = true;
+            was_open
+        };
         inner.cancellation.cancel();
-        let result = inner.transport.close(CloseOptions::default()).await;
         inner.fail_pending(|| McpError::Closed);
         lock(&self.tasks).abort_all();
-        result
+        was_open
     }
 }

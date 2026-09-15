@@ -1,6 +1,8 @@
 //! Request execution: `_meta` injection, timeouts, `input_required`
 //! rounds and protocol negotiation.
 
+use std::sync::atomic::AtomicI64;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use ferrin_spec::Headers;
@@ -92,6 +94,18 @@ fn required_capability(method: &str) -> Option<&'static str> {
     }
 }
 
+/// Remove a pending registration even when the calling future is dropped.
+struct PendingRequest<'a> {
+    inner: &'a ClientInner,
+    id: i64,
+}
+
+impl Drop for PendingRequest<'_> {
+    fn drop(&mut self) {
+        self.inner.unregister(self.id);
+    }
+}
+
 impl ClientInner {
     fn assert_capability(&self, method: &str) -> Result<(), McpError> {
         let Some(required) = required_capability(method) else {
@@ -137,12 +151,27 @@ impl ClientInner {
         }
     }
 
-    async fn cancel_request(&self, id: i64, reason: &str) {
+    fn cancel_request(&self, id: i64, reason: &str) {
         let mut params = JsonObject::new();
         params.insert("requestId".to_owned(), JsonValue::from(id));
         params.insert("reason".to_owned(), JsonValue::from(reason));
         let message = JsonRpcMessage::notification("notifications/cancelled", Some(params));
-        let _ = self.transport.send(message, SendOptions::default()).await;
+        let Some(owner) = self.cleanup_tasks.upgrade() else {
+            return;
+        };
+        let transport = std::sync::Arc::clone(&self.transport);
+        let cancellation = self.cancellation.child_token();
+        let mut tasks = lock(&owner);
+        while tasks.try_join_next().is_some() {}
+        tasks.spawn(async move {
+            let _cancel_on_drop = cancellation.clone().drop_guard();
+            let options = SendOptions { cancellation: Some(cancellation.clone()), ..SendOptions::default() };
+            // Cleanup has its own bound and never extends the request deadline.
+            tokio::select! {
+                () = cancellation.cancelled() => {},
+                _ = tokio::time::timeout(Duration::from_secs(1), transport.send(message, options)) => {},
+            }
+        });
     }
 
     /// Sends one request and waits for its raw result.
@@ -151,50 +180,22 @@ impl ClientInner {
         method: &str,
         params: JsonObject,
         options: &RequestOptions,
+        active_id: &AtomicI64,
     ) -> Result<JsonObject, McpError> {
         if self.is_closed() {
             return Err(McpError::Closed);
         }
         let id = self.next_id();
         let receiver = self.register(id);
+        let _pending = PendingRequest { inner: self, id };
+        active_id.store(id, Ordering::Relaxed);
         let message = JsonRpcMessage::request(id, method, Some(params));
         let send_options = SendOptions {
             cancellation: options.cancellation.clone(),
             headers: options.headers.clone(),
         };
-        if let Err(error) = self.transport.send(message, send_options).await {
-            self.unregister(id);
-            return Err(error);
-        }
-        let timeout = options.effective_timeout(self.config.default_request_timeout);
-        let response = async {
-            match timeout {
-                Some(timeout) => tokio::time::timeout(timeout, receiver)
-                    .await
-                    .map_err(|_| McpError::Timeout(timeout))?,
-                None => receiver.await,
-            }
-            .unwrap_or(Err(McpError::Closed))
-        };
-        let outcome = match &options.cancellation {
-            Some(token) => tokio::select! {
-                () = token.cancelled() => Err(McpError::Cancelled),
-                outcome = response => outcome,
-            },
-            None => response.await,
-        };
-        match &outcome {
-            Err(McpError::Timeout(_)) => {
-                self.unregister(id);
-                self.cancel_request(id, "timeout").await;
-            }
-            Err(McpError::Cancelled) => {
-                self.unregister(id);
-                self.cancel_request(id, "cancelled").await;
-            }
-            _ => {}
-        }
-        outcome
+        self.transport.send(message, send_options).await?;
+        receiver.await.unwrap_or(Err(McpError::Closed))
     }
 
     /// Answers the `inputRequests` of an `input_required` result.
@@ -229,12 +230,63 @@ impl ClientInner {
         Ok(responses)
     }
 
-    /// Sends a request, following `input_required` rounds in the modern era.
+    /// Applies one deadline to sending, receiving and all input rounds.
     pub(crate) async fn request(
         &self,
         method: &str,
         params: Option<JsonObject>,
         options: &RequestOptions,
+    ) -> Result<JsonObject, McpError> {
+        let timeout = options.effective_timeout(self.config.default_request_timeout);
+        let cancellation = options
+            .cancellation
+            .as_ref()
+            .map_or_else(CancellationToken::new, CancellationToken::child_token);
+        let _cancel_on_drop = cancellation.clone().drop_guard();
+        let options = RequestOptions {
+            cancellation: Some(cancellation.clone()),
+            ..options.clone()
+        };
+        let active_id = AtomicI64::new(0);
+        let outcome = {
+            let response = async {
+                let request = self.request_rounds(method, params, &options, &active_id);
+                match timeout {
+                    Some(timeout) => tokio::time::timeout(timeout, request)
+                        .await
+                        .map_err(|_| McpError::Timeout(timeout))?,
+                    None => request.await,
+                }
+            };
+            tokio::select! {
+                biased;
+                () = self.cancellation.cancelled() => Err(McpError::Closed),
+                () = cancellation.cancelled() => Err(McpError::Cancelled),
+                outcome = response => outcome,
+            }
+        };
+        cancellation.cancel();
+        let reason = match &outcome {
+            Err(McpError::Timeout(_)) => Some("timeout"),
+            Err(McpError::Cancelled) => Some("cancelled"),
+            _ => None,
+        };
+        if let Some(reason) = reason {
+            let id = active_id.load(Ordering::Relaxed);
+            if id != 0 {
+                self.cancel_request(id, reason);
+            }
+        }
+        outcome
+    }
+
+    /// Sends a request, following `input_required` rounds in the modern era.
+    async fn request_rounds(
+        &self,
+        method: &str,
+        params: Option<JsonObject>,
+        options: &RequestOptions,
+        active_id: &AtomicI64,
     ) -> Result<JsonObject, McpError> {
         self.assert_capability(method)?;
         let mut params = params.unwrap_or_default();
@@ -247,7 +299,9 @@ impl ClientInner {
         }
         let mut rounds = 0;
         loop {
-            let result = self.exchange(method, params.clone(), options).await?;
+            let result = self
+                .exchange(method, params.clone(), options, active_id)
+                .await?;
             if era != ProtocolEra::Modern {
                 return Ok(result);
             }
