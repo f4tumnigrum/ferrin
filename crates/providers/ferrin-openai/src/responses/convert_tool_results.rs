@@ -112,14 +112,58 @@ fn convert_tool_result(
         out.input.push(item);
         return Ok(());
     }
-    if ctx.provider_tools.local_shell
-        && provider_name == "local_shell"
-        && let ToolResultOutput::Json { value, .. } = &result.output
-    {
+    if ctx.provider_tools.local_shell && provider_name == "local_shell" {
+        let output = match &result.output {
+            ToolResultOutput::Json { value, .. } | ToolResultOutput::ErrorJson { value, .. } => {
+                value.get("output").cloned().unwrap_or(JsonValue::Null)
+            }
+            _ => convert_output(&result.output, ctx, out)?,
+        };
+        if !output.is_string() {
+            return Err(UnsupportedFunctionalityError::with_message(
+                "local shell tool result output",
+                "local shell tool results require a string output",
+            )
+            .into());
+        }
         out.input.push(json!({
             "type": "local_shell_call_output",
             "call_id": call_id,
-            "output": value.get("output").cloned().unwrap_or(JsonValue::Null),
+            "output": output,
+        }));
+        return Ok(());
+    }
+    if ctx.provider_tools.shell && provider_name == "shell" {
+        let value = match &result.output {
+            ToolResultOutput::Json { value, .. } | ToolResultOutput::ErrorJson { value, .. } => {
+                value
+            }
+            _ => {
+                return Err(UnsupportedFunctionalityError::with_message(
+                    "shell tool result output",
+                    "shell tool results require a JSON output array",
+                )
+                .into());
+            }
+        };
+        let Some(mut output) = value.get("output").and_then(JsonValue::as_array).cloned() else {
+            return Err(UnsupportedFunctionalityError::with_message(
+                "shell tool result output",
+                "shell tool results require a JSON output array",
+            )
+            .into());
+        };
+        for entry in &mut output {
+            if let Some(outcome) = entry.get_mut("outcome").and_then(JsonValue::as_object_mut)
+                && let Some(exit_code) = outcome.remove("exitCode")
+            {
+                outcome.insert("exit_code".to_owned(), exit_code);
+            }
+        }
+        out.input.push(json!({
+            "type": "shell_call_output",
+            "call_id": call_id,
+            "output": output,
         }));
         return Ok(());
     }
