@@ -102,8 +102,8 @@ fn openai_strict_requires_everything_and_nullifies_optionals() {
     );
     assert_eq!(strict["additionalProperties"], false);
     assert_eq!(
-        strict["properties"]["days"]["type"],
-        json!(["integer", "null"])
+        strict["properties"]["days"]["anyOf"][1],
+        json!({ "type": "null" })
     );
     assert_eq!(
         strict["properties"]["unit"]["anyOf"][1],
@@ -114,8 +114,8 @@ fn openai_strict_requires_everything_and_nullifies_optionals() {
         json!({ "type": "null" })
     );
     assert_eq!(
-        strict["properties"]["tags"]["type"],
-        json!(["array", "null"])
+        strict["properties"]["tags"]["anyOf"][1],
+        json!({ "type": "null" })
     );
     assert_eq!(
         strict["definitions"]["Address"]["additionalProperties"],
@@ -141,4 +141,183 @@ fn openai_strict_requires_everything_and_nullifies_optionals() {
             "additionalProperties": false,
         })
     );
+}
+
+#[cfg(feature = "json-schema-validation")]
+#[test]
+fn optional_constraints_accept_null_without_widening_non_null_values() {
+    use ferrin_schema::validation::Validator;
+
+    for (constraint, valid, invalid) in [
+        (
+            json!({"type": "string", "enum": ["C", "F"]}),
+            json!("C"),
+            json!("K"),
+        ),
+        (
+            json!({"type": "string", "const": "C"}),
+            json!("C"),
+            json!("F"),
+        ),
+        (
+            json!({"type": "integer", "not": {"enum": [null, 0]}}),
+            json!(1),
+            json!(0),
+        ),
+        (
+            json!({"allOf": [{"type": "integer"}, {"minimum": 1}]}),
+            json!(1),
+            json!(0),
+        ),
+    ] {
+        let mut schema = json!({
+            "type": "object", "properties": {"value": constraint}
+        });
+        to_openai_strict(&mut schema);
+        let validator = Validator::compile(&schema).unwrap();
+        assert!(validator.is_valid(&json!({"value": null})), "{schema}");
+        assert!(validator.is_valid(&json!({"value": valid})), "{schema}");
+        assert!(!validator.is_valid(&json!({"value": invalid})), "{schema}");
+        assert!(!validator.is_valid(&json!({})), "{schema}");
+    }
+}
+
+#[cfg(feature = "json-schema-validation")]
+#[test]
+fn strict_nullability_preserves_local_reference_targets() {
+    use ferrin_schema::validation::Validator;
+
+    for (name, pointer) in [("value", "value"), ("v/~ ê", "v~1~0%20%C3%AA")] {
+        let mut schema = json!({
+            "type": "object",
+            "properties": {
+                name: {
+                    "definitions": {"X": {"type": "integer"}},
+                    "$ref": format!("#/properties/{pointer}/definitions/X")
+                },
+                "copy": {"$ref": format!("#/properties/{pointer}")}
+            },
+            "required": ["copy"]
+        });
+        let original = Validator::compile(&schema).unwrap();
+        assert!(original.is_valid(&json!({name: 1, "copy": 2})));
+        to_openai_strict(&mut schema);
+        let strict = Validator::compile(&schema).unwrap();
+        assert!(strict.is_valid(&json!({name: 1, "copy": 2})), "{schema}");
+        assert!(strict.is_valid(&json!({name: null, "copy": 2})), "{schema}");
+        assert!(
+            !strict.is_valid(&json!({name: "bad", "copy": 2})),
+            "{schema}"
+        );
+        assert!(
+            !strict.is_valid(&json!({name: 1, "copy": null})),
+            "{schema}"
+        );
+    }
+}
+
+#[cfg(feature = "json-schema-validation")]
+#[test]
+fn strict_reference_relocation_respects_nested_resource_scopes() {
+    use ferrin_schema::validation::Validator;
+
+    let mut schema = json!({
+        "$id": "https://example.com/root",
+        "type": "object",
+        "properties": {
+            "value": {
+                "$id": "item",
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "definitions": {"X": {"type": "integer"}},
+                        "$ref": "#/properties/number/definitions/X"
+                    }
+                }
+            }
+        }
+    });
+    let original = Validator::compile(&schema).unwrap();
+    assert!(original.is_valid(&json!({"value": {"number": 1}})));
+    to_openai_strict(&mut schema);
+    let strict = Validator::compile(&schema).unwrap();
+    assert!(
+        strict.is_valid(&json!({"value": {"number": 1}})),
+        "{schema}"
+    );
+    assert!(
+        strict.is_valid(&json!({"value": {"number": null}})),
+        "{schema}"
+    );
+    assert!(strict.is_valid(&json!({"value": null})), "{schema}");
+    assert!(
+        !strict.is_valid(&json!({"value": {"number": "bad"}})),
+        "{schema}"
+    );
+}
+
+#[cfg(feature = "json-schema-validation")]
+#[test]
+fn reference_relocation_keeps_anchor_and_annotation_scopes() {
+    use ferrin_schema::validation::Validator;
+
+    let mut schema = json!({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+            "target": {
+                "definitions": {"X": {"type": "integer"}},
+                "$ref": "#/properties/target/definitions/X"
+            },
+            "anchored": {"$id": "#named", "$ref": "#/properties/target/definitions/X"},
+            "annotated": {"id": "just-an-annotation", "$ref": "#/properties/target/definitions/X"}
+        },
+        "required": ["anchored", "annotated"]
+    });
+    let value = json!({"target": 1, "anchored": 2, "annotated": 3});
+    assert!(Validator::compile(&schema).unwrap().is_valid(&value));
+    to_openai_strict(&mut schema);
+    let strict = Validator::compile(&schema).unwrap();
+    assert!(strict.is_valid(&value), "{schema}");
+    assert!(
+        !strict.is_valid(&json!({"target": null, "anchored": "bad", "annotated": 3})),
+        "{schema}"
+    );
+}
+
+#[cfg(feature = "json-schema-validation")]
+#[test]
+fn absolute_and_relative_references_to_declared_resources_are_relocated() {
+    use ferrin_schema::validation::Validator;
+
+    let mut schema = json!({
+        "$id": "https://example.com/root",
+        "type": "object",
+        "properties": {
+            "value": {
+                "definitions": {"X": {"type": "integer"}},
+                "$ref": "https://example.com/root#/properties/value/definitions/X"
+            },
+            "resource": {
+                "$id": "child",
+                "type": "object",
+                "properties": {
+                    "number": {"definitions": {"X": {"type": "integer"}},
+                        "$ref": "#/properties/number/definitions/X"}
+                }
+            },
+            "absolute": {"$ref": "https://example.com/child#/properties/number/definitions/X"},
+            "relative": {"$ref": "child#/properties/number/definitions/X"},
+            "anchored": {"$id": "https://example.com/root#anchor",
+                "$ref": "#/properties/value/definitions/X"}
+        },
+        "required": ["absolute", "relative", "anchored"]
+    });
+    let value =
+        json!({"value": 1, "resource": {"number": 2}, "absolute": 3, "relative": 4, "anchored": 5});
+    assert!(Validator::compile(&schema).unwrap().is_valid(&value));
+    to_openai_strict(&mut schema);
+    let strict = Validator::compile(&schema).unwrap();
+    assert!(strict.is_valid(&value), "{schema}");
+    assert!(!strict.is_valid(&json!({"value": 1, "resource": {"number": 2}, "absolute": "bad", "relative": 4, "anchored": 5})), "{schema}");
 }

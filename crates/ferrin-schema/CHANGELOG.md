@@ -7,6 +7,10 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Preserve nullability of optional enum, const, and composed constraints in
+  OpenAI strict schemas without widening their non-null values or breaking
+  references to declared schema resources when nullable wrappers move nodes.
+
 - Honor the declared JSON Schema dialect during dynamic validation, using
   draft-07 only when `$schema` is absent.
 

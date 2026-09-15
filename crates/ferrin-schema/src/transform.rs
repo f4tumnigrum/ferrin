@@ -4,6 +4,10 @@ use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::transform_refs::child_path;
+use crate::transform_refs::rewrite_local_references;
+use crate::transform_refs::visit_children;
+
 /// A rewrite applied to a JSON Schema before it is sent to a provider.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -93,10 +97,16 @@ pub fn remove_property_names(schema: &mut Value) {
 ///
 /// Every object gets `additionalProperties: false`, `propertyNames` is
 /// removed, every property is listed in `required`, and properties that were
-/// optional become nullable (`type` gains `"null"`, or the schema is wrapped
-/// in `anyOf: [.., {type: null}]`). Objects are recognized by `type` or by
+/// optional become nullable (the complete schema is wrapped in
+/// `anyOf: [original, {type: null}]`). Objects are recognized by `type` or by
 /// the presence of `properties`.
 pub fn to_openai_strict(schema: &mut Value) {
+    let mut moves = Vec::new();
+    rewrite_openai_strict(schema, "", &mut moves);
+    rewrite_local_references(schema, &moves);
+}
+
+fn rewrite_openai_strict(schema: &mut Value, path: &str, moves: &mut Vec<String>) {
     let Value::Object(obj) = schema else { return };
     obj.remove("propertyNames");
     let is_object = match obj.get("type") {
@@ -120,53 +130,30 @@ pub fn to_openai_strict(schema: &mut Value) {
             let names: Vec<String> = properties.keys().cloned().collect();
             for (name, property) in properties.iter_mut() {
                 if !required.contains(name) {
+                    moves.push(child_path(&child_path(path, "properties"), name));
                     make_nullable(property);
                 }
-                to_openai_strict(property);
             }
             obj.insert("required".to_owned(), json!(names));
         }
         match obj.get_mut("additionalProperties") {
-            Some(nested @ Value::Object(_)) => to_openai_strict(nested),
+            Some(Value::Object(_)) => {}
             _ => {
                 obj.insert("additionalProperties".to_owned(), Value::Bool(false));
             }
         }
     }
-    for key in ["not", "if", "then", "else", "contains"] {
-        if let Some(child) = obj.get_mut(key) {
-            to_openai_strict(child);
-        }
-    }
-    if let Some(Value::Array(items)) = obj.get_mut("prefixItems") {
-        items.iter_mut().for_each(to_openai_strict);
-    }
-    if let Some(Value::Object(map)) = obj.get_mut("patternProperties") {
-        map.values_mut().for_each(to_openai_strict);
-    }
-    for_each_subschema(obj, &mut to_openai_strict);
+    visit_children(obj, path, &mut |child, child_path| {
+        rewrite_openai_strict(child, child_path, moves);
+    });
 }
 
 /// Makes a property schema accept `null`.
 fn make_nullable(property: &mut Value) {
-    let Value::Object(obj) = property else { return };
-    match obj.get_mut("type") {
-        Some(Value::String(kind)) => {
-            let kind = kind.clone();
-            obj.insert("type".to_owned(), json!([kind, "null"]));
-        }
-        Some(Value::Array(kinds)) => {
-            if !kinds.iter().any(|kind| kind == "null") {
-                kinds.push(json!("null"));
-            }
-        }
-        _ => {
-            let inner = Value::Object(std::mem::take(obj));
-            let mut wrapper = Map::new();
-            wrapper.insert("anyOf".to_owned(), json!([inner, { "type": "null" }]));
-            *obj = wrapper;
-        }
-    }
+    // Null must bypass every constraint, including enum, const, and not.
+    // Widening only `type` would leave those constraints rejecting null.
+    let original = std::mem::take(property);
+    *property = json!({ "anyOf": [original, { "type": "null" }] });
 }
 
 fn type_includes(obj: &Map<String, Value>, kind: &str) -> bool {

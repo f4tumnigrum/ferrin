@@ -25,6 +25,7 @@ pub mod json;
 pub mod partial_json;
 pub mod schema;
 pub mod transform;
+mod transform_refs;
 pub mod validation;
 
 pub use dialect::SchemaDialect;
