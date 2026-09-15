@@ -32,6 +32,7 @@ use url::Url;
 use crate::error::Error;
 use crate::modality::ModalityOptions;
 use crate::modality::impl_modality_builder;
+use crate::modality_stream::StreamDeadline;
 use crate::prompt::DefaultDownloader;
 use crate::prompt::DownloadFn;
 use crate::prompt::DownloadRequest;
@@ -300,18 +301,22 @@ impl IntoFuture for StreamTranscribe {
                     identity.model_id, identity.provider
                 ))));
             }
-            let cancellation = self.base.cancellation.child_token();
-            let result = model
-                .do_stream(TranscriptionStreamOptions {
-                    audio: self.audio,
-                    input_audio_format: self.input_audio_format,
-                    provider_options: self.base.provider_options.clone(),
-                    headers: self.base.request_headers(),
-                    include_raw_chunks: self.include_raw_chunks,
-                    cancellation,
+            let deadline = StreamDeadline::new(&self.base.cancellation, self.base.timeout);
+            let result = deadline
+                .run(async {
+                    model
+                        .do_stream(TranscriptionStreamOptions {
+                            audio: self.audio,
+                            input_audio_format: self.input_audio_format,
+                            provider_options: self.base.provider_options.clone(),
+                            headers: self.base.request_headers(),
+                            include_raw_chunks: self.include_raw_chunks,
+                            cancellation: deadline.cancellation.clone(),
+                        })
+                        .await
+                        .map_err(Error::from)
                 })
-                .await
-                .map_err(Error::from)?;
+                .await?;
             let log_identity = identity.clone();
             let parts = result.stream.inspect(move |part| {
                 if let TranscriptionStreamPart::StreamStart { warnings } = part {
@@ -321,7 +326,17 @@ impl IntoFuture for StreamTranscribe {
             Ok(StreamTranscribeResult {
                 request: result.request,
                 response: result.response,
-                parts: Box::pin(parts),
+                parts: deadline.wrap(
+                    Box::pin(parts),
+                    |error| TranscriptionStreamPart::Error { error },
+                    |part| {
+                        matches!(
+                            part,
+                            TranscriptionStreamPart::Finish { .. }
+                                | TranscriptionStreamPart::Error { .. }
+                        )
+                    },
+                ),
             })
         })
     }

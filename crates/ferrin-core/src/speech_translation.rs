@@ -10,7 +10,6 @@ use ferrin_spec::AudioFormat;
 use ferrin_spec::BoxFuture;
 use ferrin_spec::BoxStream;
 use ferrin_spec::SpeechTranslationModelRef;
-use ferrin_spec::error::ProviderError;
 use ferrin_spec::speech_translation_model::SpeechTranslationStreamOptions;
 pub use ferrin_spec::speech_translation_model::SpeechTranslationStreamPart;
 pub use ferrin_spec::speech_translation_model::SpeechTranslationStreamResult;
@@ -21,6 +20,7 @@ use futures_util::StreamExt;
 use crate::error::Error;
 use crate::modality::ModalityOptions;
 use crate::modality::impl_modality_builder;
+use crate::modality_stream::StreamDeadline;
 use crate::registry::ProviderRegistry;
 use crate::registry::default::resolve_model;
 use crate::telemetry::ModelIdentity;
@@ -112,27 +112,42 @@ impl IntoFuture for StreamSpeechTranslation {
                     "must not be empty",
                 ));
             }
-            let result = model
-                .do_stream(SpeechTranslationStreamOptions {
-                    audio: self.audio,
-                    input_audio_format: self.input_audio_format,
-                    target_language: self.target_language,
-                    source_language: self.source_language,
-                    output_audio_format: self.output_audio_format,
-                    provider_options: self.base.provider_options.clone(),
-                    headers: self.base.request_headers(),
-                    include_raw_chunks: self.include_raw_chunks,
-                    cancellation: self.base.cancellation.child_token(),
+            let deadline = StreamDeadline::new(&self.base.cancellation, self.base.timeout);
+            let result = deadline
+                .run(async {
+                    model
+                        .do_stream(SpeechTranslationStreamOptions {
+                            audio: self.audio,
+                            input_audio_format: self.input_audio_format,
+                            target_language: self.target_language,
+                            source_language: self.source_language,
+                            output_audio_format: self.output_audio_format,
+                            provider_options: self.base.provider_options.clone(),
+                            headers: self.base.request_headers(),
+                            include_raw_chunks: self.include_raw_chunks,
+                            cancellation: deadline.cancellation.clone(),
+                        })
+                        .await
+                        .map_err(Error::from)
                 })
-                .await
-                .map_err(|error: ProviderError| Error::from(error))?;
+                .await?;
             let stream = result.stream.inspect(move |part| {
                 if let SpeechTranslationStreamPart::StreamStart { warnings } = part {
                     spans::log_warnings(warnings, &identity);
                 }
             });
             Ok(SpeechTranslationStreamResult {
-                stream: Box::pin(stream),
+                stream: deadline.wrap(
+                    Box::pin(stream),
+                    |error| SpeechTranslationStreamPart::Error { error },
+                    |part| {
+                        matches!(
+                            part,
+                            SpeechTranslationStreamPart::Finish { .. }
+                                | SpeechTranslationStreamPart::Error { .. }
+                        )
+                    },
+                ),
                 request: result.request,
                 response: result.response,
             })

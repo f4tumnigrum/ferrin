@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Streaming transcription and speech translation enforce total timeouts during
+  establishment and consumption, cancelling provider work on expiry or drop.
+
 - Reasoning extraction preserves unfinished tag text and pairs every reasoning
   block at text/stream boundaries, including empty and unclosed blocks.
 
