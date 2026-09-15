@@ -43,7 +43,7 @@ Versions come from crates.io API `max_stable_version` on 2026-09-13. These are w
 | `thiserror` | 2.0.20 | Error derives | All |
 | `bytes` | 1.12.1 | Binary data | All |
 | `http` | 1.5.0 | `HeaderMap`, `StatusCode`, `Method` | spec, provider-util |
-| `url` | 2.5.8 | URL parsing | spec, provider-util |
+| `url` | 2.5.8 | URL parsing and local schema resource resolution | spec, provider-util, schema |
 | `reqwest` | 0.13.5 | Default HTTP transport: `rustls`/`http2`/`stream`, defaults disabled. [Fact] Since 0.13, `rustls` replaces `rustls-tls` (PV-015). [Decision] No `multipart`/`json`/`charset` since 2026-09-13; see HTTP chapter, section 11. | provider-util |
 | `rustls` | 0.23.45 | TLS through reqwest, default aws-lc. [Fact] Removed as a direct workspace dependency on 2026-09-14 because no member uses it directly. | Transitive only |
 | `rustls-platform-verifier` | 0.7.0 | System certificate verifier. [Fact] Default in reqwest 0.13; `platform-verifier` feature permits direct configuration. `webpki-roots` is unnecessary. | provider-util feature |
@@ -70,6 +70,8 @@ Versions come from crates.io API `max_stable_version` on 2026-09-13. These are w
 | `hyper` / `hyper-util` / `http-body-util` | 1.11.1 / 0.1.20 / 0.1.5 | Streaming fixture server (PV-026) | testing |
 
 [Decision] Excluded dependencies: `async-trait` (RPITIT plus Dyn adapters), `eventsource-stream` (local SSE), `infer` (local signatures), `anyhow` (libraries exclude it; examples/xtask may use it), `once_cell` and `lazy_static` (stable standard `OnceLock`/`LazyLock`).
+
+[Decision] Schema reference relocation reuses `url` for relative URI resolution and canonical resource identities. Reusing the established workspace dependency avoids a second URI parser; only resources declared inside the schema are indexed, and no network retrieval occurs. The stable release above is maintained by the existing [rust-url project](https://github.com/servo/rust-url).
 
 ## 3. Development and testing dependencies
 
@@ -115,6 +117,7 @@ Append a row for every version check:
 | 2026-09-14 | Shear cleanup removed unused workspace `assert_matches`, `async-stream`, `criterion`, `data-url`, `rustls`, `serde_with`, `subtle`, `tempfile`, `tokio-test`, `uuid`; IDs use IdGenerator and HMAC verify_slice provides constant-time checks. Removed unused core `subtle`/`insta`/`proptest`/`tokio-test`/`assert_matches`/`tracing-subscriber`/`criterion`, provider-util `percent-encoding`/`tracing`/`proptest`/`tokio-test`, testing `futures-core`/`thiserror`/`tracing`, compatible `futures-util`/`regex`; message `serde_json` became dev-only. | No shear warnings | Cleanup |
 | 2026-09-14 | Reintroduced `criterion` 0.8.2, latest stable on crates.io (released 2026-02-04, Apache-2.0 OR MIT, MSRV 1.86), as dev dependency for nine crates | Shear, four deny checks, each-feature checks passed; bench workflow uses pinned checkout/toolchain/cache/upload actions | Benchmarks |
 | 2026-09-15 | `rustls`, official crates.io API `max_stable_version` and unyanked release metadata | [Fact] 0.23.45 is the latest stable and fixes [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285); update the transitive lockfile from 0.23.44 without changing direct dependency requirements | Security review I04 |
+| 2026-09-15 | `url`, [official crates.io API](https://crates.io/api/v1/crates/url), highest unyanked stable release | [Fact] 2.5.8 remains latest stable (published 2026-01-05) and is already locked; schema now reuses the workspace dependency without a version change | Schema review F03 |
 
 check-versions compares manifest dependencies with crates.io and reports outdated entries; weekly CI opens an issue (see [CI and quality gates](05-ci-and-quality-gates.md)).
 

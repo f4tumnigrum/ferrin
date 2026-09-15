@@ -43,7 +43,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | `thiserror` | 2.0.20 | 错误派生 | 全部 |
 | `bytes` | 1.12.1 | 二进制数据 | 全部 |
 | `http` | 1.5.0 | `HeaderMap`、`StatusCode`、`Method` | spec, provider-util |
-| `url` | 2.5.8 | URL 解析 | spec, provider-util |
+| `url` | 2.5.8 | URL 解析和本地 Schema 资源解析 | spec, provider-util, schema |
 | `reqwest` | 0.13.5 | 默认 HTTP 传输（features: `rustls`, `http2`, `stream`；关闭默认 features。【事实】0.13 起 feature 名为 `rustls` 而非 `rustls-tls`，见 PV-015；【决策】2026-09-13 不启用 `multipart`/`json`/`charset`，见 HTTP 文档第 11 节） | provider-util |
 | `rustls` | 0.23.45 | TLS（经 reqwest 间接引入，默认加密提供者 aws-lc；【事实】2026-09-14 起不再在工作区表中直接声明，无成员直接使用） | —（传递依赖） |
 | `rustls-platform-verifier` | 0.7.0 | 系统证书校验器（【事实】reqwest 0.13 默认启用；feature `platform-verifier` 仅用于直接配置它）。`webpki-roots` 不再需要 | provider-util（feature） |
@@ -70,6 +70,8 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | `hyper` / `hyper-util` / `http-body-util` | 1.11.1 / 0.1.20 / 0.1.5 | 流式 fixture 服务器（PV-026） | testing |
 
 【决策】不引入的依赖及原因：`async-trait`（使用 RPITIT + Dyn 适配）、`eventsource-stream`（自实现 SSE）、`infer`（自维护媒体类型签名表）、`anyhow`（库不使用 `anyhow`，仅示例与 xtask 可用）、`once_cell`（标准库 `OnceLock`/`LazyLock` 已稳定）、`lazy_static`（同上）。
+
+【决策】Schema 引用重定位复用 `url` 解析相对 URI 和归一化资源标识，避免再实现一个 URI 解析器；仅索引 Schema 内声明的资源，不执行网络获取。上述稳定版由现有 [rust-url 项目](https://github.com/servo/rust-url) 维护。
 
 ## 3. 开发与测试依赖
 
@@ -115,6 +117,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-14 | `cargo shear --deny-warnings` 清理：从工作区表移除无成员使用的 `assert_matches`、`async-stream`、`criterion`、`data-url`（PV-002 已决定不采用）、`rustls`（仅经 reqwest 传递）、`serde_with`、`subtle`（审批签名用 `hmac::Mac::verify_slice` 常量时间比较）、`tempfile`、`tokio-test`、`uuid`（ID 由 `ferrin_provider_util::IdGenerator` 生成）；从成员清单移除未使用的 `ferrin-core`（`subtle`、`insta`、`proptest`、`tokio-test`、`assert_matches`、`tracing-subscriber`、`criterion`）、`ferrin-provider-util`（`percent-encoding`、`tracing`、`proptest`、`tokio-test`）、`ferrin-testing`（`futures-core`、`thiserror`、`tracing`）、`ferrin-openai-compatible`（`futures-util`、`regex`）声明；`ferrin-message` 的 `serde_json` 改为开发依赖 | `cargo shear --deny-warnings` 无报告 | 清理阶段 |
 | 2026-09-14 | `criterion` 0.8.2（crates.io 最新稳定版，2026-02-04 发布，Apache-2.0 OR MIT，`rust-version` 1.86）重新加入工作区，作为 9 个 crate 的开发依赖用于基准测试 | `cargo shear --deny-warnings` 无报告，`cargo deny check` 四项通过，`cargo hack check --each-feature` 通过；`bench.yml` 只引用已固定 SHA 的 `actions/checkout`、`dtolnay/rust-toolchain`、`Swatinem/rust-cache`、`actions/upload-artifact` | 基准测试阶段 |
 | 2026-09-15 | `rustls`，crates.io 官方 API `max_stable_version` 与未 yank 的发布记录 | 【事实】0.23.45 为最新稳定版，修复 [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285)；将传递依赖锁定版本从 0.23.44 升级，直接依赖约束不变 | 安全审查 I04 |
+| 2026-09-15 | `url`，[crates.io 官方 API](https://crates.io/api/v1/crates/url) 中未 yank 的最高稳定版本 | 【事实】2.5.8 仍为最新稳定版（2026-01-05 发布），现已锁定；schema 复用工作区依赖，不改变版本 | Schema 审查 F03 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
 
