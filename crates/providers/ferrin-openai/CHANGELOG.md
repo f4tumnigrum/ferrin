@@ -7,6 +7,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Request base64 image edits and the single-image multipart field for DALL-E models.
+
 - Reject truncated SSE streams that end without an explicit completion signal.
 
 - Preserve opaque dictionary keys when converting provider tool options to wire format.

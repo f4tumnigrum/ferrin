@@ -112,3 +112,5 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 【决策】Provider 工具参数转换仅重命名已知 API 字段并遍历已知配置对象；headers、metadata、Schema 及未知参数值保持原样，以保留用户字典键和 HTTP 头名称。来源：`responses/convert_tools.rs`；回归测试 `provider_tool_options_preserve_opaque_dictionary_keys`（2026-09-15）。
 
 【决策】SSE EOF 仅在收到显式 provider 终止响应或结束原因（包括 Google 提示词拦截）后表示成功；提前 EOF 产生 `InvalidResponseData`，由流驱动关闭开放的内容块，且不把未完成工具参数转换成可执行调用。来源：流 EOF fixture 边界回归测试（2026-09-15）；未进行 live API 验证。
+
+【事实】DALL-E 图片编辑发送单个 multipart `image` 并显式请求 `response_format=b64_json`；GPT 图片编辑使用 `image[]` 及默认 base64 响应。DALL-E 多张输入图片会在请求前被拒绝。来源：`image/mod.rs` 和 `image_edits_use_model_specific_file_fields_and_response_format`（2026-09-15）。

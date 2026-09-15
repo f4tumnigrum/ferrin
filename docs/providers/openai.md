@@ -112,3 +112,5 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 [Decision] Provider tool argument conversion renames only documented API fields and traverses known configuration objects; headers, metadata, schemas, and unknown argument values remain opaque. This preserves user dictionary keys and HTTP header spelling. Source: `responses/convert_tools.rs`; regression `provider_tool_options_preserve_opaque_dictionary_keys` (2026-09-15).
 
 [Decision] SSE EOF is successful only after an explicit provider terminal response or finish reason (including a Google prompt block). Earlier EOF emits `InvalidResponseData`, closes open parts through the stream driver, and never flushes incomplete tool arguments into executable calls. Source: stream EOF fixture-boundary regressions (2026-09-15); no live API verification.
+
+[Fact] DALL-E image edits send a single multipart `image` and explicitly request `response_format=b64_json`; GPT image edits use `image[]` and the default base64 response. Multiple DALL-E input images are rejected before the request. Source: `image/mod.rs` and `image_edits_use_model_specific_file_fields_and_response_format` (2026-09-15).
