@@ -119,14 +119,34 @@ pub struct BatchStats {
     #[serde(default, deserialize_with = "deserialize_count")]
     pub request_count: Option<u64>,
     /// Finished successfully.
-    #[serde(default, deserialize_with = "deserialize_count")]
+    #[serde(default = "zero_count", deserialize_with = "deserialize_zero_count")]
     pub successful_request_count: Option<u64>,
     /// Failed.
-    #[serde(default, deserialize_with = "deserialize_count")]
+    #[serde(default = "zero_count", deserialize_with = "deserialize_zero_count")]
     pub failed_request_count: Option<u64>,
     /// Not finished yet.
-    #[serde(default, deserialize_with = "deserialize_count")]
+    #[serde(default = "zero_count", deserialize_with = "deserialize_zero_count")]
     pub pending_request_count: Option<u64>,
+}
+
+fn zero_count() -> Option<u64> {
+    Some(0)
+}
+
+fn deserialize_zero_count<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<u64>, D::Error> {
+    let value = Option::<JsonValue>::deserialize(deserializer)?;
+    Ok(match value {
+        None => Some(0),
+        Some(JsonValue::Number(value)) => value.as_u64(),
+        Some(JsonValue::String(value))
+            if !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()) =>
+        {
+            value.parse().ok()
+        }
+        _ => None,
+    })
 }
 
 #[derive(Debug, Deserialize)]

@@ -19,6 +19,24 @@ All notable changes to this crate are documented here. The format follows
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
+### Fixed
+
+- Ignore normalized Realtime events without a Live API equivalent, preserving
+  automatic tool-response continuation; retain JSON tool output values directly
+  and replace invalid JSON with an empty object (ADR 0026).
+- Ignore unknown provider-option keys as the reference object schemas do, while
+  continuing to validate known option fields.
+- Match reference input/output object parsing for all seven existing tool factories.
+- Align Interactions tool fields and defaults, including provider-executed MCP,
+  native built-in result replay, linked-history compaction and option validation.
+- Normalize Interactions output formats, agent environments, adjacent user text
+  and video processing options using the reference request contracts.
+- Validate embedding, speech, transcription and image options; preserve optional
+  speech payload fields and reject missing embedding response arrays.
+- Encode file resource names, enforce polling options and cancellation, preserve
+  batch zero counters, and use configured same-origin video credentials.
+- Match reference image call-limit reporting and omission of zero video settings.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed

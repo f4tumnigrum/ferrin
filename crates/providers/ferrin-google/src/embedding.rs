@@ -28,7 +28,7 @@ pub const MAX_EMBEDDINGS_PER_CALL: usize = 100;
 
 /// Embedding options (`provider_options["google"]`).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GoogleEmbeddingOptions {
     /// Output dimensionality.
     #[serde(default)]
@@ -64,13 +64,11 @@ struct SingleEmbeddingResponse {
 
 #[derive(Debug, Deserialize)]
 struct BatchEmbeddingResponse {
-    #[serde(default)]
     embeddings: Vec<EmbeddingValues>,
 }
 
 #[derive(Debug, Deserialize)]
 struct EmbeddingValues {
-    #[serde(default)]
     values: Embedding,
 }
 
@@ -103,6 +101,18 @@ fn parts(value: &str, extra: Option<&Vec<JsonValue>>) -> Vec<JsonValue> {
         None => parts.push(json!({"text": value})),
     }
     parts
+}
+
+fn valid_part(part: &JsonValue) -> bool {
+    part.get("text").is_some_and(JsonValue::is_string)
+        || part.get("inlineData").is_some_and(|data| {
+            data.get("mimeType").is_some_and(JsonValue::is_string)
+                && data.get("data").is_some_and(JsonValue::is_string)
+        })
+        || part.get("fileData").is_some_and(|data| {
+            data.get("mimeType").is_some_and(JsonValue::is_string)
+                && data.get("fileUri").is_some_and(JsonValue::is_string)
+        })
 }
 
 impl GoogleEmbeddingModel {
@@ -142,6 +152,28 @@ impl GoogleEmbeddingModel {
             &options.provider_options,
             GoogleEmbeddingOptions::merge,
         )?;
+        if google.task_type.as_deref().is_some_and(|task| {
+            !matches!(
+                task,
+                "SEMANTIC_SIMILARITY"
+                    | "CLASSIFICATION"
+                    | "CLUSTERING"
+                    | "RETRIEVAL_DOCUMENT"
+                    | "RETRIEVAL_QUERY"
+                    | "QUESTION_ANSWERING"
+                    | "FACT_VERIFICATION"
+                    | "CODE_RETRIEVAL_QUERY"
+            )
+        }) {
+            return Err(
+                InvalidArgumentError::new("taskType", "unsupported embedding task type").into(),
+            );
+        }
+        for content in google.content.iter().flatten().flatten() {
+            if content.is_empty() || content.iter().any(|part| !valid_part(part)) {
+                return Err(InvalidArgumentError::new("content", "embedding content must contain nonempty lists of text, inlineData or fileData parts").into());
+            }
+        }
         if let Some(content) = &google.content
             && content.len() != options.values.len()
         {

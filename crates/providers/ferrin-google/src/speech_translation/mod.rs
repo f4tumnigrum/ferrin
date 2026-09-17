@@ -23,7 +23,7 @@ use crate::options::parse_merged;
 
 /// Provider options for Live speech translation.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GoogleSpeechTranslationOptions {
     /// Echo input already in the target language instead of producing silence.
     pub echo_target_language: Option<bool>,

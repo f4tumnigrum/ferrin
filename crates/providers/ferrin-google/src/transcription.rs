@@ -32,7 +32,7 @@ pub const FAMILY: &str = "transcription";
 
 /// Transcription options (`provider_options["google"]`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GoogleTranscriptionOptions {
     /// Expected languages (BCP-47).
     #[serde(default)]
@@ -196,6 +196,17 @@ impl GoogleTranscriptionModel {
             &options.provider_options,
             GoogleTranscriptionOptions::merge,
         )?;
+        if google
+            .mode
+            .as_deref()
+            .is_some_and(|mode| !matches!(mode, "SMART" | "VERBATIM"))
+        {
+            return Err(InvalidArgumentError::new(
+                "mode",
+                "transcription mode must be SMART or VERBATIM",
+            )
+            .into());
+        }
         let mut body = JsonObject::new();
         body.insert("model".to_owned(), JsonValue::from(self.model_id.as_str()));
         body.insert(

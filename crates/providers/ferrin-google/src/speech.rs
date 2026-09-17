@@ -11,6 +11,7 @@ use ferrin_spec::MediaType;
 use ferrin_spec::ModelId;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ResponseMetadata;
+use ferrin_spec::error::InvalidArgumentError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::language_model::RequestMetadata;
 use ferrin_spec::shared::Warning;
@@ -20,7 +21,6 @@ use ferrin_spec::speech_model::SpeechResult;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::api_types::GenerateContentResponse;
 use crate::config::SharedConfig;
 use crate::error::failed_response_handler;
 use crate::options::parse_merged;
@@ -37,12 +37,42 @@ pub const DEFAULT_SAMPLE_RATE: u32 = 24_000;
 
 /// Speech options (`provider_options["google"]`).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GoogleSpeechOptions {
     /// Multi-speaker voice configuration
     /// (`{speakerVoiceConfigs: [{speaker, voiceConfig: {prebuiltVoiceConfig: {voiceName}}}]}`).
     #[serde(default)]
     pub multi_speaker_voice_config: Option<JsonObject>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SpeechResponse {
+    response_id: Option<String>,
+    candidates: Option<Vec<SpeechCandidate>>,
+}
+
+#[derive(Deserialize)]
+struct SpeechCandidate {
+    content: Option<SpeechContent>,
+}
+
+#[derive(Deserialize)]
+struct SpeechContent {
+    parts: Option<Vec<SpeechPart>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SpeechPart {
+    inline_data: Option<SpeechAudio>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SpeechAudio {
+    data: Option<String>,
+    mime_type: Option<String>,
 }
 
 /// Wraps signed 16-bit little-endian mono PCM in a 44-byte WAV header.
@@ -131,6 +161,22 @@ impl GoogleSpeechModel {
                 }
             },
         )?;
+        if let Some(multi) = &google.multi_speaker_voice_config {
+            let valid = multi
+                .get("speakerVoiceConfigs")
+                .and_then(JsonValue::as_array)
+                .is_some_and(|speakers| {
+                    speakers.iter().all(|speaker| {
+                        speaker.get("speaker").is_some_and(JsonValue::is_string)
+                            && speaker
+                                .pointer("/voiceConfig/prebuiltVoiceConfig/voiceName")
+                                .is_some_and(JsonValue::is_string)
+                    })
+                });
+            if !valid {
+                return Err(InvalidArgumentError::new("multiSpeakerVoiceConfig", "speaker entries require speaker and voiceConfig.prebuiltVoiceConfig.voiceName strings").into());
+            }
+        }
         let mut warnings = Vec::new();
         let speech_config = match &google.multi_speaker_voice_config {
             Some(multi) => json!({"multiSpeakerVoiceConfig": multi}),
@@ -201,7 +247,7 @@ impl SpeechModel for GoogleSpeechModel {
         let prepared = self.prepare_request(&options)?;
         let mut warnings = prepared.warnings;
         let handlers = ResponseHandlers::new(
-            json_response_handler::<GenerateContentResponse>(),
+            json_response_handler::<SpeechResponse>(),
             failed_response_handler(),
         );
         let response = post_json(
@@ -219,20 +265,21 @@ impl SpeechModel for GoogleSpeechModel {
             .candidates
             .iter()
             .flatten()
-            .flat_map(|candidate| candidate.parts().iter())
+            .filter_map(|candidate| candidate.content.as_ref())
+            .flat_map(|content| content.parts.iter().flatten())
             .find_map(|part| {
                 part.inline_data
                     .as_ref()
-                    .filter(|data| !data.data.is_empty())
+                    .filter(|data| data.data.as_ref().is_some_and(|data| !data.is_empty()))
             });
-        let mime_type = inline.map(|data| data.mime_type.clone());
+        let mime_type = inline.and_then(|data| data.mime_type.clone());
         let sample_rate = mime_type
             .as_deref()
             .and_then(parse_sample_rate)
             .unwrap_or(DEFAULT_SAMPLE_RATE);
         let pcm = match inline {
             Some(data) => base64::engine::general_purpose::STANDARD
-                .decode(&data.data)
+                .decode(data.data.as_deref().unwrap_or_default())
                 .map_err(|error| {
                     ProviderError::InvalidResponseData(Box::new(
                         ferrin_spec::error::InvalidResponseDataError::new(

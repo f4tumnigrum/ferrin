@@ -446,13 +446,7 @@ fn serialize_event(
                 name,
                 output,
             } => {
-                let value = serde_json::from_str::<JsonValue>(&output)
-                    .unwrap_or_else(|_| JsonValue::from(output));
-                let response = if value.is_object() {
-                    value
-                } else {
-                    json!({"result": value})
-                };
+                let response = ferrin_schema::json::parse(&output).unwrap_or_else(|_| json!({}));
                 let mut function_response = JsonObject::new();
                 function_response.insert("id".to_owned(), JsonValue::from(call_id));
                 if let Some(name) = name {
@@ -461,34 +455,14 @@ fn serialize_event(
                 function_response.insert("response".to_owned(), response);
                 json!({"toolResponse": {"functionResponses": [function_response]}})
             }
-            ConversationItem::AudioMessage { .. } => {
-                return Err(ProviderError::unsupported(
-                    "realtime conversation item: audio message",
-                ));
-            }
+            ConversationItem::AudioMessage { .. } => JsonValue::Null,
             #[allow(unreachable_patterns, reason = "ConversationItem is non-exhaustive")]
             _ => return Err(ProviderError::unsupported("realtime conversation item")),
         },
-        RealtimeClientEvent::InputAudioClear => {
-            return Err(ProviderError::unsupported(
-                "realtime client event: input audio clear",
-            ));
-        }
-        RealtimeClientEvent::ResponseCreate { .. } => {
-            return Err(ProviderError::unsupported(
-                "realtime client event: response create",
-            ));
-        }
-        RealtimeClientEvent::ResponseCancel => {
-            return Err(ProviderError::unsupported(
-                "realtime client event: response cancel",
-            ));
-        }
-        RealtimeClientEvent::ConversationItemTruncate { .. } => {
-            return Err(ProviderError::unsupported(
-                "realtime client event: conversation item truncate",
-            ));
-        }
+        RealtimeClientEvent::InputAudioClear
+        | RealtimeClientEvent::ResponseCreate { .. }
+        | RealtimeClientEvent::ResponseCancel
+        | RealtimeClientEvent::ConversationItemTruncate { .. } => JsonValue::Null,
         #[allow(unreachable_patterns, reason = "RealtimeClientEvent is non-exhaustive")]
         _ => return Err(ProviderError::unsupported("realtime client event")),
     })

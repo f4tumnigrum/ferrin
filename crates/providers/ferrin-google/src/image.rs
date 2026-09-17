@@ -34,7 +34,7 @@ use crate::language_model::GoogleLanguageModel;
 use crate::prepare_tools::ids;
 
 /// Default maximum images per call.
-pub const DEFAULT_MAX_IMAGES_PER_CALL: usize = 1;
+pub const DEFAULT_MAX_IMAGES_PER_CALL: usize = 10;
 
 /// Image model backed by a Gemini image-capable language model.
 #[derive(Debug, Clone)]
@@ -57,10 +57,10 @@ impl GoogleImageModel {
         }
     }
 
-    /// Overrides the requested maximum, capped at the supported single image.
+    /// Overrides the advertised maximum; Gemini still rejects `n > 1`.
     #[must_use]
     pub fn with_max_images_per_call(mut self, max: usize) -> Self {
-        self.max_images_per_call = max.clamp(1, DEFAULT_MAX_IMAGES_PER_CALL);
+        self.max_images_per_call = max;
         self
     }
 
@@ -126,7 +126,35 @@ impl GoogleImageModel {
             .cloned()
             .unwrap_or_default();
         let google_search = google.remove("googleSearch");
+        if let Some(search) = &google_search {
+            let valid = search.is_object()
+                && search.get("searchTypes").is_none_or(|types| {
+                    types.is_object()
+                        && ["webSearch", "imageSearch"]
+                            .iter()
+                            .all(|key| types.get(key).is_none_or(JsonValue::is_object))
+                })
+                && search.get("timeRangeFilter").is_none_or(|range| {
+                    range.get("startTime").is_some_and(JsonValue::is_string)
+                        && range.get("endTime").is_some_and(JsonValue::is_string)
+                });
+            if !valid {
+                return Err(InvalidArgumentError::new(
+                    "googleSearch",
+                    "invalid Google Search grounding options",
+                )
+                .into());
+            }
+        }
         google.remove("responseModalities");
+        if google
+            .get("imageConfig")
+            .is_some_and(|value| !value.is_null() && !value.is_object())
+        {
+            return Err(
+                InvalidArgumentError::new("imageConfig", "imageConfig must be an object").into(),
+            );
+        }
         let mut image_config = google.remove("imageConfig").and_then(|value| match value {
             JsonValue::Object(object) => Some(object),
             _ => None,

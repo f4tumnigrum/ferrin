@@ -3,7 +3,6 @@
 use ferrin_spec::AudioFormat;
 use ferrin_spec::RealtimeFactory;
 use ferrin_spec::RealtimeModel;
-use ferrin_spec::error::ProviderError;
 use ferrin_spec::realtime_model::ClientSecretOptions;
 use ferrin_spec::realtime_model::ConversationItem;
 use ferrin_spec::realtime_model::ConversationRole;
@@ -168,16 +167,26 @@ async fn client_events_serialize_to_the_wire_format() {
         json!("audio/pcm;rate=24000")
     );
     insta::assert_json_snapshot!("realtime_client_events", serialized);
-    // Events without a Live API equivalent are rejected instead of being sent
-    // as `null`.
     for event in [
         RealtimeClientEvent::InputAudioClear,
         RealtimeClientEvent::ResponseCancel,
+        RealtimeClientEvent::ResponseCreate { options: None },
+        RealtimeClientEvent::ConversationItemTruncate {
+            item_id: "item-1".into(),
+            content_index: 0,
+            audio_end_ms: 10,
+        },
+        RealtimeClientEvent::ConversationItemCreate {
+            item: ConversationItem::AudioMessage {
+                role: ConversationRole::User,
+                audio: bytes::Bytes::from_static(b"audio"),
+            },
+        },
     ] {
-        assert!(matches!(
-            model.serialize_client_event(event).await,
-            Err(ProviderError::UnsupportedFunctionality(_))
-        ));
+        assert_eq!(
+            model.serialize_client_event(event).await.unwrap(),
+            json!(null)
+        );
     }
 }
 
@@ -257,18 +266,19 @@ async fn server_events_map_to_standard_events_with_turn_ids() {
 }
 
 #[tokio::test]
-async fn function_outputs_preserve_every_json_type_and_plain_text() {
+async fn function_outputs_preserve_json_and_replace_invalid_text() {
     let test = TestProvider::start().await;
     let model = test.provider.realtime().realtime_model(MODEL);
     for (output, response) in [
-        ("Sunny", json!({"result": "Sunny"})),
-        ("42", json!({"result": 42})),
-        ("[1,2]", json!({"result": [1,2]})),
-        ("null", json!({"result": null})),
-        ("false", json!({"result": false})),
-        ("\"Sunny\"", json!({"result": "Sunny"})),
+        ("Sunny", json!({})),
+        ("42", json!(42)),
+        ("[1,2]", json!([1, 2])),
+        ("null", json!(null)),
+        ("false", json!(false)),
+        ("\"Sunny\"", json!("Sunny")),
         ("{\"temp\":21}", json!({"temp": 21})),
-        ("", json!({"result": ""})),
+        ("", json!({})),
+        (r#"{"__proto__":{}}"#, json!({})),
     ] {
         let serialized = model
             .serialize_client_event(RealtimeClientEvent::ConversationItemCreate {

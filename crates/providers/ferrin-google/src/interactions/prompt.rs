@@ -15,6 +15,7 @@ use ferrin_spec::language_model::prompt::ToolResultOutput;
 use ferrin_spec::language_model::prompt::ToolResultPart;
 use ferrin_spec::language_model::prompt::UserPromptPart;
 use serde_json::json;
+use std::collections::HashSet;
 
 use crate::config::GoogleConfig;
 
@@ -143,6 +144,26 @@ fn flush(steps: &mut Vec<JsonValue>, pending: &mut Vec<JsonValue>) {
     }
 }
 
+fn merge_text(blocks: Vec<JsonValue>) -> Vec<JsonValue> {
+    let mut merged: Vec<JsonValue> = Vec::new();
+    for block in blocks {
+        if block["type"] == "text"
+            && let Some(previous) = merged
+                .last_mut()
+                .filter(|previous| previous["type"] == "text")
+        {
+            previous["text"] = json!(format!(
+                "{}\n\n{}",
+                previous["text"].as_str().unwrap_or_default(),
+                block["text"].as_str().unwrap_or_default()
+            ));
+        } else {
+            merged.push(block);
+        }
+    }
+    merged
+}
+
 pub(super) fn convert(
     config: &GoogleConfig,
     call: &CallOptions,
@@ -151,6 +172,7 @@ pub(super) fn convert(
 ) -> Result<(Vec<JsonValue>, Option<String>), ProviderError> {
     let mut steps = Vec::new();
     let mut system = Vec::new();
+    let mut dropped_calls = HashSet::new();
     if options.previous_interaction_id.is_some() && options.store == Some(false) {
         warnings.push(Warning::unsupported_with_details(
             "previousInteractionId with store=false",
@@ -165,7 +187,7 @@ pub(super) fn convert(
                 for part in content {
                     match part {
                         UserPromptPart::Text(part) => {
-                            blocks.push(json!({"type":"text", "text":part.text}))
+                            blocks.push(json!({"type":"text", "text":part.text}));
                         }
                         UserPromptPart::File(part) => {
                             let mut block = file(config, &part.data, part.media_type.as_str())?;
@@ -173,10 +195,12 @@ pub(super) fn convert(
                                 if let Some(resolution) = &options.media_resolution {
                                     block["resolution"] = json!(resolution);
                                 }
-                                if let Some(processing) =
-                                    option(config, part.provider_options.as_ref(), "processing")
+                                if block["type"] == "video"
+                                    && let Some(processing) =
+                                        option(config, part.provider_options.as_ref(), "processing")
+                                    && let Some(processing) = video_processing(processing, warnings)
                                 {
-                                    block["processing"] = super::request::snake_fields(processing);
+                                    block["processing"] = processing;
                                 }
                             }
                             blocks.push(block);
@@ -185,7 +209,7 @@ pub(super) fn convert(
                     }
                 }
                 if !blocks.is_empty() {
-                    steps.push(json!({"type":"user_input", "content":blocks}));
+                    steps.push(json!({"type":"user_input", "content":merge_text(blocks)}));
                 }
             }
             PromptMessage::Assistant {
@@ -206,6 +230,10 @@ pub(super) fn convert(
                                 == Some(id)
                         })
                 }) {
+                    dropped_calls.extend(content.iter().filter_map(|part| match part {
+                        AssistantPromptPart::ToolCall(call) => Some(call.tool_call_id.clone()),
+                        _ => None,
+                    }));
                     continue;
                 }
                 let mut pending = Vec::new();
@@ -220,7 +248,11 @@ pub(super) fn convert(
                             continue;
                         }
                         AssistantPromptPart::Reasoning(part) => {
-                            json!({"type":"thought", "summary":[{"type":"text", "text":part.text}]})
+                            let mut thought = json!({"type":"thought"});
+                            if !part.text.is_empty() {
+                                thought["summary"] = json!([{"type":"text", "text":part.text}]);
+                            }
+                            thought
                         }
                         AssistantPromptPart::ToolCall(part) => {
                             let kind = option(config, part.provider_options.as_ref(), "stepType")
@@ -233,7 +265,18 @@ pub(super) fn convert(
                                 .and_then(JsonValue::as_str);
                             let result = tool_result(config, part, warnings)?;
                             if let Some(kind) = kind {
-                                json!({"type":kind, "call_id":part.tool_call_id, "result":result["result"], "is_error":part.output.is_error()})
+                                // Built-in results replay their native JSON payload;
+                                // only client function_result blocks stringify JSON.
+                                let value = match &part.output {
+                                    ToolResultOutput::Json { value, .. }
+                                    | ToolResultOutput::ErrorJson { value, .. } => value.clone(),
+                                    _ => result["result"].clone(),
+                                };
+                                let mut step = json!({"type":kind, "call_id":part.tool_call_id, "result":value, "is_error":part.output.is_error()});
+                                if kind == "mcp_server_tool_result" {
+                                    step["name"] = json!(part.tool_name);
+                                }
+                                step
                             } else {
                                 json!({"type":"user_input", "content":[result]})
                             }
@@ -275,7 +318,9 @@ pub(super) fn convert(
                 let mut blocks = Vec::new();
                 for part in content {
                     if let ToolPromptPart::ToolResult(part) = part {
-                        blocks.push(tool_result(config, part, warnings)?);
+                        if !dropped_calls.contains(&part.tool_call_id) {
+                            blocks.push(tool_result(config, part, warnings)?);
+                        }
                     } else {
                         warnings.push(Warning::unsupported("interactions tool approval response"));
                     }
@@ -288,4 +333,28 @@ pub(super) fn convert(
         }
     }
     Ok((steps, (!system.is_empty()).then(|| system.join("\n\n"))))
+}
+
+fn video_processing(value: &JsonValue, warnings: &mut Vec<Warning>) -> Option<JsonValue> {
+    if value.is_null() {
+        return None;
+    }
+    if matches!(value.as_str(), Some("agentic" | "static")) {
+        return Some(value.clone());
+    }
+    if value["type"] == "static" {
+        let mut processing = json!({"type":"static"});
+        for (key, wire) in [
+            ("startOffset", "start_offset"),
+            ("endOffset", "end_offset"),
+            ("fps", "fps"),
+        ] {
+            if let Some(value) = value.get(key).filter(|value| value.is_number()) {
+                processing[wire] = value.clone();
+            }
+        }
+        return Some(processing);
+    }
+    warnings.push(Warning::other("google.interactions: invalid video processing option; expected agentic, static, or a static processing configuration; option dropped"));
+    None
 }

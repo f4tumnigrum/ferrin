@@ -228,10 +228,10 @@ impl GoogleVideoModel {
             };
             parameters.insert("resolution".to_owned(), JsonValue::from(mapped));
         }
-        if let Some(duration) = options.duration {
+        if let Some(duration) = options.duration.filter(|duration| *duration != 0.0) {
             parameters.insert("durationSeconds".to_owned(), seconds_value(duration));
         }
-        if let Some(seed) = options.seed {
+        if let Some(seed) = options.seed.filter(|seed| *seed != 0) {
             parameters.insert("seed".to_owned(), JsonValue::from(seed));
         }
         if options.fps.is_some() {
@@ -284,7 +284,15 @@ impl GoogleVideoModel {
                     operation.response.clone().unwrap_or(JsonValue::Null),
                 )))
             })?;
-        let api_key = self.config.api_key().ok();
+        let api_key = self
+            .config
+            .headers(&ferrin_spec::Headers::new())
+            .ok()
+            .and_then(|headers| {
+                headers
+                    .get_str(crate::config::API_KEY_HEADER)
+                    .map(|key| secrecy::SecretString::from(key.to_owned()))
+            });
         let mut videos = Vec::new();
         let mut metadata = Vec::new();
         for sample in samples {

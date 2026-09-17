@@ -8,6 +8,7 @@ mod request;
 mod sources;
 mod stream;
 mod stream_content;
+mod tools;
 
 use std::time::Duration;
 

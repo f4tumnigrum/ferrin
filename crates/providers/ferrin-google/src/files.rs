@@ -22,6 +22,7 @@ use ferrin_spec::MediaType;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ProviderReference;
 use ferrin_spec::error::ApiCallError;
+use ferrin_spec::error::InvalidArgumentError;
 use ferrin_spec::error::InvalidResponseDataError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::files::DeleteFileResult;
@@ -45,8 +46,7 @@ use crate::config::SharedConfig;
 use crate::config::UPLOAD_PATH;
 use crate::convert_prompt::resolve_reference;
 use crate::error::failed_response_handler;
-use crate::options::part_options;
-use crate::options::read_options;
+use crate::options::parse_merged;
 use crate::output::OutputMapper;
 
 /// Default interval between processing-state polls.
@@ -227,14 +227,21 @@ impl GoogleFiles {
         meta.insert("mimeType".to_owned(), string(&file.mime_type));
         meta.insert(
             "sizeBytes".to_owned(),
-            file.size_bytes.map_or(JsonValue::Null, JsonValue::from),
+            file.size_bytes
+                .map_or(JsonValue::Null, |size| JsonValue::from(size.to_string())),
         );
         meta.insert("state".to_owned(), string(&file.state));
         meta.insert("uri".to_owned(), string(&file.uri));
-        meta.insert("createTime".to_owned(), string(&file.create_time));
-        meta.insert("updateTime".to_owned(), string(&file.update_time));
-        meta.insert("expirationTime".to_owned(), string(&file.expiration_time));
-        meta.insert("sha256Hash".to_owned(), string(&file.sha256_hash));
+        for (key, value) in [
+            ("createTime", &file.create_time),
+            ("updateTime", &file.update_time),
+            ("expirationTime", &file.expiration_time),
+            ("sha256Hash", &file.sha256_hash),
+        ] {
+            if let Some(value) = value {
+                meta.insert(key.to_owned(), json!(value));
+            }
+        }
         let mapper = OutputMapper::new(self.config.clone(), Default::default());
         UploadFileResult {
             provider_reference: self.reference(file),
@@ -246,6 +253,28 @@ impl GoogleFiles {
             provider_metadata: Some(mapper.metadata(meta)),
             warnings: Vec::new(),
         }
+    }
+
+    fn resource_url(&self, name: &str) -> Result<Url, ProviderError> {
+        let mut url = self.config.base_url.clone();
+        let mut segments = url.path_segments_mut().map_err(|()| {
+            InvalidArgumentError::new("base_url", "file base URL cannot contain path segments")
+        })?;
+        segments.pop_if_empty();
+        let id = if let Some(id) = name.strip_prefix("files/").filter(|id| !id.contains('/')) {
+            segments.push("files");
+            id
+        } else {
+            name
+        };
+        // URL parsers normalize dot segments even when encoded once.
+        segments.push(match id {
+            "." => "%2E",
+            ".." => "%2E%2E",
+            id => id,
+        });
+        drop(segments);
+        Ok(url)
     }
 
     /// Fetches the resource `name` (`files/...`).
@@ -265,7 +294,7 @@ impl GoogleFiles {
         );
         let response = get(
             self.config.transport.as_ref(),
-            self.config.url(name),
+            self.resource_url(name)?,
             self.config.headers(headers)?,
             &handlers,
             cancellation,
@@ -394,12 +423,41 @@ impl Files for GoogleFiles {
         &self,
         options: UploadFileOptions,
     ) -> Result<UploadFileResult, ProviderError> {
-        let google: GoogleFilesOptions =
-            read_options(part_options(&self.config, Some(&options.provider_options)))
-                .unwrap_or_default();
-        let data = collect(options.data).await?;
+        let google = parse_merged::<GoogleFilesOptions>(
+            &self.config,
+            &options.provider_options,
+            |mut canonical, custom| {
+                if custom.display_name.is_some() {
+                    canonical.display_name = custom.display_name;
+                }
+                if custom.poll_interval_ms.is_some() {
+                    canonical.poll_interval_ms = custom.poll_interval_ms;
+                }
+                if custom.poll_timeout_ms.is_some() {
+                    canonical.poll_timeout_ms = custom.poll_timeout_ms;
+                }
+                canonical
+            },
+        )?;
+        if google.poll_interval_ms == Some(0) || google.poll_timeout_ms == Some(0) {
+            return Err(InvalidArgumentError::new(
+                "provider_options",
+                "file polling intervals and timeouts must be positive",
+            )
+            .into());
+        }
+        let ignored_filename = options.filename.is_some();
+        let data = match select(
+            Box::pin(collect(options.data)),
+            Box::pin(options.cancellation.cancelled()),
+        )
+        .await
+        {
+            Either::Left((data, _)) => data?,
+            Either::Right(_) => return Err(ProviderError::Cancelled),
+        };
         let mut request = UploadRequest::new(data, options.media_type.as_str());
-        request.display_name = google.display_name.or(options.filename);
+        request.display_name = google.display_name;
         if let Some(interval) = google.poll_interval_ms {
             request.poll_interval = Duration::from_millis(interval);
         }
@@ -409,7 +467,16 @@ impl Files for GoogleFiles {
         request.headers = options.headers;
         request.cancellation = options.cancellation;
         let file = self.upload_bytes(request).await?;
-        Ok(self.to_result(&file))
+        let mut result = self.to_result(&file);
+        if ignored_filename {
+            result
+                .warnings
+                .push(ferrin_spec::Warning::unsupported("filename"));
+        }
+        if result.media_type.is_none() {
+            result.media_type = Some(options.media_type);
+        }
+        Ok(result)
     }
 
     fn supports_get_file_metadata(&self) -> bool {
@@ -439,7 +506,7 @@ impl Files for GoogleFiles {
         let handlers = ResponseHandlers::new(text_response_handler(), failed_response_handler());
         delete(
             self.config.transport.as_ref(),
-            self.config.url(&name),
+            self.resource_url(&name)?,
             self.config.headers(&options.headers)?,
             &handlers,
             options.cancellation,

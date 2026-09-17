@@ -61,7 +61,7 @@ pub struct ImageConfig {
 
 /// Language model options (`provider_options["google"]`).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GoogleLanguageModelOptions {
     /// Response modalities (`TEXT`, `IMAGE`).
     #[serde(default)]

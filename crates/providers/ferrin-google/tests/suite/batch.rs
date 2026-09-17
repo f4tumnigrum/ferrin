@@ -105,7 +105,15 @@ async fn start_posts_inline_requests_with_per_request_warnings() {
         result.status.raw_status.as_deref(),
         Some("BATCH_STATE_PENDING")
     );
-    assert!(result.status.request_counts.is_none());
+    assert_eq!(
+        result.status.request_counts,
+        Some(ferrin_spec::batch::BatchRequestCounts {
+            total: 2,
+            pending: 2,
+            completed: 0,
+            failed: 0,
+        })
+    );
     assert!(result.status.created_at.is_some());
     assert!(result.status.provider_metadata.is_none());
     assert_eq!(result.warnings.len(), 1);

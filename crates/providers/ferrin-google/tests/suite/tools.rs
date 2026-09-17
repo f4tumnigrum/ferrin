@@ -78,6 +78,65 @@ fn provider_tools_map_to_the_wire_format() {
 }
 
 #[test]
+fn provider_factory_schemas_match_reference_object_parsing() {
+    let tools = GoogleTools::new();
+    for tool in [
+        tools.google_search(Default::default()),
+        tools.enterprise_web_search(),
+        tools.url_context(),
+        tools.file_search(Default::default()),
+        tools.vertex_rag_store(Default::default()),
+        tools.google_maps(),
+    ] {
+        assert_eq!(
+            tool.validate_input(&"tool".into(), json!({"extra":true}))
+                .unwrap(),
+            json!({})
+        );
+        assert_eq!(
+            tool.output_schema()
+                .unwrap()
+                .validate(json!({"extra":true}))
+                .unwrap(),
+            json!({})
+        );
+        for invalid in [json!(null), json!([]), json!("text")] {
+            assert!(
+                tool.validate_input(&"tool".into(), invalid.clone())
+                    .is_err()
+            );
+            assert!(tool.output_schema().unwrap().validate(invalid).is_err());
+        }
+    }
+    let code = tools.code_execution();
+    assert_eq!(
+        code.validate_input(
+            &"python".into(),
+            json!({"language":"PYTHON","code":"print(1)","extra":true})
+        )
+        .unwrap(),
+        json!({"language":"PYTHON","code":"print(1)"}),
+    );
+    assert_eq!(
+        code.output_schema()
+            .unwrap()
+            .validate(json!({"outcome":"OUTCOME_OK","output":"1","extra":true}))
+            .unwrap(),
+        json!({"outcome":"OUTCOME_OK","output":"1"}),
+    );
+    assert!(
+        code.validate_input(&"python".into(), json!({"code":"print(1)"}))
+            .is_err()
+    );
+    assert!(
+        code.output_schema()
+            .unwrap()
+            .validate(json!({"outcome":"OUTCOME_OK"}))
+            .is_err()
+    );
+}
+
+#[test]
 fn provider_tools_need_gemini_2_capabilities() {
     let prepared = prepare(&provider_tools()[..4], None, "gemini-1.5-pro");
     assert_eq!(prepared.tools, None);

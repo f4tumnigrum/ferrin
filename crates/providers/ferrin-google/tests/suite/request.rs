@@ -7,7 +7,6 @@ use ferrin_spec::ReasoningEffort;
 use ferrin_spec::ResponseFormat;
 use ferrin_spec::ToolChoice;
 use ferrin_spec::ToolDefinition;
-use ferrin_spec::error::ProviderError;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 
@@ -247,18 +246,23 @@ async fn custom_name_options_override_the_canonical_key() {
 }
 
 #[tokio::test]
-async fn unknown_option_keys_are_rejected() {
+async fn unknown_option_keys_are_ignored() {
     let test = TestProvider::start().await;
     let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
-    options.provider_options = google_options(json!({"unknownSetting": 1}));
-    let error = test
+    let expected = test
         .provider
         .language_model("gemini-2.5-flash")
         .prepare_request(&options)
-        .unwrap_err();
-    assert!(
-        matches!(error, ProviderError::InvalidArgument(_)),
-        "{error:?}"
+        .unwrap();
+    options.provider_options = google_options(json!({"unknownSetting": 1}));
+    let actual = test
+        .provider
+        .language_model("gemini-2.5-flash")
+        .prepare_request(&options)
+        .unwrap();
+    assert_eq!(
+        (actual.body, actual.warnings),
+        (expected.body, expected.warnings)
     );
 }
 

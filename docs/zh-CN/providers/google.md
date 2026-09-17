@@ -43,7 +43,17 @@
 
 ## 供应商选项（`provider_options["google"]`）
 
-选项键为 camelCase，未知键返回 `ProviderError::InvalidArgument`。完整 schema 见 `src/options.rs`。
+【决策】七个已有工具工厂采用参考实现的对象输入和输出 schema。空工具 schema 接受对象并移除未声明字段；代码执行仅保留声明的字符串字段。来源：本地 AI SDK `6c6c221` 的 `packages/google/src/tool` 和 `tests/suite/tools.rs` 解析回归。仅验证本地校验行为。
+
+【决策】模态选项校验对齐本地 AI SDK `6c6c221` 的 schema：嵌入任务类型使用文档中的枚举，多模态嵌入条目为非空的文本、内联数据或文件数据列表；语音说话人条目必须包含说话人名与预置音色名；图像 grounding 和配置值必须为对象。无效输入在 HTTP 前失败，嵌入响应缺少必需数组时不会自动补空数组。来源：本地参考的 `packages/google/src/google-{embedding,speech,image}-model-options.ts`；本地回归仅验证转换。
+
+【决策】语音响应与参考 speech schema 一样接受缺失或 null 的内联音频媒体类型、数据字段，并选用第一个非空音频载荷。缺少媒体类型时使用默认 24 kHz 采样率，元数据 `mimeType` 为 null。来源：本地 AI SDK `google-speech-api.ts` 与 `google-speech-model.ts`；仅经本地 fixture 验证。
+
+【决策】批处理状态在总数一致时将缺少的 pending/successful/failed 计数视为零，匹配 `convertGoogleRequestCounts`。视频下载 URL 仅在同源时使用解析后的配置 API-key 请求头，包括配置层的请求头覆盖。来源：本地 AI SDK `google-batch.ts` 与 `google-video-model.ts`；凭据隔离保持强制要求。
+
+【决策】视频请求转换省略值为零的 `seed`、`duration`，与参考适配器的真值判断一致；需要在线路中发送这些字段时应使用非零值。来源：本地 AI SDK `6c6c221` 的 `google-video-model.ts`。
+
+【决策】选项键为 camelCase，未知键按参考 Zod 对象解析规则忽略，已知字段的非法值返回 `ProviderError::InvalidArgument`。完整 schema 见 `src/options.rs`。来源：本地 AI SDK `6c6c221` 的选项 schema。
 
 【事实】语言模型：`responseModalities [TEXT | IMAGE]`、`thinkingConfig {thinkingBudget, includeThoughts, thinkingLevel}`（与 `ReasoningEffort` 推导的值合并，显式值优先于推导值中未设置的字段）、`cachedContent`、`structuredOutputs`（默认 `true`）、`safetySettings [{category, threshold}]` 或 `threshold`（对 `HARM_CATEGORY_HATE_SPEECH`、`HARM_CATEGORY_DANGEROUS_CONTENT`、`HARM_CATEGORY_HARASSMENT`、`HARM_CATEGORY_SEXUALLY_EXPLICIT` 四类统一设置）、`audioTimestamp`、`labels {..}`、`mediaResolution`、`imageConfig {aspectRatio, imageSize, personGeneration, prominentPeople, imageOutputOptions}`、`retrievalConfig {latLng}`（写入 `toolConfig.retrievalConfig`）、`serviceTier`（`standard`/`flex`/`priority`）；`streamFunctionCallArguments`、`sharedRequestType`、`requestType` 为 Vertex AI 选项，被忽略并警告。
 
@@ -70,9 +80,9 @@
 - 【事实】函数工具与供应商工具混用：Gemini 3 及以后同时发送并写入 `toolConfig.includeServerSideToolInvocations: true`（`tool_choice` 缺省时 `mode: VALIDATED`）；旧模型只发送供应商工具并警告。`googleSearch`、`enterpriseWebSearch`、`urlContext`、`codeExecution` 需要 Gemini 2 及以后（或 `nano-banana` 模型），`fileSearch` 需要 Gemini 2.5 及以后，否则警告并丢弃；`vertex_rag_store` 在 Gemini API 上产生 `other` 警告。
 - 【事实】JSON Schema 转换：只支持指向根级 `$defs`/`definitions` 直接子项的 `$ref`（内联展开），递归引用在函数参数中回退为 `parametersJsonSchema`、在 `responseSchema` 中返回 `UnsupportedFunctionality`；混合类型的 `enum` 返回 `UnsupportedFunctionality`；`type: object` 且无属性的根 schema 不发送。
 - 【事实】流式：文本与推理块 ID 为递增整数，函数调用 ID 缺省由 `id_generator` 生成；`partialArgs`（Vertex 流式参数）经 `JsonAccumulator` 还原为 JSON 文本增量。Gemini 流没有流内错误帧，HTTP 错误在流开始前以 `ProviderError::ApiCall` 报告；含 `retry-after` 的 429 标记为可重试。
-- 【事实】图像：非 `gemini-` 前缀的模型 ID、`mask` 与 `n > 1` 返回 `InvalidArgument`；`size` 产生警告（改用 `aspectRatio`）；每次调用最多 1 张（`with_max_images_per_call` 的更大值也被限制为 1），因此核心层把多图生成拆分为单图调用。语音：`speed`、`language` 产生警告并忽略，`instructions` 以 `"<instructions>: <text>"` 前置（`multiSpeakerVoiceConfig` 存在时忽略并警告），`outputFormat: pcm` 返回原始 PCM 并附带说明警告。
+- 【事实】图像：非 `gemini-` 前缀的模型 ID、`mask` 与 `n > 1` 返回 `InvalidArgument`；`size` 产生警告（改用 `aspectRatio`）；声明的每次调用上限默认为 10，并接受 `with_max_images_per_call` 覆盖值，对齐参考实现，即使 Gemini 仍拒绝 `n > 1`；核心层多图调用必须显式设置 `.max_images_per_call(1)`，以拆分为受支持的单图请求。语音：`speed`、`language` 产生警告并忽略，`instructions` 以 `"<instructions>: <text>"` 前置（`multiSpeakerVoiceConfig` 存在时忽略并警告），`outputFormat: pcm` 返回原始 PCM 并附带说明警告。
 - 【事实】视频：`fps`、`generateAudio`、`webhookUrl` 产生警告；参考图像的 `gs://` URI 写入 `gcsUri`，其他 URL 产生警告并忽略；分辨率 1280×720/1920×1080/3840×2160 映射为 `720p`/`1080p`/`4k`，其余以 `WxH` 发送；整数秒时长以整数发送。完成的操作返回 `video/mp4` 的 URL，仅与 `base_url` 同源时附加 `key` 查询参数。
-- 【事实】文件：上传后轮询 `state`，`PROCESSING` 超过 `pollTimeoutMs` 或状态为 `FAILED` 时返回 `ApiCall`；`filename` 在没有 `displayName` 选项时作为 `displayName` 发送。
+- 【决策】Files 轮询 `state`；`PROCESSING` 超时或 `FAILED` 返回 `ApiCall`。`filename` 不受支持并发出警告；使用 `displayName` 设置 Files API 名称。轮询选项必须为正数，资源名（含点路径段）按本地 AI SDK `google-files.ts` 编码为路径数据。元数据 `sizeBytes` 保留字符串，规范化 `byte_size` 为数字。
 - 【事实】批处理：所有请求必须使用同一模型（模型是端点的一部分），否则 `InvalidArgument`；请求 ID 写入 `metadata.key`；输入文件超过 2 GB 返回 `InvalidArgument`；未完成的批次读取结果返回 `InvalidArgument`，已完成但无输出返回 `InvalidResponseData`，失败且无输出返回空流；结果项按 `error.status`（`CANCELLED` 或 code 1 为取消）、被拦截的提示（`prompt_blocked`）、不支持的内容（文件、推理文件、自定义、审批请求→`unsupported_content`）、无法解析的响应（`invalid_response`）分类。
 - 【事实】实时：`SessionUpdate` 序列化为 `setup`；`InputAudioAppend` 使用 `audio/pcm;rate=<输入采样率>`（默认 16000）；`toolCall` 事件映射为 `FunctionCallArgumentsDelta` + `Done`；`goAway`、`sessionResumptionUpdate`、`toolCallCancellation`、`generationComplete` 作为 `Custom` 事件透传；没有 Live API 对应物的客户端事件（`InputAudioClear`、`ResponseCreate`、`ResponseCancel`、`ConversationItemTruncate` 与音频消息项）返回 `UnsupportedFunctionality`。
 - 【决策】`do_generate` 在视频模型上返回 `UnsupportedFunctionality`，只提供操作式接口（`do_start`/`do_status`）。依据：Veo 端点只有 `predictLongRunning`，同步等待属于核心层的轮询职责。
@@ -106,7 +116,7 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 
 【事实】 助手文件与推理文件回放保留生成时的 `thoughtSignature`；验证：`tests/suite/prompt.rs::generated_files_replay_their_thought_signatures`（2026-09-15）。
 
-【决策】 Live API 函数输出直接保留 JSON 对象，其他 JSON 值或普通文本包装为 `response.result`，以满足响应必须为对象的要求并保留工具输出。回归：`tests/suite/realtime.rs::function_outputs_preserve_every_json_type_and_plain_text`（2026-09-15）。
+【决策】按照 ADR 0026，Live API 函数输出直接保留所有有效 JSON 值，无效 JSON 替换为 `{}`，对齐参考 `google-realtime-event-mapper.ts`，取代此前标量/文本包装。标准化 clear、response-create、response-cancel、truncate 和 audio-message 事件返回 `null`；Live API 没有对应操作，core 跳过发送。回归：`tests/suite/realtime.rs::{function_outputs_preserve_json_and_replace_invalid_text,client_events_serialize_to_the_wire_format}`（2026-09-17）。
 
 【决策】 Schema 转换把 `true` 映射为不施加约束的 schema（`{}`），对 `false` 返回 `UnsupportedFunctionality`，包括属性、数组项、联合与引用位置；支持的 OpenAPI 子集无法表达拒绝所有值的 schema。回归：`tests/suite/unit.rs::boolean_schemas_keep_their_validation_meaning`（2026-09-15）。
 
@@ -118,11 +128,15 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 
 ## 实现记录（2026-09-17）：Interactions 与 Live 音频
 
+【决策】Interactions 内置结果步骤回放时保留 JSON 对象、数组和标量原值；客户端 `function_result` 才将 JSON 序列化为文本。MCP 结果同时保留工具名。这保证供应商结果不会误用客户端结果的 wire 序列化规则。来源：本地 AI SDK `6c6c221` 的 Interactions 结果 schema 与 `src/interactions/prompt.rs`；未做在线验证。
+
+【决策】参考请求规范化省略空停止序列，不从通用推理强度推导 Interactions `thinking_level`，需显式使用 `thinkingLevel`。弃用的 `imageConfig` 仅在没有显式图像条目时补入图像响应格式。压缩关联历史时移除对应工具调用已被压缩的结果，保留不相关的新结果；相邻用户文本块以空行合并。来源：本地 AI SDK `6c6c221` 的 Interactions 请求和提示转换器。
+
 【事实】`GoogleInteractionsLanguageModel` 使用 `<name>.interactions`；`language_model` 和 `chat` 保留 generateContent。`google` 和自定义名称下的选项合并，后者优先：`previousInteractionId`、`store`、`agent`、`agentConfig`、`environment`、`background`、`pollingTimeoutMs`（默认 30 分钟）、`thinkingLevel`、`thinkingSummaries`、`responseFormat`、`responseModalities`、`mediaResolution`、`serviceTier` 和 `systemInstruction`。提示系统消息优先于 `systemInstruction` 并给出警告。来源：`src/interactions/request.rs`、请求快照回归。
 
 【事实】Interactions 转换用户文本/文件、助手文本/文件/推理/函数调用、供应商工具回放和工具结果。`signature`、`interactionId`、`stepType` 在标准和自定义键下回放；启用存储时压缩匹配 `previousInteractionId` 的助手历史，保留新工具结果。`store: false` 保留完整历史，与先前 ID 合用时警告。JSON Schema 保留用户属性名称；响应格式转换为下划线 wire 键。来源：`src/interactions/prompt.rs`、请求及回放回归。
 
-【事实】函数以及 Google 搜索/代码执行/URL 上下文/文件搜索/地图/计算机使用/检索工具有 Interactions wire 转换，内置别名恢复应用名称。远端 `mcp_server` 和未知供应商工具警告并忽略。单次及流式输出包含文本、推理、文件、调用/结果、URL/文档/地图来源、token 计数和服务等级；流式来源去重。来源：`src/interactions/output.rs`、`sources.rs` 及 fixture 回归。
+【事实】函数以及 Google 搜索/代码执行/URL 上下文/文件搜索/地图/计算机使用/检索/MCP 工具有 Interactions wire 转换，内置别名恢复应用名称。工具转换逐项选择已定义字段、忽略 null，并采用参考实现的计算机使用和检索默认值。远端 `mcp_server` URL 交给 Google 执行，不建立本地连接。未知供应商工具警告并忽略。单次及流式输出包含文本、推理、文件、调用/结果、URL/文档/地图来源、token 计数和服务等级；流式来源去重。来源：本地 AI SDK `6c6c221` 的 `prepare-google-interactions-tools.ts`，以及 `src/interactions/tools.rs`、`output.rs`、`sources.rs` 和 fixture 回归。未经真实供应商验证。
 
 【事实】`start_interaction` 返回初始资源，`get_interaction` 查询资源，`cancel_interaction` 停止资源；使用 `GoogleInteractionOptions` 的请求头/取消并编码 ID 路径段。`do_generate` 每秒轮询进行中的后台/agent 调用，直到配置时限。`do_stream` 创建后台资源后增量读取 `GET /interactions/{id}?stream=true`；断流使用 `last_event_id` 续接并忽略重复边界事件，最多重连两次，遵守同一时限。初始 POST 已终结时立即合成事件。来源：`src/interactions/background.rs`、生命周期回归。
 
@@ -131,3 +145,7 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 【事实】启用 `realtime` 时，Live 转写为 `-live` ID 接受 `audio/pcm` 或 `pcm16`，即 16 kHz、有符号 16 位单声道 PCM。翻译接受相同输入，输出 24 kHz `audio/pcm`，自动识别源语言，要求目标语言并接受 `echoTargetLanguage`。`setupComplete` 后才提交音频；输出保留 usage 和自定义键元数据。连接使用 URL 策略、DNS 固定及有界帧；取消与 drop 释放自有资源。来源：`src/live_audio`、`src/transcription/live.rs`、`src/speech_translation` 及本地 WebSocket 回归。
 
 【决策】音频终结沿用参考适配器：转写在输入 EOF 后允许一秒静默宽限；翻译以一秒 PCM 静音（阈值 128）或轮次完成加宽限终结。无分离后台任务维持已丢弃的流。使用可控本地 WebSocket 和暂停时间覆盖这些边界，不证明官方端点兼容性；PV-031 的真实响应录制要求继续开放。
+
+【决策】ADR 0026 迁移恢复参考图像上限 10；依赖自动单图拆分的既有多图调用必须设置 `.max_images_per_call(1)`，否则适配器在 HTTP 前拒绝产生的 `n > 1` 请求。来源：本地 AI SDK `6c6c221`，`packages/google/src/google-image-model.ts`。
+
+【决策】Interactions 选项规范化在 agent 调用中保留显式供应商响应格式，仅丢弃通用 JSON 结构化输出。各模态格式、agent 配置与远程环境对象只序列化参考实现定义的字段，省略空可选字段与空环境源列表；动态 agent 配置只发送类型。无效格式类型或环境结构在 HTTP 前失败。来源：本地 AI SDK `6c6c221` 的 Interactions 语言模型与选项 schema。

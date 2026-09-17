@@ -50,7 +50,8 @@ async fn upload_runs_the_resumable_protocol_and_polls_until_active() {
     assert!(!files.supports_download_file());
     let mut options = UploadFileOptions::new(Bytes::from_static(b"hello notes"), "text/plain");
     options.filename = Some("notes.txt".to_owned());
-    options.provider_options = google_options(json!({"pollIntervalMs": 1}));
+    options.provider_options =
+        google_options(json!({"pollIntervalMs": 1, "displayName":"notes.txt"}));
     let result = files.upload_file(options).await.unwrap();
     assert_eq!(result.provider_reference, reference(FILE_URI));
     assert_eq!(result.filename.as_deref(), Some("notes.txt"));
@@ -62,6 +63,7 @@ async fn upload_runs_the_resumable_protocol_and_polls_until_active() {
         Some("text/plain")
     );
     assert_eq!(result.byte_size, Some(11));
+    assert_eq!(super::common::features(&result.warnings), vec!["filename"]);
     assert_eq!(
         result.created_at.map(|t| t.to_rfc3339()),
         Some("2026-09-14T08:00:00+00:00".to_owned())
@@ -73,6 +75,7 @@ async fn upload_runs_the_resumable_protocol_and_polls_until_active() {
     let metadata = result.provider_metadata.unwrap();
     assert_eq!(metadata["google"]["state"], json!("ACTIVE"));
     assert_eq!(metadata["google"]["name"], json!("files/abc-123"));
+    assert_eq!(metadata["google"]["sizeBytes"], json!("11"));
     assert_eq!(metadata["google"]["sha256Hash"], json!("ZGVhZGJlZWY="));
 
     let requests = test.server.received();
@@ -122,10 +125,11 @@ async fn upload_fails_on_timeout_failed_state_and_missing_upload_url() {
     let mut options = UploadFileOptions::new(Bytes::from_static(b"hello notes"), "text/plain");
     options.provider_options = google_options(json!({"pollTimeoutMs": 0}));
     let error = files.upload_file(options).await.unwrap_err();
-    let ProviderError::ApiCall(error) = error else {
-        panic!("expected api call error, got {error:?}");
-    };
-    assert!(error.message.contains("timed out"), "{}", error.message);
+    assert!(
+        matches!(error, ProviderError::InvalidArgument(_)),
+        "{error:?}"
+    );
+    assert_eq!(test.server.received_count(), 0);
 
     test.server.reset();
     mount_upload_start(&test);

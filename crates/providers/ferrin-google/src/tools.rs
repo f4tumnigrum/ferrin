@@ -3,6 +3,8 @@
 //! Each factory returns a [`ferrin_tool::Tool`] whose definition is a
 //! `ToolDefinition::Provider` with the `google.<tool>` id; the request
 //! preparation converts the arguments to the wire format.
+//! Schemas follow Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.);
+//! translated and modified; see `NOTICE`.
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
@@ -24,8 +26,10 @@ fn args<T: Serialize>(value: &T) -> JsonObject {
 }
 
 fn executed(id: &str, args: JsonObject) -> Tool {
+    let schema = Schema::from_provider_json_schema(json!({"type":"object","properties":{}}));
     Tool::provider_executed(id, args)
-        .input_schema(Schema::any())
+        .input_schema(schema.clone())
+        .output_schema(schema)
         .build()
 }
 
@@ -121,7 +125,7 @@ impl GoogleTools {
     #[must_use]
     pub fn code_execution(&self) -> Tool {
         Tool::provider_executed(ids::CODE_EXECUTION, JsonObject::new())
-            .input_schema(Schema::from_json_schema(json!({
+            .input_schema(Schema::from_provider_json_schema(json!({
                 "type": "object",
                 "properties": {
                     "language": {"type": "string", "description": "The programming language of the code."},
@@ -129,7 +133,7 @@ impl GoogleTools {
                 },
                 "required": ["language", "code"]
             })))
-            .output_schema(Schema::from_json_schema(json!({
+            .output_schema(Schema::from_provider_json_schema(json!({
                 "type": "object",
                 "properties": {
                     "outcome": {"type": "string", "description": "The outcome of the execution (e.g., \"OUTCOME_OK\")."},

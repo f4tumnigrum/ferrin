@@ -149,7 +149,10 @@ async fn validated_resource_addresses_are_pinned_and_headers_stay_on_authorized_
             credentials.then_some("test-extra")
         );
         assert_eq!(request.headers.get_str("x-goog-api-key"), None);
-        assert_eq!(request.body.to_bytes(), Bytes::from_static(b"file-content"));
+        assert_eq!(
+            request.body.to_bytes().unwrap(),
+            Bytes::from_static(b"file-content")
+        );
     }
 }
 
