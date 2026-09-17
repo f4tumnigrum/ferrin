@@ -7,7 +7,7 @@ All notable changes to this crate are documented here. The format follows
 
 ### Added
 
-- Four anonymous Responses API recordings for text, SSE, function calls and structured output, with redaction provenance in metadata.
+- Four Responses API recordings from a third-party proxy using `gpt-5.6-sol`: text, SSE, function calling and strict structured output, with offline request/output/usage comparisons and stream contract checks. Seven Responses live tests passed; official OpenAI and other provider fixtures remain unverified (PV-031).
 
 ## [0.1.2] - 2026-09-16
 

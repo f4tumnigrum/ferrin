@@ -116,6 +116,7 @@ Proptest covers:
 - [Fact] Modality tests implement specification traits inline for embeddings/images/speech/transcription/reranking/video/files/skills/batches/realtime. Local realtime servers on loopback echo WebSocket subprotocols.
 - [Fact] Fixture::load prefers response.json over chunks.txt for the same `case`. OpenAI therefore uses separate `-stream` `case` names; interpret section 3.1 accordingly.
 - [Pending verification] (PV-031) All four provider fixture sets were handwritten from official response schemas before `record-fixture` existed on 2026-09-14. They contain no real request IDs/accounts and have not been rerecorded with credentials. The no-hand-edit rule applies once recorded versions replace them.
+- [Fact] On 2026-09-17, four additional OpenAI Responses cases were recorded through a third-party proxy and passed offline comparisons; seven Responses live tests also passed. The [OpenAI guide](../providers/openai.md#recorded-proxy-verification-2026-09-17) records provenance, redactions, differences and limits. Original synthetic fixtures remain, and PV-031 stays open for official endpoints and other cases/providers.
 
 ## 11. Implementation record (2026-09-14, benchmarks)
 

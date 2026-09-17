@@ -132,6 +132,7 @@ fixture 录制通过 `cargo xtask record-fixture --provider openai --case respon
 - 【决策】`stream_util::fail_on_early_error` 在把流交给调用方之前读取开头的分片：服务器在产出任何输出之前返回错误帧（Responses 的 `error`/`response.failed`、Chat/Completions 的 `{"error": ...}`）时，`do_stream` 以 `ProviderError::ApiCall`（状态码由错误码推断）失败而不是返回只含错误事件的流；收到 `response.in_progress` 后最多再等待 50 ms 的输出，已读分片原样重放。依据：核心层的重试策略依赖 `ApiCall` 错误的状态码与可重试性，流内错误事件不参与请求级重试。
 - 【事实】WebSocket 模型（流式转写、语音翻译）通过子协议 `["realtime", "openai-insecure-api-key.<key>"]` 认证并从请求头中移除 `authorization`；URL 由 `OpenAiConfig::websocket_url` 从 `base_url` 派生（`https`→`wss`，`http`→`ws`）。不启用 `realtime` feature 时 `TranscriptionModel::supports_stream` 返回 `false`，`Provider::speech_translation_model` 返回带提示的 `NoSuchModelError`。
 - 【事实】测试位于 `tests/suite/*.rs`（`tests/all.rs` 汇总），fixture 位于 `tests/fixtures/<area>/`，流式用例以 `-stream` 后缀区分；WebSocket 测试用 `tokio-tungstenite` 起本地服务器回显子协议并记录会话消息。fixture 为手工编写（PV-031）。
+- 【事实】2026-09-17 新增四个通过第三方代理录制的 Responses 用例并通过回放对照，见 [OpenAI 指南](../providers/openai.md#代理响应录制验证2026-09-17)。原有 fixture 和官方端点的 PV-031 验证仍未关闭。
 - 【事实】第 5 节提到的 `cargo xtask record-fixture` 于 2026-09-14 实现（见[工作区布局](../03-engineering/02-workspace-layout.md)第 6 节）；本 crate 的 fixture 尚未用它重新录制（PV-031）。
 
 ## 10. 实现记录（2026-09-13，`ferrin-anthropic`）

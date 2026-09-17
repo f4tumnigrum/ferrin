@@ -97,7 +97,36 @@ Fixtures under `crates/providers/ferrin-openai/tests/fixtures/<area>` are replay
 | `batch` | `file-upload`, `create`, `retrieve-pending`, `retrieve-completed`, `retrieve-failed`, `cancel`, `list`, `output.jsonl`, `errors.jsonl` | JSONL/state/results/cancellation/paging |
 | `realtime` | `client-secret` | Temporary secrets/session config |
 
-[Pending verification] (PV-031) Fixtures were handwritten from official response schemas; rerecord real responses with `record-fixture`.
+[Pending verification] (PV-031) The original fixtures were handwritten from official response schemas. Four additional Responses cases were recorded through a third-party proxy on 2026-09-17 (below); official OpenAI responses and the remaining cases still need recording and comparison.
+
+## Recorded proxy verification (2026-09-17)
+
+[Fact] `responses/recorded-proxy/` contains four credentialed recordings from a private third-party Responses endpoint, requested and reported model `gpt-5.6-sol`, with scenario, request, response/SSE and metadata files. Final recordings were captured at 08:11:35–08:12:08 UTC using `store: false`, reasoning effort `low` and `max_output_tokens: 512`. Each returned HTTP 200. The provider identity and endpoint are intentionally omitted; scenarios read the endpoint from `OPENAI_BASE_URL`. Source: fixture metadata and `tests/suite/responses_recorded.rs`.
+
+[Fact] Replay compares the SDK-generated request body with each recorded request, checks full upstream `Usage.raw`, snapshots normalized outputs/usage, and checks the SSE contract and normalized event sequence. Comparison results from the four recordings:
+
+| Case | Output | Input / output tokens | Cached input | Finish |
+| --- | --- | --- | --- | --- |
+| `text-basic` | `pong` | 4393 / 5 | 4224 | `stop` |
+| `text-basic-stream` | `pong` | 4393 / 5 | 4224 | `stop` |
+| `tool-call` | `get_weather({"city":"Berlin"})` | 4432 / 18 | 0 | `tool-calls` |
+| `structured-output` | `{"city":"Paris","country":"France"}` | 4426 / 16 | 0 | `stop` |
+
+[Fact] Compared with the original hand-authored text/tool fixtures, these responses contain additional `usage.attribution` and `cache_write_tokens` fields, proxy-injected `instructions`, account/cache identifiers and output metadata. The recorder replaces `instructions`, `safety_identifier` and `prompt_cache_key` at the response root and SSE `response` root with `[REDACTED]`; each metadata file lists these pointers. Output, usage, event order and request/response IDs are retained. The original synthetic fixtures remain useful for reasoning/error branches absent from these recordings.
+
+[Fact] The SSE recording contains nine events, from `response.created` through `response.completed`, with one `response.output_text.delta`; its terminal `output` omits item IDs present in earlier events. Ferrin still produces a complete text stream and terminal `Finish`. The JSON and SSE responses report `max_output_tokens: null` despite requesting 512, and attribute 4382 input tokens to injected instructions. These observations do not establish that the requested limit is enforced or establish the proxy's actual charges. Source: recorded request/response pairs and normalized snapshots.
+
+[Fact] Seven existing Responses live tests passed on 2026-09-17 with the same endpoint/model and `{"openai":{"store":false,"reasoningEffort":"low"}}`: four facade tests (text, streaming, local tool execution plus result round trip, typed structured output) and three adapter tests (text, streaming, tool-call output). Source: nextest run `dcf4adb2-6a4a-4dbd-a979-9260998c7a56`; this run excludes Chat Completions. Reproduce after exporting the endpoint/model/key and provider options:
+
+```sh
+cargo xtask record-fixture --provider openai --case responses/recorded-proxy/text-basic
+INSTA_UPDATE=no just test -E "'test(responses_recorded)'"
+just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & test(live_) & !test(live_chat_)'" --test-threads 1
+```
+
+[Fact] Verification is limited to this proxy and model alias. It does not verify the official OpenAI endpoint, other providers, streamed tool arguments, streamed structured output, reasoning output, errors, other modalities or original transport byte boundaries (the recorder stores SSE event boundaries). Redacted values are not covered by replay. PV-031 remains open.
+
+## Additional implementation records
 
 [Fact] Live verification on 2026-09-14: default `store` true sends previous assistant/provider-tool items as `item_reference`. A third-party proxy returned 502 for references but accepted full items. Use {"openai":{"`store`":false}} for endpoints not storing items; convert_prompt then sends complete content. This run did not test the official OpenAI endpoint.
 

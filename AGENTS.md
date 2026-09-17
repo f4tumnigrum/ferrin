@@ -13,7 +13,7 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   are implemented (first complete build: 2026-09-14). The original 15 crates
   were first published as 0.1.0 on 2026-09-14; `ferrin-policy` is new in
   0.1.2. The current workspace version is 0.1.2, with dated changelog sections
-  for 2026-09-16 and empty `Unreleased` sections. Version 0.1.1 retained
+  for 2026-09-16 and fixture-recording work under `Unreleased`. Version 0.1.1 retained
   breaking schema API changes by explicit exception (ADR 0019).
   All 16 crates were published as 0.1.2 on 2026-09-16 (Asia/Shanghai); detailed
   publication verification is recorded in the release document. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →
@@ -218,6 +218,6 @@ line.
   `[Decision]` with the prototype or origin) and the appendix conclusion and
   status in both editions together. `scripts/docs_lint.py` checks links,
   translated-page coverage, pending registration and matching PV statuses.
-- Open item at the time of writing: PV-031 (provider fixtures are
-  hand-written; re-record them with `cargo xtask record-fixture` and real
-  credentials, then compare the snapshots).
+- Open item at the time of writing: PV-031 (four OpenAI Responses cases were
+  recorded through a third-party proxy on 2026-09-17; official-provider responses
+  and the remaining handwritten fixtures still need recording and comparison).

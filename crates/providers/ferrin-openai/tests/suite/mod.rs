@@ -12,6 +12,7 @@ mod realtime;
 #[cfg(feature = "realtime")]
 mod realtime_ws;
 mod responses_generate;
+mod responses_recorded;
 mod responses_request;
 mod responses_stream;
 mod skills;

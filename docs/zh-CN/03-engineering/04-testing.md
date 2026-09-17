@@ -117,6 +117,7 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 - 【事实】`Fixture::load(dir, case)` 对同一 `case` 先找 `<case>.response.json`，再找 `<case>.chunks.txt`；两者同时存在时只回放前者。`ferrin-openai` 的流式用例因此以 `-stream` 后缀命名（`text-basic.response.json` 与 `text-basic-stream.chunks.txt`），第 3.1 节的目录示例按此理解。
 - 【待验证】（PV-031）`ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible` 与 `ferrin-google` 的 fixture（`crates/providers/<crate>/tests/fixtures/`）在 `record-fixture` 命令实现（2026-09-14）之前依据供应商公开 API 文档的响应 schema 手工编写，不含真实请求 ID 与账户信息，尚未用该命令以真实凭据重新录制；第 3.2 节“fixture 一经录制不得手工修改”的规则自录制版本起适用。
 
+- 【事实】2026-09-17，新增四个通过第三方代理录制的 OpenAI Responses 用例并通过离线对照，另有七个 Responses 在线测试通过。[OpenAI 指南](../providers/openai.md#代理响应录制验证2026-09-17)记录了来源、脱敏、差异与限制。原有合成 fixture 保留，PV-031 对官方端点及其他用例/供应商继续保持 open。
 
 ## 11. 实现记录（2026-09-14，基准测试）
 

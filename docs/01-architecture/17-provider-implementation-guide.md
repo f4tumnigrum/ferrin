@@ -132,6 +132,7 @@ Record with `cargo xtask record-fixture --provider openai --case responses/tool-
 - [Decision] `fail_on_early_error` reads initial chunks before returning the stream. Errors before output (Responses `error`/`response.failed` or Chat/Completion `error` objects) fail `do_stream` as `ApiCall` with inferred status, enabling request retries. After `response.in_progress`, wait at most another 50 ms for output; replay consumed chunks unchanged.
 - [Fact] WebSocket transcription/translation authenticate through `realtime` and openai-insecure-api-key subprotocols, stripping Authorization. Derive `ws`/`wss` from `base_url`. Without `realtime`, transcription supports_stream is `false` and speech translation returns an explanatory `NoSuchModelError`.
 - [Fact] Tests live under tests/suite, aggregated by `tests/all.rs`; area fixtures use `-stream` suffixes. Local `tokio-tungstenite` servers echo subprotocols and record messages. Fixtures are handwritten (PV-031).
+- [Fact] Four additional Responses cases were recorded through a third-party proxy on 2026-09-17 and pass replay comparisons; see the [OpenAI guide](../providers/openai.md#recorded-proxy-verification-2026-09-17). This does not close PV-031 for original fixtures or official endpoints.
 - [Fact] record-fixture was implemented 2026-09-14 ([Workspace layout](../03-engineering/02-workspace-layout.md), section 6); these fixtures have not been rerecorded (PV-031).
 
 ## 10. Implementation record (2026-09-13, ferrin-anthropic)

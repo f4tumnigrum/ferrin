@@ -97,7 +97,36 @@ fixture 位于 `crates/providers/ferrin-openai/tests/fixtures/<area>/`，由 `te
 | `batch` | `file-upload`、`create`、`retrieve-pending`、`retrieve-completed`、`retrieve-failed`、`cancel`、`list`、`output.jsonl`、`errors.jsonl` | JSONL 请求体、状态映射、结果流、取消与分页 |
 | `realtime` | `client-secret` | 临时密钥与会话配置请求体 |
 
-【待验证】（PV-031）以上 fixture 依据供应商公开 API 文档的响应 schema 手工编写；`record-fixture` 实现后需用真实响应重新录制。
+【待验证】（PV-031）原有 fixture 依据供应商公开 API 文档的响应 schema 手工编写。2026-09-17 新增四个通过第三方代理录制的 Responses 用例（见下文）；官方 OpenAI 响应及其余用例仍需录制与对照。
+
+## 代理响应录制验证（2026-09-17）
+
+【事实】`responses/recorded-proxy/` 包含四个使用真实凭据访问私有第三方 Responses 端点的录制用例，请求及响应模型均为 `gpt-5.6-sol`，每个用例包含场景、请求、响应/SSE 和元数据文件。最终样本录制于 UTC 08:11:35–08:12:08，使用 `store: false`、推理强度 `low` 和 `max_output_tokens: 512`，均返回 HTTP 200。服务商名称与端点地址不入库，场景通过 `OPENAI_BASE_URL` 读取端点。来源：fixture 元数据和 `tests/suite/responses_recorded.rs`。
+
+【事实】回放将 SDK 生成的请求体与录制请求逐一比较，检查完整上游 `Usage.raw`，对归一化输出/用量建立快照，并验证 SSE 契约及归一化事件序列。四个录制样本的对照结果：
+
+| 用例 | 输出 | 输入 / 输出 token | 缓存输入 | 结束原因 |
+| --- | --- | --- | --- | --- |
+| `text-basic` | `pong` | 4393 / 5 | 4224 | `stop` |
+| `text-basic-stream` | `pong` | 4393 / 5 | 4224 | `stop` |
+| `tool-call` | `get_weather({"city":"Berlin"})` | 4432 / 18 | 0 | `tool-calls` |
+| `structured-output` | `{"city":"Paris","country":"France"}` | 4426 / 16 | 0 | `stop` |
+
+【事实】与原有手写文本/工具 fixture 相比，这些响应包含额外的 `usage.attribution`、`cache_write_tokens` 字段，以及代理附加的 `instructions`、账户/缓存标识和输出元数据。录制器将响应根及 SSE `response` 根下的 `instructions`、`safety_identifier` 和 `prompt_cache_key` 替换为 `[REDACTED]`；每个元数据文件记录这些指针。输出、用量、事件顺序和请求/响应 ID 均保留。原有合成 fixture 继续覆盖这些录制中未出现的推理及错误分支。
+
+【事实】SSE 样本包含九个事件，从 `response.created` 到 `response.completed`，其中只有一个 `response.output_text.delta`；终止事件的 `output` 缺少先前事件中的内容项 ID。Ferrin 仍能生成完整文本流和终止 `Finish`。JSON 和 SSE 响应将请求中的 512 输出 token 限制回显为 `max_output_tokens: null`，并将 4382 个输入 token 归因于附加指令。这些观察无法证明请求上限得到执行，也无法确定代理实际费用。来源：录制的请求/响应对和归一化快照。
+
+【事实】2026-09-17，七个现有 Responses 在线测试在相同端点/模型及 `{"openai":{"store":false,"reasoningEffort":"low"}}` 配置下通过：四个门面测试（文本、流式、本地工具执行与结果往返、类型化结构化输出）和三个适配器测试（文本、流式、工具调用产出）。来源：nextest run `dcf4adb2-6a4a-4dbd-a979-9260998c7a56`；本次排除 Chat Completions。导出端点、模型、密钥和供应商选项后可复现：
+
+```sh
+cargo xtask record-fixture --provider openai --case responses/recorded-proxy/text-basic
+INSTA_UPDATE=no just test -E "'test(responses_recorded)'"
+just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & test(live_) & !test(live_chat_)'" --test-threads 1
+```
+
+【事实】验证仅适用于该代理及模型别名，不涵盖官方 OpenAI 端点、其他供应商、流式工具参数、流式结构化输出、推理输出、错误、其他模态或原始传输字节边界（录制器保存 SSE 事件边界）。回放不验证脱敏值。PV-031 保持 open。
+
+## 其他实现记录
 
 【事实】（2026-09-14，真实凭据验证）`store` 为真（默认）时，多步调用把上一轮的助手消息与供应商执行的工具项以 `item_reference` 回传（节省请求体）；某第三方 OpenAI 兼容代理端点对含 `item_reference` 的请求返回 502，去掉引用项后同一请求成功。对不保存响应项的端点，应设置供应商选项 `{"openai": {"store": false}}`，此时 `ferrin-openai` 回传完整项而不使用引用（`responses/convert_prompt.rs`）。真实 OpenAI 端点未在本次验证中测试。
 

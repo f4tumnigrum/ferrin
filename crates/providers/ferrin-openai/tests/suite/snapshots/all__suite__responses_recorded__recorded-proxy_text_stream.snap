@@ -1,0 +1,23 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/responses_recorded.rs
+expression: "json!({\"text\": text, \"finish_reason\": finish_reason, \"usage\":\n    normalized_usage})"
+---
+{
+  "text": "pong",
+  "finish_reason": {
+    "unified": "stop"
+  },
+  "usage": {
+    "input": {
+      "total": 4393,
+      "no_cache": 169,
+      "cache_read": 4224,
+      "cache_write": 0
+    },
+    "output": {
+      "total": 5,
+      "text": 5,
+      "reasoning": 0
+    }
+  }
+}

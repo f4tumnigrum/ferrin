@@ -1,0 +1,25 @@
+---
+source: crates/providers/ferrin-openai/tests/suite/responses_recorded.rs
+expression: "json!({\n    \"text\":\n    result.content.iter().filter_map(Content::as_text).collect::<String>(),\n    \"calls\": calls, \"finish_reason\": result.finish_reason, \"usage\": usage,\n    \"warnings\": result.warnings,\n})"
+---
+{
+  "text": "pong",
+  "calls": [],
+  "finish_reason": {
+    "unified": "stop"
+  },
+  "usage": {
+    "input": {
+      "total": 4393,
+      "no_cache": 169,
+      "cache_read": 4224,
+      "cache_write": 0
+    },
+    "output": {
+      "total": 5,
+      "text": 5,
+      "reasoning": 0
+    }
+  },
+  "warnings": []
+}
