@@ -1,5 +1,8 @@
 //! Request execution: `_meta` injection, timeouts, `input_required`
 //! rounds and protocol negotiation.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::sync::atomic::AtomicI64;
 use std::sync::atomic::Ordering;
@@ -26,7 +29,6 @@ use crate::protocol::META_PROTOCOL_VERSION;
 use crate::protocol::META_SERVER_INFO;
 use crate::protocol::MODERN_PROTOCOL_ERROR_CODES;
 use crate::protocol::ProtocolEra;
-use crate::protocol::SUPPORTED_PROTOCOL_VERSIONS;
 use crate::protocol::is_supported_version;
 use crate::transport::SendOptions;
 use crate::transport::lock;
@@ -38,7 +40,7 @@ pub struct RequestOptions {
     pub timeout: Option<Duration>,
     /// Upper bound applied after `timeout`.
     pub max_total_timeout: Option<Duration>,
-    /// Cancels the request; a `notifications/cancelled` is sent.
+    /// Cancels the request and its transport operation.
     pub cancellation: Option<CancellationToken>,
     /// Request-specific HTTP headers (`Mcp-Param-*`), used by HTTP transports.
     pub headers: Headers,
@@ -271,7 +273,9 @@ impl ClientInner {
             Err(McpError::Cancelled) => Some("cancelled"),
             _ => None,
         };
-        if let Some(reason) = reason {
+        if let Some(reason) = reason
+            && self.config.send_cancel_notifications
+        {
             let id = active_id.load(Ordering::Relaxed);
             if id != 0 {
                 self.cancel_request(id, reason);
@@ -302,6 +306,13 @@ impl ClientInner {
             let result = self
                 .exchange(method, params.clone(), options, active_id)
                 .await?;
+            if result.get("resultType").and_then(JsonValue::as_str) == Some("input_required")
+                && self.config.max_input_rounds == 0
+            {
+                return Err(McpError::protocol(
+                    "server requested additional input, but multi round-trip requests are not enabled",
+                ));
+            }
             if era != ProtocolEra::Modern {
                 return Ok(result);
             }
@@ -380,8 +391,17 @@ impl ClientInner {
             .set_protocol_version(Some(LATEST_PROTOCOL_VERSION));
         lock(&self.state).protocol_version = Some(LATEST_PROTOCOL_VERSION.to_owned());
         let options = RequestOptions::with_timeout(self.config.discovery_timeout);
-        let outcome = self.request("server/discover", None, &options).await;
-        let result = match outcome {
+        let outcome = async {
+            let result = self.request("server/discover", None, &options).await?;
+            let discovered: DiscoverResult = parse_result("server/discover", result)?;
+            if !discovered.supported_versions.iter().any(|version| version == LATEST_PROTOCOL_VERSION) {
+                return Err(McpError::protocol(format!(
+                    "server does not support the requested protocol version: {LATEST_PROTOCOL_VERSION}"
+                )));
+            }
+            Ok(discovered)
+        }.await;
+        let discovered = match outcome {
             Ok(result) => result,
             Err(error) => {
                 let modern = error
@@ -396,34 +416,13 @@ impl ClientInner {
                 return Ok(None);
             }
         };
-        let discovered: DiscoverResult = parse_result("server/discover", result)?;
-        let common = SUPPORTED_PROTOCOL_VERSIONS
-            .iter()
-            .find(|version| {
-                discovered
-                    .supported_versions
-                    .iter()
-                    .any(|supported| supported == *version)
-            })
-            .copied();
-        let Some(version) = common else {
-            return Err(McpError::protocol(format!(
-                "server supports no common protocol version (offered: {})",
-                discovered.supported_versions.join(", ")
-            )));
-        };
-        if !ProtocolEra::of_version(version).is_modern() {
-            self.transport.set_protocol_version(None);
-            lock(&self.state).protocol_version = None;
-            return Ok(None);
-        }
         let info = discovered
             .meta
             .as_ref()
             .and_then(|meta| meta.get(META_SERVER_INFO))
             .and_then(|value| serde_json::from_value(value.clone()).ok());
         self.set_negotiated(
-            version,
+            LATEST_PROTOCOL_VERSION,
             discovered.capabilities,
             info,
             discovered.instructions,

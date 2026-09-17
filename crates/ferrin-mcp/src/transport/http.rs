@@ -95,6 +95,14 @@ struct Inner {
     tasks: Mutex<JoinSet<()>>,
 }
 
+struct InboundGuard<'a>(&'a Inner);
+
+impl Drop for InboundGuard<'_> {
+    fn drop(&mut self) {
+        lock(&self.0.state).inbound_started = false;
+    }
+}
+
 impl Inner {
     fn era(&self) -> ProtocolEra {
         lock(&self.state)
@@ -118,10 +126,21 @@ impl Inner {
         }
     }
 
-    fn expire_session(&self) {
-        let expired = lock(&self.state).session_id.take();
+    fn expire_session(&self, expired: &str) {
+        let cleared = {
+            let mut state = lock(&self.state);
+            if state.session_id.as_deref() == Some(expired) {
+                state.session_id = None;
+                true
+            } else {
+                false
+            }
+        };
+        if cleared && let Some(hook) = &self.config.on_session_id_change {
+            hook(None);
+        }
         if let Some(hook) = &self.config.on_session_expired {
-            hook(expired.as_deref());
+            hook(Some(expired));
         }
     }
 
@@ -201,11 +220,14 @@ impl Inner {
         let mut redirects: u8 = 0;
         loop {
             let headers = self.post_headers(&message, options).await;
+            let sent_session_id = headers.get_str("mcp-session-id").map(str::to_owned);
             let request = self
                 .request(Method::POST, url.clone(), headers)
                 .with_body(RequestBody::json(body.clone()));
             let response = execute(self.http.as_ref(), request).await?;
-            if let Some(session_id) = response.headers.get_str("mcp-session-id") {
+            if !self.era().is_modern()
+                && let Some(session_id) = response.headers.get_str("mcp-session-id")
+            {
                 self.set_session_id(Some(session_id));
             }
             let status = response.status;
@@ -232,8 +254,7 @@ impl Inner {
                 continue;
             }
             if status == StatusCode::ACCEPTED {
-                if message.method() == Some("notifications/initialized") && !self.era().is_modern()
-                {
+                if !self.era().is_modern() {
                     self.start_inbound();
                 }
                 return Ok(());
@@ -248,8 +269,10 @@ impl Inner {
                         .emit(TransportEvent::Message(JsonRpcMessage::Error(error)));
                     return Ok(());
                 }
-                if status == StatusCode::NOT_FOUND && lock(&self.state).session_id.is_some() {
-                    self.expire_session();
+                if status == StatusCode::NOT_FOUND
+                    && let Some(session_id) = sent_session_id
+                {
+                    self.expire_session(&session_id);
                     return Err(status_error(
                         "session expired; reconnect to start a new session",
                         status,
@@ -321,6 +344,7 @@ impl Inner {
     }
 
     async fn run_inbound(self: Arc<Self>) {
+        let _guard = InboundGuard(&self);
         let cancellation = self.cancellation.child_token();
         let mut attempt: u32 = 0;
         let mut authenticated = false;
@@ -331,6 +355,7 @@ impl Inner {
             if let Some(last_event_id) = lock(&self.state).last_event_id.clone() {
                 let _ = headers.insert("last-event-id", &last_event_id);
             }
+            let sent_session_id = headers.get_str("mcp-session-id").map(str::to_owned);
             let url = self.config.url.clone();
             let request = self.request(Method::GET, url.clone(), headers);
             let response = match execute(self.http.as_ref(), request).await {
@@ -341,6 +366,9 @@ impl Inner {
                     return;
                 }
             };
+            if let Some(session_id) = response.headers.get_str("mcp-session-id") {
+                self.set_session_id(Some(session_id));
+            }
             let status = response.status;
             if status == StatusCode::UNAUTHORIZED && self.auth.enabled() && !authenticated {
                 authenticated = true;
@@ -366,6 +394,11 @@ impl Inner {
                 return;
             }
             if !status.is_success() {
+                if status == StatusCode::NOT_FOUND
+                    && let Some(session_id) = sent_session_id
+                {
+                    self.expire_session(&session_id);
+                }
                 let text = body_text(response, self.config.max_response_bytes, &url)
                     .await
                     .ok();
@@ -547,10 +580,10 @@ impl McpTransport for HttpTransport {
     ) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {
             let cancellation = options.cancellation.clone();
-            with_cancellation(
+            Box::pin(with_cancellation(
                 cancellation.as_ref(),
                 self.inner.send_message(message, &options),
-            )
+            ))
             .await
         })
     }

@@ -1,5 +1,6 @@
 //! MCP Apps: tools that render an interactive `ui://` resource.
 
+use base64::Engine;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_tool::fingerprint::hash_canonical;
@@ -44,9 +45,10 @@ pub fn mcp_app_client_capabilities() -> ClientCapabilities {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpAppToolMeta {
-    /// URI of the resource rendering the tool (`ui://...`).
-    pub resource_uri: String,
-    /// Who sees the tool: `model`, `app` or both (default both).
+    /// URI of the resource rendering the tool (`ui://...`), when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resource_uri: Option<String>,
+    /// Who sees the tool: `model`, `app` or both (default model only).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub visibility: Option<Vec<String>>,
     /// Further fields.
@@ -68,7 +70,7 @@ impl McpAppToolMeta {
     pub fn is_app_visible(&self) -> bool {
         self.visibility
             .as_ref()
-            .is_none_or(|visibility| visibility.iter().any(|entry| entry == "app"))
+            .is_some_and(|visibility| visibility.iter().any(|entry| entry == "app"))
     }
 }
 
@@ -76,47 +78,47 @@ impl McpAppToolMeta {
 ///
 /// # Errors
 ///
-/// Returns [`McpError::InvalidArgument`] when the metadata is malformed or
-/// the resource URI does not use the `ui://` scheme.
+/// Returns [`McpError::InvalidArgument`] when a supplied resource URI is not
+/// a string using the `ui://` scheme. Non-object UI metadata is ignored.
 pub fn app_tool_meta(tool: &McpTool) -> Result<Option<McpAppToolMeta>, McpError> {
     let Some(meta) = &tool.meta else {
         return Ok(None);
     };
-    let parsed = match meta.get("ui") {
-        Some(ui @ JsonValue::Object(_)) => serde_json::from_value::<McpAppToolMeta>(ui.clone())
-            .map_err(|error| {
-                McpError::invalid_argument(format!(
-                    "tool {} has invalid _meta.ui: {error}",
-                    tool.name
-                ))
-            })?,
+    let ui = meta.get("ui").and_then(JsonValue::as_object);
+    let resource = ui
+        .and_then(|ui| ui.get("resourceUri"))
+        .filter(|value| !value.is_null())
+        .or_else(|| meta.get(MCP_APP_LEGACY_RESOURCE_URI_META_KEY));
+    let resource_uri = match resource {
+        Some(JsonValue::String(uri)) if uri.starts_with(MCP_APP_URI_SCHEME) => Some(uri.clone()),
         Some(_) => {
             return Err(McpError::invalid_argument(format!(
-                "tool {} has a non-object _meta.ui",
+                "tool {} app resource uri must start with {MCP_APP_URI_SCHEME}",
                 tool.name
             )));
         }
-        None => match meta.get(MCP_APP_LEGACY_RESOURCE_URI_META_KEY) {
-            Some(JsonValue::String(uri)) => McpAppToolMeta {
-                resource_uri: uri.clone(),
-                visibility: None,
-                extra: JsonObject::new(),
-            },
-            Some(_) => {
-                return Err(McpError::invalid_argument(format!(
-                    "tool {} has a non-string {MCP_APP_LEGACY_RESOURCE_URI_META_KEY}",
-                    tool.name
-                )));
-            }
-            None => return Ok(None),
-        },
+        None => None,
     };
-    if !parsed.resource_uri.starts_with(MCP_APP_URI_SCHEME) {
-        return Err(McpError::invalid_argument(format!(
-            "tool {} app resource uri must start with {MCP_APP_URI_SCHEME}",
-            tool.name
-        )));
+    if ui.is_none() && resource_uri.is_none() {
+        return Ok(None);
     }
+    let mut extra = ui.cloned().unwrap_or_default();
+    extra.remove("resourceUri");
+    let visibility = extra.remove("visibility").and_then(|value| {
+        value.as_array().map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .filter(|value| matches!(*value, "model" | "app"))
+                .map(str::to_owned)
+                .collect()
+        })
+    });
+    let parsed = McpAppToolMeta {
+        resource_uri,
+        visibility,
+        extra,
+    };
     Ok(Some(parsed))
 }
 
@@ -126,13 +128,13 @@ pub fn app_tool_meta(tool: &McpTool) -> Result<Option<McpAppToolMeta>, McpError>
 ///
 /// See [`app_tool_meta`].
 pub fn app_resource_uri(tool: &McpTool) -> Result<Option<String>, McpError> {
-    Ok(app_tool_meta(tool)?.map(|meta| meta.resource_uri))
+    Ok(app_tool_meta(tool)?.and_then(|meta| meta.resource_uri))
 }
 
-/// Whether `tool` carries app metadata.
+/// Whether `tool` references an app resource.
 #[must_use]
 pub fn is_app_tool(tool: &McpTool) -> bool {
-    matches!(app_tool_meta(tool), Ok(Some(_)))
+    matches!(app_resource_uri(tool), Ok(Some(_)))
 }
 
 /// Tools split by audience.
@@ -233,22 +235,46 @@ pub struct McpAppResource {
     pub meta: Option<McpAppResourceMeta>,
 }
 
-fn is_app_mime_type(mime_type: &str) -> bool {
-    let normalized: String = mime_type
-        .split(';')
-        .map(str::trim)
-        .collect::<Vec<_>>()
-        .join(";")
-        .to_ascii_lowercase();
-    normalized == MCP_APP_MIME_TYPE
+fn string_array(value: Option<JsonValue>) -> Option<Vec<String>> {
+    value.and_then(|value| {
+        value.as_array().map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+    })
 }
 
-/// Extracts the app resource `uri` from a `resources/read` result.
+fn resource_meta(meta: Option<&JsonObject>) -> Option<McpAppResourceMeta> {
+    let mut ui = meta?.get("ui")?.as_object()?.clone();
+    let prefers_border = ui.remove("prefersBorder").and_then(|value| value.as_bool());
+    let csp = ui
+        .remove("csp")
+        .and_then(|value| value.as_object().cloned())
+        .map(|mut csp| McpAppResourceCsp {
+            connect_domains: string_array(csp.remove("connectDomains")),
+            resource_domains: string_array(csp.remove("resourceDomains")),
+            frame_domains: string_array(csp.remove("frameDomains")),
+            extra: csp,
+        });
+    let permissions = ui.remove("permissions").filter(JsonValue::is_object);
+    Some(McpAppResourceMeta {
+        prefers_border,
+        csp,
+        permissions,
+        extra: ui,
+    })
+}
+
+/// Extracts the requested app resource from a `resources/read` result.
 ///
 /// # Errors
 ///
-/// Returns [`McpError::Protocol`] when the result has no text content of
-/// type [`MCP_APP_MIME_TYPE`] or its `_meta.ui` is malformed.
+/// Returns [`McpError::Protocol`] for a missing URI, an unsupported MIME type,
+/// missing HTML, or invalid base64 content. Malformed known rendering metadata
+/// fields are omitted individually.
 pub fn app_resource_from_read_result(
     uri: &str,
     result: &ReadResourceResult,
@@ -256,25 +282,35 @@ pub fn app_resource_from_read_result(
     let content = result
         .contents
         .iter()
-        .find(|content| {
-            content.mime_type.as_deref().is_some_and(is_app_mime_type) && content.text.is_some()
-        })
-        .ok_or_else(|| {
-            McpError::protocol(format!(
-                "resource {uri} has no {MCP_APP_MIME_TYPE} text content"
-            ))
-        })?;
-    let meta = match content.meta.as_ref().and_then(|meta| meta.get("ui")) {
-        Some(ui) => Some(serde_json::from_value(ui.clone()).map_err(|error| {
-            McpError::protocol(format!("resource {uri} has invalid _meta.ui: {error}"))
-        })?),
-        None => None,
+        .find(|content| content.uri == uri)
+        .ok_or_else(|| McpError::protocol(format!("resource {uri} was not returned")))?;
+    if content.mime_type.as_deref() != Some(MCP_APP_MIME_TYPE) {
+        return Err(McpError::protocol(format!(
+            "resource {uri} has an unsupported app mime type"
+        )));
+    }
+    let html = match (&content.text, &content.blob) {
+        (Some(text), _) => text.clone(),
+        (_, Some(blob)) => {
+            let data = base64::engine::general_purpose::STANDARD
+                .decode(blob)
+                .or_else(|_| base64::engine::general_purpose::STANDARD_NO_PAD.decode(blob))
+                .map_err(|_| {
+                    McpError::protocol(format!("resource {uri} contains invalid base64"))
+                })?;
+            String::from_utf8_lossy(&data).into_owned()
+        }
+        _ => {
+            return Err(McpError::protocol(format!(
+                "resource {uri} has no app html content"
+            )));
+        }
     };
     Ok(McpAppResource {
-        uri: content.uri.clone(),
-        mime_type: content.mime_type.clone().unwrap_or_default(),
-        html: content.text.clone().unwrap_or_default(),
-        meta,
+        uri: uri.to_owned(),
+        mime_type: MCP_APP_MIME_TYPE.to_owned(),
+        html,
+        meta: resource_meta(content.meta.as_ref()),
     })
 }
 
@@ -282,13 +318,19 @@ pub fn app_resource_from_read_result(
 ///
 /// # Errors
 ///
-/// Returns the `resources/read` failure or the extraction failure of
+/// Returns [`McpError::InvalidArgument`] for a non-`ui://` URI, the
+/// `resources/read` failure or the extraction failure of
 /// [`app_resource_from_read_result`].
 pub async fn read_app_resource(
     client: &McpClient,
     uri: &str,
     options: RequestOptions,
 ) -> Result<McpAppResource, McpError> {
+    if !uri.starts_with(MCP_APP_URI_SCHEME) {
+        return Err(McpError::invalid_argument(
+            "app resource uri must start with ui://",
+        ));
+    }
     let result = client.read_resource(uri, options).await?;
     app_resource_from_read_result(uri, &result)
 }

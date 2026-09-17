@@ -85,6 +85,73 @@ async fn requests_carry_client_meta_and_results_require_result_type() {
 }
 
 #[tokio::test]
+async fn listed_header_bindings_apply_to_direct_calls_and_reset_on_the_first_page() {
+    let transport = modern_transport(|request| match request.method.as_str() {
+        "tools/list" => {
+            let mut tool = tool_definition("echo");
+            tool["inputSchema"] = json!({"type": "object", "properties": {
+                "tenant": {"type": "string", "x-mcp-header": "Tenant"}
+            }});
+            let mut invalid = tool_definition("invalid");
+            invalid["inputSchema"] = json!({"type": "object", "x-mcp-header": "Invalid"});
+            let has_cursor = request
+                .params
+                .as_ref()
+                .is_some_and(|params| params.contains_key("cursor"));
+            Ok(if has_cursor {
+                json!({"tools": [tool, invalid]})
+            } else {
+                json!({"tools": []})
+            })
+        }
+        "tools/call" => Ok(call_tool_result("done")),
+        _ => Err((-32601, "method not found".to_owned())),
+    });
+    let client = connect(Arc::clone(&transport)).await;
+    let listed = client
+        .list_tools(Some("next"), RequestOptions::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        listed
+            .tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["echo"]
+    );
+    let arguments = json!({"tenant": "acme"}).as_object().cloned();
+    client
+        .call_tool("echo", arguments.clone(), RequestOptions::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        transport
+            .sent_headers()
+            .last()
+            .unwrap()
+            .get_str("mcp-param-tenant"),
+        Some("acme")
+    );
+    client
+        .list_tools(None, RequestOptions::default())
+        .await
+        .unwrap();
+    client
+        .call_tool("echo", arguments, RequestOptions::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        transport
+            .sent_headers()
+            .last()
+            .unwrap()
+            .get_str("mcp-param-tenant"),
+        None
+    );
+}
+
+#[tokio::test]
 async fn missing_result_type_is_a_protocol_error() {
     let transport = MockTransport::new(discovery_capabilities(), |message| {
         let method = message.method().unwrap_or_default();
@@ -132,9 +199,13 @@ async fn input_required_results_are_answered_through_the_elicitation_handler() {
             json!({"ok": true}).as_object().cloned().unwrap(),
         ))
     });
-    let client = McpClient::connect(config(Arc::clone(&transport)).elicitation_handler(handler))
-        .await
-        .unwrap();
+    let client = McpClient::connect(
+        config(Arc::clone(&transport))
+            .max_input_rounds(8)
+            .elicitation_handler(handler),
+    )
+    .await
+    .unwrap();
     let result = client
         .call_tool(
             "echo",
@@ -161,9 +232,23 @@ async fn input_required_without_a_handler_fails() {
             "a": {"method": "elicitation/create", "params": {"message": "?", "requestedSchema": {}}}
         }}))
     });
-    let client = connect(transport).await;
+    let client = McpClient::connect(config(transport).max_input_rounds(8))
+        .await
+        .unwrap();
     let error = client.ping(RequestOptions::default()).await.unwrap_err();
     assert!(matches!(error, McpError::Elicitation { .. }), "{error:?}");
+}
+
+#[tokio::test]
+async fn input_required_is_rejected_by_default_without_a_retry() {
+    let transport =
+        modern_transport(|_| Ok(json!({"resultType": "input_required", "requestState": "state"})));
+    let client = connect(Arc::clone(&transport)).await;
+    assert!(matches!(
+        client.ping(RequestOptions::default()).await,
+        Err(McpError::Protocol { .. })
+    ));
+    assert_eq!(transport.requests("ping").len(), 1);
 }
 
 #[tokio::test]
@@ -282,7 +367,9 @@ async fn timeouts_cancel_the_request_on_the_server() {
             Some("server/discover") => Ok(vec![reply(message, discover_result())]),
             _ => Ok(Vec::new()),
         });
-    let client = connect(Arc::clone(&transport)).await;
+    let client = McpClient::connect(config(Arc::clone(&transport)).send_cancel_notifications(true))
+        .await
+        .unwrap();
     let error = client
         .ping(RequestOptions::with_timeout(Duration::from_millis(20)))
         .await
@@ -297,6 +384,25 @@ async fn timeouts_cancel_the_request_on_the_server() {
     let params = cancelled.params().unwrap();
     assert_eq!(params["reason"], json!("timeout"));
     assert!(params["requestId"].is_number());
+}
+
+#[tokio::test(start_paused = true)]
+async fn timeouts_do_not_send_protocol_notifications_by_default() {
+    let transport = MockTransport::new(discovery_capabilities(), |message| {
+        Ok(if message.method() == Some("server/discover") {
+            vec![reply(message, discover_result())]
+        } else {
+            Vec::new()
+        })
+    });
+    let client = connect(Arc::clone(&transport)).await;
+    assert!(matches!(
+        client
+            .ping(RequestOptions::with_timeout(Duration::from_millis(10)))
+            .await,
+        Err(McpError::Timeout(_))
+    ));
+    assert_eq!(transport.methods(), vec!["server/discover", "ping"]);
 }
 
 #[tokio::test]

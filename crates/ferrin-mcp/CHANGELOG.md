@@ -5,7 +5,18 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- OAuth authorization-server credential binding, callback state/issuer validation,
+  resource selection and custom client-authentication hooks (ADR 0026).
+
 ### Changed
+
+- Align tool context/schema propagation, app helpers, direct-call header caching,
+  initialization timeout and discovery fallback with the reference implementation.
+- Make multi-round tool results and cancellation notifications explicit opt-ins.
+- OAuth resource selection is optional; token expiration and client-issued numeric
+  fields use `f64`, and token/client records retain authorization-server information.
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 

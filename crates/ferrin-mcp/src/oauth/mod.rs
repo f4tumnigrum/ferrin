@@ -5,12 +5,15 @@
 //! dynamic client registration, PKCE (`S256`) authorization code grant with
 //! resource indicators, and token refresh.
 
+mod auth;
 mod discovery;
 mod flow;
 mod http;
 mod provider;
 mod types;
 
+pub use auth::AuthOptions;
+pub use auth::auth;
 pub use discovery::MetadataUrl;
 pub use discovery::authorization_server_metadata_urls;
 pub use discovery::default_authorization_server_metadata;
@@ -18,10 +21,8 @@ pub use discovery::discover_authorization_server_metadata;
 pub use discovery::discover_protected_resource_metadata;
 pub use discovery::protected_resource_metadata_urls;
 pub use discovery::select_resource_url;
-pub use flow::AuthOptions;
 pub use flow::AuthorizationCodeGrant;
 pub use flow::Pkce;
-pub use flow::auth;
 pub use flow::exchange_authorization;
 pub use flow::generate_pkce;
 pub use flow::pkce_challenge;
@@ -32,6 +33,7 @@ pub use provider::OAuthClientProvider;
 pub use types::AuthResult;
 pub use types::AuthorizationServerMetadata;
 pub use types::InvalidateScope;
+pub use types::OAuthAuthorizationServerInformation;
 pub use types::OAuthClientInformation;
 pub use types::OAuthClientMetadata;
 pub use types::OAuthTokens;

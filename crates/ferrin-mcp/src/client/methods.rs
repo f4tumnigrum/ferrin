@@ -1,4 +1,7 @@
 //! Typed MCP methods: tools, resources, prompts, completion, logging.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::collections::BTreeMap;
 
@@ -19,6 +22,9 @@ use crate::protocol::ListResourcesResult;
 use crate::protocol::ListToolsResult;
 use crate::protocol::McpTool;
 use crate::protocol::ReadResourceResult;
+use crate::transport::header_bindings;
+use crate::transport::lock;
+use crate::transport::tool_headers;
 
 fn cursor_params(cursor: Option<&str>) -> Option<JsonObject> {
     cursor.map(|cursor| {
@@ -44,7 +50,36 @@ impl McpClient {
             .inner
             .request("tools/list", cursor_params(cursor), &options)
             .await?;
-        parse_result("tools/list", result)
+        let mut result: ListToolsResult = parse_result("tools/list", result)?;
+        if self.protocol_era().is_modern()
+            && self
+                .inner
+                .transport
+                .capabilities()
+                .supports_tool_parameter_headers
+        {
+            if cursor.is_none() {
+                lock(&self.inner.state).tool_header_bindings.clear();
+            }
+            result.tools.retain(|tool| {
+                match header_bindings(&JsonValue::Object(tool.input_schema.clone())) {
+                    Ok(bindings) => {
+                        lock(&self.inner.state)
+                            .tool_header_bindings
+                            .insert(tool.name.clone(), bindings);
+                        true
+                    }
+                    Err(error) => {
+                        self.inner.report(McpError::invalid_argument(format!(
+                            "tool {} dropped: {error}",
+                            tool.name
+                        )));
+                        false
+                    }
+                }
+            });
+        }
+        Ok(result)
     }
 
     /// Lists every tool, following pagination.
@@ -78,12 +113,21 @@ impl McpClient {
         arguments: Option<JsonObject>,
         options: RequestOptions,
     ) -> Result<CallToolResult, McpError> {
+        let arguments = arguments.unwrap_or_default();
+        let mut options = options;
+        let bindings = lock(&self.inner.state)
+            .tool_header_bindings
+            .get(name)
+            .cloned()
+            .unwrap_or_default();
+        for (name, value) in tool_headers(&bindings, &arguments)? {
+            options.headers.insert(&name, &value).map_err(|error| {
+                McpError::invalid_argument(format!("invalid tool header {name}: {error}"))
+            })?;
+        }
         let mut params = JsonObject::new();
         params.insert("name".to_owned(), JsonValue::from(name));
-        params.insert(
-            "arguments".to_owned(),
-            JsonValue::Object(arguments.unwrap_or_default()),
-        );
+        params.insert("arguments".to_owned(), JsonValue::Object(arguments));
         let mut attempt = 0;
         loop {
             match self

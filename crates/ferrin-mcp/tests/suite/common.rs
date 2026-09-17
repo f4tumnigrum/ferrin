@@ -40,6 +40,7 @@ pub(crate) struct MockTransport {
     sender: mpsc::UnboundedSender<TransportEvent>,
     receiver: Mutex<Option<mpsc::UnboundedReceiver<TransportEvent>>>,
     sent: Mutex<Vec<JsonRpcMessage>>,
+    sent_headers: Mutex<Vec<ferrin_spec::Headers>>,
     protocol_version: Mutex<Option<String>>,
     capabilities: TransportCapabilities,
     closed: AtomicBool,
@@ -59,6 +60,7 @@ impl MockTransport {
             sender,
             receiver: Mutex::new(Some(receiver)),
             sent: Mutex::new(Vec::new()),
+            sent_headers: Mutex::new(Vec::new()),
             protocol_version: Mutex::new(None),
             capabilities,
             closed: AtomicBool::new(false),
@@ -73,6 +75,10 @@ impl MockTransport {
     /// Everything the client sent.
     pub(crate) fn sent(&self) -> Vec<JsonRpcMessage> {
         self.sent.lock().unwrap().clone()
+    }
+
+    pub(crate) fn sent_headers(&self) -> Vec<ferrin_spec::Headers> {
+        self.sent_headers.lock().unwrap().clone()
     }
 
     /// Requests the client sent for `method`.
@@ -107,10 +113,11 @@ impl McpTransport for MockTransport {
     fn send(
         &self,
         message: JsonRpcMessage,
-        _options: SendOptions,
+        options: SendOptions,
     ) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {
             self.sent.lock().unwrap().push(message.clone());
+            self.sent_headers.lock().unwrap().push(options.headers);
             for reply in (self.responder)(&message)? {
                 self.sender.send(TransportEvent::Message(reply)).unwrap();
             }

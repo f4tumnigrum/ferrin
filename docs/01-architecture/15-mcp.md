@@ -93,7 +93,7 @@ pub trait McpTransport: Send + Sync + 'static {
 - `InputResponseRequestParams extends RequestParams { inputResponses?: InputResponses; requestState?: string }`; retry the original method/parameters with these fields and a new JSON-RPC ID.
 - Request metadata contains optional progress token/client info, required protocol version/client capabilities under `io.modelcontextprotocol/*`; result metadata may contain server info. `DiscoverResult { supportedVersions: string[], capabilities: ServerCapabilities, instructions? }`. Errors: `-32020 HeaderMismatch`, `-32021 MissingRequiredClientCapability`, `-32022 UnsupportedProtocolVersion { data: { supported, requested } }`.
 
-[Decision] Missing modern `resultType` is `McpError::Protocol`. For `input_required`, invoke the elicitation handler per keyed request, accepting only `elicitation/create`; sampling and roots return protocol errors because they are outside scope. Retry original parameters with keyed `inputResponses` and returned `requestState`, up to `max_input_rounds` (default 8). Missing handlers return `McpError::Elicitation`. Read server info from discovery `_meta["io.modelcontextprotocol/serverInfo"]`.
+[Decision] Missing modern `resultType` is `McpError::Protocol`. Under ADR 0026, `input_required` returns a protocol error by default, matching the reference client. Explicitly setting `max_input_rounds` above zero enables Ferrin's existing extension: invoke the elicitation handler per keyed request, accepting only `elicitation/create`, then retry original parameters with keyed `inputResponses` and returned `requestState` up to that limit. Sampling and roots remain outside scope; missing handlers return `McpError::Elicitation`. Read server info from discovery `_meta["io.modelcontextprotocol/serverInfo"]`.
 
 ### 2.3 Client
 
@@ -138,7 +138,8 @@ pub struct McpClientConfig {                     // McpClientConfig::new(transpo
     pub protocol_discovery: bool,                // default true
     pub discovery_timeout: Duration,             // default 1 s
     pub initialization_timeout: Option<Duration>,
-    pub max_input_rounds: u32,                   // default 8
+    pub max_input_rounds: u32,                   // default 0; opt in to multi-round input
+    pub send_cancel_notifications: bool,        // default false; optional protocol extension
     pub on_uncaught_error: Option<UncaughtErrorHook>,
     pub on_notification: Option<NotificationHook>,
     pub elicitation_handler: Option<Arc<dyn ElicitationHandler>>,
@@ -147,7 +148,7 @@ pub struct McpClientConfig {                     // McpClientConfig::new(transpo
 pub struct RequestOptions { pub timeout: Option<Duration>, pub max_total_timeout: Option<Duration>, pub cancellation: Option<CancellationToken>, pub headers: Headers }
 ```
 
-[Decision] Each method takes explicit `RequestOptions` (timeout, total timeout, cancellation, per-request headers). Use the minimum of `timeout.or(default_request_timeout)` and `max_total_timeout`. On timeout/cancel, remove pending state and send cancellation notification. Accessors such as `server_capabilities()` clone optional state protected by a mutex. Closing any client clone fails all pending requests with `McpError::Closed`.
+[Decision] Each method takes explicit `RequestOptions` (timeout, total timeout, cancellation, per-request headers). Use the minimum of `timeout.or(default_request_timeout)` and `max_total_timeout`. On timeout/cancel, remove pending state and abort the transport request. Cancellation notifications require explicit `send_cancel_notifications`, matching reference defaults under ADR 0026. Accessors such as `server_capabilities()` clone optional state protected by a mutex. Closing any client clone fails all pending requests with `McpError::Closed`.
 
 ### 2.4 Tool bridging
 
@@ -162,7 +163,7 @@ pub struct ToolsOptions {
 }
 ```
 
-[Decision] Automatic tools are dynamic, completing `inputSchema` with empty properties and `additionalProperties: false`, validated by `Schema::from_json_schema`. Explicit schemas create function tools and include only named tools; optional `output` schemas validate structured `content` or JSON from the first `text` item, failing with `ToolError::Message`. Error results become `ToolError::Json(CallToolResult)`. `mcp_to_model_output` maps arrays to `ToolResultOutput::Content`: `text` stays `text`, `image`/`audio` base64 becomes files (default PNG/WAV), other items become JSON `text`. Non-arrays become JSON `output`. Metadata is `{clientName, toolName, title?, annotations?, app?, meta?}`. Collect header bindings only for modern transports supporting them; discard invalidly bound tools and report via `on_uncaught_error`.
+[Decision] Automatic tools are dynamic, completing `inputSchema` with empty properties and `additionalProperties: false`, validated by `Schema::from_json_schema`. Explicit schemas create function tools and include only named tools; optional `output` schemas validate structured `content` or JSON from the first `text` item, failing with `ToolError::Message`. Error results remain successful executor values containing the original `CallToolResult` and bypass explicit output-schema validation, matching the reference SDK under ADR 0026 (2026-09-17). `mcp_to_model_output` maps arrays to `ToolResultOutput::Content`: `text` stays `text`, `image` with both base64 data and MIME type becomes a file; audio and other items become JSON `text`. Non-arrays become JSON `output`. Metadata is `{clientName, toolName, title?, annotations?, app?}`; title falls back to annotations, annotation metadata contains only the recognized hints, and app metadata includes the MCP App MIME type only when a resource URI is present. Collect header bindings only for modern transports supporting them; discard invalidly bound tools and report via `on_uncaught_error`.
 
 ### 2.5 OAuth
 
@@ -188,7 +189,13 @@ pub async fn auth(provider: &dyn OAuthClientProvider, http: &dyn HttpTransport, 
 
 [Decision] Storage methods return `Result`. Secret fields in `OAuthTokens`/`OAuthClientInformation` use `SecretString`, without `Serialize`; persistence requires `expose_to_json()`. Flow: path-aware protected-resource discovery then root fallback; RFC 8414 authorization discovery then OpenID (must advertise `S256`); registration if needed; code exchange or refresh; otherwise PKCE `S256` redirect. Protocol refresh errors propagate, while server/network errors fall back to authorization. Invalid/unauthorized client invalidates all credentials and retries once; invalid grant invalidates tokens and retries once. Validate every endpoint through `AuthOptions::url_policy` to reject internal metadata targets. HTTP runs `auth` once per `401`, coordinating concurrent failures; redirect returns `Unauthorized`.
 
+[Decision] The reference-parity revision under [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md) binds stored client credentials and tokens to the authorization server issuer, URL and token endpoint. Persist that binding before redirecting; reject changes before authorization-code exchange or token refresh, and require a stored binding when exchanging a code. Check optional callback state and issuer against stored values. Provider hooks may persist state and the binding, constrain discovered authorization-server URLs, select the resource indicator, and supply custom token-request authentication. Explicit protected-resource metadata URLs must share the configured MCP server origin. Preserve the server path in legacy discovery fallback and validate discovered metadata issuers. Omit the resource indicator when protected-resource metadata is unavailable unless the provider selects one (reference: `packages/mcp/src/tool/oauth.ts` at `6c6c221`, inspected 2026-09-17).
+
 ## 3. Relationship to the core
+
+[Decision] Under ADR 0026, listing tools caches valid modern `x-mcp-header` bindings for direct `call_tool` requests as well as generated executors. A first-page listing clears previous bindings and later pages extend them; invalidly bound definitions are filtered and reported. Integer header values follow the reference safe-integer range, including integral JSON floating-point representations. Discovery falls back to legacy initialization when a successful discovery result omits the requested protocol version or cannot be decoded; recognized modern protocol error codes still abort negotiation (reference: `packages/mcp/src/tool/mcp-client.ts` and `mcp-http-headers.ts` at `6c6c221`, inspected 2026-09-17).
+
+[Decision] `initialization_timeout` bounds transport startup, discovery and the legacy handshake together. On expiry, local tasks stop and failed-connection transport cleanup retains its independent one-second bound. This aligns the configured initialization deadline with `mcp-client.ts` while keeping Rust task ownership and bounded cleanup explicit (ADR 0026).
 
 - `McpClient::tools()` returns an ordinary `ToolSet`, mergeable with local tools for generation.
 - Core tool approval, timeouts, and telemetry apply equally to MCP tools.
@@ -251,3 +258,13 @@ mcp.close().await?;
 [Decision] 2026-09-15 OAuth single-flow coordination uses a destructor guard to reset the in-flight flag and advance/wake its generation on success, failure or dropped authentication futures. Cancelled metadata requests cannot leave later 401 handling waiting on an abandoned flow (regression coverage: `crates/ferrin-mcp/tests/suite/oauth.rs`).
 
 [Fact] 2026-09-15 Streamable HTTP debug output redacts session IDs from both configured and live state, including server-updated values; event resumption IDs are redacted too (source: `crates/ferrin-mcp/tests/suite/http_transport.rs`, `debug_redacts_initial_and_server_updated_session_ids`).
+
+## 7. Reference SDK contract revisions (2026-09-17)
+
+[Decision] MCP Apps metadata accepts visibility without a resource URI and filters visibility arrays to `model`/`app`. Missing visibility makes a tool model-visible only. Non-object `_meta.ui` is ignored, with the legacy URI still considered; malformed resource URIs remain errors. Resource extraction selects the requested URI, requires the exact MCP App MIME type, and accepts text or base64 HTML. Known malformed rendering metadata fields are omitted while unknown keys are preserved. `read_app_resource` rejects non-`ui://` URIs before sending a request. These decisions supersede the stricter initial Apps parser under ADR 0026 and follow `packages/mcp/src/tool/mcp-apps.ts` at reference commit `6c6c221`.
+
+[Decision] Legacy HTTP inbound streams may restart after a 405 when a later POST returns 202. Inbound GET responses update session IDs; both GET and POST 404 expiry notifications refer to the session actually sent with the request, clear it only if still current, and emit the session-change hook when clearing. A concurrent replacement session is retained. Modern responses do not adopt legacy session headers (ADR 0026; reference `mcp-http-transport.ts`).
+
+[Fact] The 2026-09-17 bounded MCP parity run passes 111 local tests, including direct-call header binding caches, safe-integer headers, discovery fallback, opt-in multi-round input and cancellation notifications, whole-initialization deadlines, and OAuth state/issuer/server-binding regressions (local nextest run for `ferrin-mcp`; suites `client_modern`, `client_legacy`, `client_deadlines`, `headers`, `oauth` and `oauth_parity`). OAuth tokens also retain a redacted `id_token`; token and client timestamp numbers use `f64`, and token responses require `token_type`. These are local protocol tests, not live authorization-server validation.
+
+[Fact] Remaining OAuth differences observed in the same audit: discovery does not implement the reference's validated redirect following or network/CORS retry without the protocol header; full schema validation of known optional metadata extensions and partial credential-binding fields is incomplete. Custom client authentication runs through provider hooks in `auth`, while direct exchange/refresh helpers use standard authentication. A provider without client storage rejects after dynamic registration, while the reference can detect an absent storage callback before registration (sources: `oauth/{auth,discovery,flow,http,provider,types}.rs` and reference `packages/mcp/src/tool/oauth.ts` at `6c6c221`). These differences prevent claiming complete OAuth parity.

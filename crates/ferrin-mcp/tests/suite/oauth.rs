@@ -9,6 +9,7 @@ use ferrin_mcp::oauth::AuthOptions;
 use ferrin_mcp::oauth::AuthResult;
 use ferrin_mcp::oauth::AuthorizationServerMetadata;
 use ferrin_mcp::oauth::InvalidateScope;
+use ferrin_mcp::oauth::OAuthAuthorizationServerInformation;
 use ferrin_mcp::oauth::OAuthClientInformation;
 use ferrin_mcp::oauth::OAuthClientMetadata;
 use ferrin_mcp::oauth::OAuthClientProvider;
@@ -51,11 +52,17 @@ struct TestProvider {
     verifier: Mutex<Option<String>>,
     redirects: Mutex<Vec<Url>>,
     invalidations: Mutex<Vec<InvalidateScope>>,
+    state: Mutex<Option<String>>,
 }
 
 impl TestProvider {
-    fn with_tokens(tokens: OAuthTokens) -> Arc<Self> {
+    fn with_tokens(mut tokens: OAuthTokens, server_url: &Url) -> Arc<Self> {
         let provider = Self::default();
+        tokens.authorization_server_information = Some(OAuthAuthorizationServerInformation {
+            issuer: Some(server_url.to_string()),
+            authorization_server_url: server_url.clone(),
+            token_endpoint: server_url.join("/token").unwrap(),
+        });
         *provider.tokens.lock().unwrap() = Some(tokens);
         *provider.client.lock().unwrap() = Some(OAuthClientInformation::public("c1"));
         Arc::new(provider)
@@ -126,6 +133,15 @@ impl OAuthClientProvider for TestProvider {
 
     fn state(&self) -> BoxFuture<'_, Result<Option<String>, McpError>> {
         Box::pin(std::future::ready(Ok(Some("state-xyz".to_owned()))))
+    }
+
+    fn save_state(&self, state: String) -> BoxFuture<'_, Result<(), McpError>> {
+        *self.state.lock().unwrap() = Some(state);
+        Box::pin(std::future::ready(Ok(())))
+    }
+
+    fn stored_state(&self) -> BoxFuture<'_, Result<Option<String>, McpError>> {
+        Box::pin(std::future::ready(Ok(self.state.lock().unwrap().clone())))
     }
 
     fn invalidate_credentials(
@@ -337,14 +353,12 @@ fn authorization_urls_carry_pkce_state_scope_and_resource() {
 #[test]
 fn resource_selection_requires_coverage() {
     let server = Url::parse("https://mcp.example/api/mcp#frag").unwrap();
-    assert_eq!(
-        select_resource_url(&server, None).unwrap().as_str(),
-        "https://mcp.example/api/mcp"
-    );
+    assert_eq!(select_resource_url(&server, None).unwrap(), None);
     let covering: ProtectedResourceMetadata =
         serde_json::from_value(json!({"resource": "https://mcp.example/api"})).unwrap();
     assert_eq!(
         select_resource_url(&server, Some(&covering))
+            .unwrap()
             .unwrap()
             .as_str(),
         "https://mcp.example/api"
@@ -403,14 +417,16 @@ async fn the_flow_registers_redirects_exchanges_and_refreshes() {
     let outcome = auth(
         provider.as_ref(),
         http.as_ref(),
-        options().authorization_code("code-1"),
+        options()
+            .authorization_code("code-1")
+            .callback_state("state-xyz"),
     )
     .await
     .unwrap();
     assert_eq!(outcome, AuthResult::Authorized);
     let tokens = provider.tokens_snapshot().unwrap();
     assert_eq!(tokens.access_token.expose_secret(), "at-1");
-    assert_eq!(tokens.expires_in, Some(3600));
+    assert_eq!(tokens.expires_in, Some(3600.0));
     let exchange = server
         .received()
         .into_iter()
@@ -498,9 +514,10 @@ async fn basic_client_authentication_is_used_when_post_is_unsupported() {
     );
     let provider = TestProvider::with_tokens(
         OAuthTokens::from_json(json!({
-            "access_token": "old", "refresh_token": "rt-9"
+            "access_token": "old", "token_type": "Bearer", "refresh_token": "rt-9"
         }))
         .unwrap(),
+        &base,
     );
     *provider.client.lock().unwrap() = Some(
         OAuthClientInformation::from_json(json!({"client_id": "c 1", "client_secret": "s/1"}))
@@ -522,11 +539,11 @@ async fn basic_client_authentication_is_used_when_post_is_unsupported() {
         .unwrap();
     assert_eq!(
         token_request.header("authorization"),
-        Some("Basic YyUyMDE6cyUyRjE=")
+        Some("Basic YyAxOnMvMQ==")
     );
     let body = form_pairs(&token_request.body_text());
     assert_eq!(pair(&body, "client_id"), None);
-    assert_eq!(pair(&body, "resource"), Some(base.as_str()));
+    assert_eq!(pair(&body, "resource"), None);
 }
 
 #[tokio::test]
@@ -542,7 +559,12 @@ async fn openid_metadata_without_s256_is_rejected() {
         "/.well-known/openid-configuration",
         Fixture::json(&json!({
             "issuer": server.url().as_str(),
-            "token_endpoint": server.url().join("/token").unwrap()
+            "token_endpoint": server.url().join("/token").unwrap(),
+            "authorization_endpoint": server.url().join("/authorize").unwrap(),
+            "jwks_uri": server.url().join("/jwks").unwrap(),
+            "response_types_supported": ["code"],
+            "subject_types_supported": ["public"],
+            "id_token_signing_alg_values_supported": ["RS256"]
         })),
     );
     let http = default_transport().unwrap();
@@ -588,8 +610,11 @@ async fn the_http_transport_refreshes_tokens_after_a_401() {
         Fixture::json(&json!({"jsonrpc": "2.0", "id": 1, "result": {"ok": true}})),
     );
     let provider = TestProvider::with_tokens(
-        OAuthTokens::from_json(json!({"access_token": "at-old", "refresh_token": "rt-old"}))
-            .unwrap(),
+        OAuthTokens::from_json(
+            json!({"access_token": "at-old", "token_type": "Bearer", "refresh_token": "rt-old"}),
+        )
+        .unwrap(),
+        &server.url(),
     );
     let config = HttpTransportConfig::new(server.url().join("/mcp").unwrap())
         .url_policy(local_policy())
@@ -746,3 +771,6 @@ async fn cancelled_authentication_does_not_block_later_flows() {
     assert!(matches!(third, Err(McpError::OAuth { .. })));
     assert!(http.attempts.load(Ordering::SeqCst) > after_second);
 }
+
+#[path = "oauth_parity.rs"]
+mod parity;

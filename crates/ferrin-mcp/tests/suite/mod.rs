@@ -6,6 +6,7 @@ mod client_lifecycle;
 mod client_modern;
 mod common;
 mod headers;
+mod http_state;
 mod http_stream_lifecycle;
 mod http_transport;
 mod json_rpc;

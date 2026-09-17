@@ -91,7 +91,7 @@ pub(super) async fn send(
     })
 }
 
-/// `GET`s a JSON document; `Ok(None)` for `404`.
+/// `GET`s a JSON document; client errors allow discovery fallback.
 pub(super) async fn get_json(
     http: &dyn HttpTransport,
     url: &Url,
@@ -99,7 +99,7 @@ pub(super) async fn get_json(
     headers: Headers,
 ) -> Result<Option<JsonValue>, McpError> {
     let response = send(http, Method::GET, url, policy, headers, RequestBody::Empty).await?;
-    if response.status == StatusCode::NOT_FOUND {
+    if response.status.is_client_error() {
         return Ok(None);
     }
     if !response.status.is_success() {

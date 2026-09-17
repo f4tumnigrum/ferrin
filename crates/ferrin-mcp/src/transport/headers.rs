@@ -1,5 +1,8 @@
 //! `x-mcp-header` bindings: tool parameters mirrored into `Mcp-Param-*`
 //! request headers (protocol 2026-07-28).
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
@@ -172,16 +175,18 @@ pub fn tool_headers(
         let text = match (binding.value_type, value) {
             (HeaderValueType::String, JsonValue::String(text)) => text.clone(),
             (HeaderValueType::Boolean, JsonValue::Bool(flag)) => flag.to_string(),
-            (HeaderValueType::Integer, JsonValue::Number(number))
-                if number.is_i64() || number.is_u64() =>
-            {
-                number.to_string()
-            }
+            (HeaderValueType::Integer, JsonValue::Number(number)) => match number.as_f64() {
+                Some(value) if value.fract() == 0.0 && value.abs() <= 9_007_199_254_740_991.0 => {
+                    if value == 0.0 {
+                        "0".to_owned()
+                    } else {
+                        format!("{value:.0}")
+                    }
+                }
+                _ => return Err(invalid_header_type(binding)),
+            },
             _ => {
-                return Err(McpError::invalid_argument(format!(
-                    "tool argument \"{}\" does not match its x-mcp-header type",
-                    binding.path.join(".")
-                )));
+                return Err(invalid_header_type(binding));
             }
         };
         headers.push((
@@ -190,4 +195,11 @@ pub fn tool_headers(
         ));
     }
     Ok(headers)
+}
+
+fn invalid_header_type(binding: &HeaderBinding) -> McpError {
+    McpError::invalid_argument(format!(
+        "tool argument \"{}\" does not match its x-mcp-header type",
+        binding.path.join(".")
+    ))
 }

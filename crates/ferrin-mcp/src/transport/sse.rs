@@ -394,7 +394,11 @@ impl McpTransport for SseTransport {
         options: SendOptions,
     ) -> BoxFuture<'_, Result<(), McpError>> {
         Box::pin(async move {
-            with_cancellation(options.cancellation.as_ref(), self.inner.post(message)).await
+            Box::pin(with_cancellation(
+                options.cancellation.as_ref(),
+                self.inner.post(message),
+            ))
+            .await
         })
     }
 

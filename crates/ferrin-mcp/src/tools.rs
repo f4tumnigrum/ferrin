@@ -4,8 +4,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use base64::Engine;
-use bytes::Bytes;
 use ferrin_schema::Schema;
 use ferrin_spec::FileData;
 use ferrin_spec::Headers;
@@ -139,8 +137,8 @@ impl McpToolExecutor {
         schema: &Schema<JsonValue>,
     ) -> Result<JsonValue, ToolError> {
         let candidate = match &result.structured_content {
-            Some(content) => content.clone(),
-            None => {
+            Some(content) if !content.is_null() => content.clone(),
+            _ => {
                 let text = result
                     .typed_content()
                     .into_iter()
@@ -193,7 +191,7 @@ impl McpToolExecutor {
             .await
             .map_err(to_tool_error)?;
         if result.is_error {
-            return Err(ToolError::json(result.to_json()));
+            return Ok(ToolOutput::Final(result.to_json()));
         }
         let output = match &self.output_schema {
             Some(schema) => Self::structured_output(&result, schema)?,
@@ -210,19 +208,11 @@ impl ToolExecute for McpToolExecutor {
     }
 }
 
-fn base64_file(item: &JsonObject, default_media_type: &str) -> Option<ToolResultContentPart> {
-    let data = item.get("data")?.as_str()?;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(data)
-        .ok()?;
-    let media_type = item
-        .get("mimeType")
-        .and_then(JsonValue::as_str)
-        .unwrap_or(default_media_type);
+fn image_file(item: &JsonObject) -> Option<ToolResultContentPart> {
+    let data = FileData::from_base64(item.get("data")?.as_str()?).ok()?;
+    let media_type = item.get("mimeType")?.as_str()?;
     Some(ToolResultContentPart::File {
-        data: FileData::Bytes {
-            data: Bytes::from(bytes),
-        },
+        data,
         media_type: MediaType::new(media_type),
         filename: None,
         provider_options: None,
@@ -230,7 +220,7 @@ fn base64_file(item: &JsonObject, default_media_type: &str) -> Option<ToolResult
 }
 
 /// Converts a tool output into what the model receives: MCP content arrays
-/// become multi-part content (text, image and audio files), everything else
+/// become multi-part content (text and image files); audio and other content
 /// is passed as JSON.
 #[must_use]
 pub fn mcp_to_model_output(args: ModelOutputArgs<'_>) -> ToolResultOutput {
@@ -254,10 +244,7 @@ pub fn mcp_to_model_output(args: ModelOutputArgs<'_>) -> ToolResultOutput {
                     provider_options: None,
                 },
                 (Some("image"), Some(object)) => {
-                    base64_file(object, "image/png").unwrap_or_else(|| json_text(item))
-                }
-                (Some("audio"), Some(object)) => {
-                    base64_file(object, "audio/wav").unwrap_or_else(|| json_text(item))
+                    image_file(object).unwrap_or_else(|| json_text(item))
                 }
                 _ => json_text(item),
             }
@@ -373,23 +360,27 @@ impl McpClient {
             "toolName".to_owned(),
             JsonValue::from(definition.name.as_str()),
         );
-        if let Some(title) = &definition.title {
-            metadata.insert("title".to_owned(), JsonValue::from(title.as_str()));
+        let title = definition.title.as_deref().or_else(|| {
+            definition
+                .annotations
+                .as_ref()
+                .and_then(|annotations| annotations.title.as_deref())
+        });
+        if let Some(title) = title {
+            metadata.insert("title".to_owned(), JsonValue::from(title));
         }
         if let Some(annotations) = &definition.annotations {
+            let mut annotations = annotations.clone();
+            annotations.extra.clear();
             metadata.insert(
                 "annotations".to_owned(),
-                serde_json::to_value(annotations).unwrap_or_else(|_| json!({})),
+                serde_json::to_value(&annotations).unwrap_or_else(|_| json!({})),
             );
         }
-        if let Some(app) = &app {
-            metadata.insert(
-                "app".to_owned(),
-                serde_json::to_value(app).unwrap_or_else(|_| json!({})),
-            );
-        }
-        if let Some(meta) = &definition.meta {
-            metadata.insert("meta".to_owned(), JsonValue::Object(meta.clone()));
+        if let Some(app) = app.filter(|app| app.resource_uri.is_some()) {
+            let mut value = serde_json::to_value(app).unwrap_or_else(|_| json!({}));
+            value["mimeType"] = JsonValue::from(crate::apps::MCP_APP_MIME_TYPE);
+            metadata.insert("app".to_owned(), value);
         }
         let (mut builder, output_schema) = match schemas {
             Some(pair) => (Tool::function_with_schema(pair.input), pair.output),

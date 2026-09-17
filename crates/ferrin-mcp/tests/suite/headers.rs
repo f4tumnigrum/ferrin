@@ -127,3 +127,30 @@ fn tool_headers_encode_values_and_check_types() {
         Err(McpError::InvalidArgument { .. })
     ));
 }
+
+#[test]
+fn integer_bindings_follow_javascript_safe_integer_semantics() {
+    let bindings = vec![HeaderBinding {
+        header_name: "Count".to_owned(),
+        path: vec!["count".to_owned()],
+        value_type: HeaderValueType::Integer,
+    }];
+    for (value, expected) in [
+        (json!(3.0), "3"),
+        (json!(-0.0), "0"),
+        (json!(9_007_199_254_740_991_u64), "9007199254740991"),
+        (json!(-9_007_199_254_740_991_i64), "-9007199254740991"),
+    ] {
+        assert_eq!(
+            tool_headers(&bindings, json!({"count": value}).as_object().unwrap()).unwrap(),
+            vec![("Mcp-Param-Count".to_owned(), expected.to_owned())]
+        );
+    }
+    for value in [
+        json!(3.5),
+        json!(9_007_199_254_740_992_u64),
+        json!(u64::MAX),
+    ] {
+        assert!(tool_headers(&bindings, json!({"count": value}).as_object().unwrap()).is_err());
+    }
+}

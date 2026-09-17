@@ -136,11 +136,36 @@ async fn request_deadline_covers_hanging_send() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn initialization_deadline_includes_protocol_discovery() {
+    let transport = BlockingTransport::new("server/discover");
+    let timeout = Duration::from_millis(10);
+    let started = tokio::time::Instant::now();
+    let result = McpClient::connect(
+        McpClientConfig::new(TransportConfig::Custom(transport.clone()))
+            .initialization_timeout(timeout),
+    )
+    .await;
+    assert!(matches!(result, Err(McpError::Timeout(value)) if value == timeout));
+    assert_eq!(started.elapsed(), timeout);
+    assert!(transport.inner.is_closed());
+    assert!(
+        transport
+            .token
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .is_cancelled()
+    );
+}
+
+#[tokio::test(start_paused = true)]
 async fn hanging_cancellation_notification_does_not_delay_timeout() {
     let transport = BlockingTransport::new("notifications/cancelled");
-    let client = McpClient::connect(McpClientConfig::new(TransportConfig::Custom(
-        transport.clone(),
-    )))
+    let client = McpClient::connect(
+        McpClientConfig::new(TransportConfig::Custom(transport.clone()))
+            .send_cancel_notifications(true),
+    )
     .await
     .unwrap();
     let timeout = Duration::from_millis(10);
@@ -180,9 +205,9 @@ async fn request_deadline_covers_input_handler() {
             "inputRequests": {"answer": {"method": "elicitation/create", "params": {"message": "Answer", "requestedSchema": {"type": "object"}}}}
         }))
     });
-    let client = McpClient::connect(config(transport).elicitation_handler(elicitation_handler(
-        |_| async { std::future::pending().await },
-    )))
+    let client = McpClient::connect(config(transport).max_input_rounds(8).elicitation_handler(
+        elicitation_handler(|_| async { std::future::pending().await }),
+    ))
     .await
     .unwrap();
     let timeout = Duration::from_millis(10);
@@ -195,9 +220,10 @@ async fn request_deadline_covers_input_handler() {
 async fn asynchronous_cancellation_notification_is_delivered_after_timeout_returns() {
     let mut transport = BlockingTransport::new("notifications/cancelled");
     Arc::get_mut(&mut transport).unwrap().release = Some(Notify::new());
-    let client = McpClient::connect(McpClientConfig::new(TransportConfig::Custom(
-        transport.clone(),
-    )))
+    let client = McpClient::connect(
+        McpClientConfig::new(TransportConfig::Custom(transport.clone()))
+            .send_cancel_notifications(true),
+    )
     .await
     .unwrap();
     let timeout = Duration::from_millis(10);
@@ -215,9 +241,10 @@ async fn asynchronous_cancellation_notification_is_delivered_after_timeout_retur
 #[tokio::test(start_paused = true)]
 async fn cancellation_cleanup_has_a_separate_bound() {
     let transport = BlockingTransport::new("notifications/cancelled");
-    let client = McpClient::connect(McpClientConfig::new(TransportConfig::Custom(
-        transport.clone(),
-    )))
+    let client = McpClient::connect(
+        McpClientConfig::new(TransportConfig::Custom(transport.clone()))
+            .send_cancel_notifications(true),
+    )
     .await
     .unwrap();
     assert!(matches!(
@@ -236,9 +263,10 @@ async fn cancellation_cleanup_has_a_separate_bound() {
 #[tokio::test(start_paused = true)]
 async fn final_client_drop_cancels_pending_cleanup() {
     let transport = BlockingTransport::new("notifications/cancelled");
-    let client = McpClient::connect(McpClientConfig::new(TransportConfig::Custom(
-        transport.clone(),
-    )))
+    let client = McpClient::connect(
+        McpClientConfig::new(TransportConfig::Custom(transport.clone()))
+            .send_cancel_notifications(true),
+    )
     .await
     .unwrap();
     assert!(matches!(

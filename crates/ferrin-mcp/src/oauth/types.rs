@@ -8,28 +8,84 @@ use serde::Deserialize;
 use serde::Serialize;
 use url::Url;
 
+/// Authorization server identity pinned to stored OAuth credentials.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OAuthAuthorizationServerInformation {
+    /// Issuer identifier supplied by authorization server metadata.
+    pub issuer: Option<String>,
+    /// Authorization server used when the credentials were issued.
+    pub authorization_server_url: Url,
+    /// Token endpoint used when the credentials were issued.
+    pub token_endpoint: Url,
+}
+
+#[derive(Default, Deserialize)]
+struct CredentialPin {
+    #[serde(default)]
+    issuer: Option<String>,
+    #[serde(default)]
+    authorization_server: Option<Url>,
+    #[serde(default)]
+    token_endpoint: Option<Url>,
+}
+
+impl CredentialPin {
+    fn into_information(self) -> Option<OAuthAuthorizationServerInformation> {
+        Some(OAuthAuthorizationServerInformation {
+            issuer: self.issuer,
+            authorization_server_url: self.authorization_server?,
+            token_endpoint: self.token_endpoint?,
+        })
+    }
+}
+
+fn expose_pin(object: &mut JsonObject, pin: Option<&OAuthAuthorizationServerInformation>) {
+    if let Some(pin) = pin {
+        if let Some(issuer) = &pin.issuer {
+            object.insert("issuer".to_owned(), JsonValue::from(issuer.as_str()));
+        }
+        object.insert(
+            "authorization_server".to_owned(),
+            JsonValue::from(pin.authorization_server_url.as_str()),
+        );
+        object.insert(
+            "token_endpoint".to_owned(),
+            JsonValue::from(pin.token_endpoint.as_str()),
+        );
+    }
+}
+
 /// Tokens issued by the authorization server.
 #[derive(Clone)]
 pub struct OAuthTokens {
     /// Access token.
     pub access_token: SecretString,
+    /// OpenID Connect identity token, when issued.
+    pub id_token: Option<SecretString>,
     /// Token type (`Bearer`).
     pub token_type: String,
     /// Lifetime in seconds.
-    pub expires_in: Option<u64>,
+    pub expires_in: Option<f64>,
     /// Granted scope.
     pub scope: Option<String>,
     /// Refresh token.
     pub refresh_token: Option<SecretString>,
+    /// Authorization server identity persisted alongside these tokens.
+    pub authorization_server_information: Option<OAuthAuthorizationServerInformation>,
 }
 
 impl std::fmt::Debug for OAuthTokens {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OAuthTokens")
             .field("access_token", &"<redacted>")
+            .field("id_token", &self.id_token.as_ref().map(|_| "<redacted>"))
             .field("token_type", &self.token_type)
             .field("expires_in", &self.expires_in)
             .field("scope", &self.scope)
+            .field(
+                "authorization_server_information",
+                &self.authorization_server_information,
+            )
             .field(
                 "refresh_token",
                 &self.refresh_token.as_ref().map(|_| "<redacted>"),
@@ -41,14 +97,17 @@ impl std::fmt::Debug for OAuthTokens {
 #[derive(Deserialize)]
 struct RawTokens {
     access_token: String,
-    #[serde(default = "default_token_type")]
+    #[serde(default)]
+    id_token: Option<String>,
     token_type: String,
     #[serde(default)]
-    expires_in: Option<u64>,
+    expires_in: Option<f64>,
     #[serde(default)]
     scope: Option<String>,
     #[serde(default)]
     refresh_token: Option<String>,
+    #[serde(flatten)]
+    pin: CredentialPin,
 }
 
 fn default_token_type() -> String {
@@ -61,10 +120,12 @@ impl OAuthTokens {
     pub fn bearer(access_token: impl Into<String>) -> Self {
         Self {
             access_token: SecretString::from(access_token.into()),
+            id_token: None,
             token_type: default_token_type(),
             expires_in: None,
             scope: None,
             refresh_token: None,
+            authorization_server_information: None,
         }
     }
 
@@ -72,15 +133,18 @@ impl OAuthTokens {
     ///
     /// # Errors
     ///
-    /// Returns the deserialization error when `access_token` is missing.
+    /// Returns the deserialization error when `access_token` or `token_type`
+    /// is missing or a response field has the wrong type.
     pub fn from_json(value: JsonValue) -> Result<Self, serde_json::Error> {
         let raw: RawTokens = serde_json::from_value(value)?;
         Ok(Self {
             access_token: SecretString::from(raw.access_token),
+            id_token: raw.id_token.map(SecretString::from),
             token_type: raw.token_type,
             expires_in: raw.expires_in,
             scope: raw.scope,
             refresh_token: raw.refresh_token.map(SecretString::from),
+            authorization_server_information: raw.pin.into_information(),
         })
     }
 
@@ -96,6 +160,12 @@ impl OAuthTokens {
             "token_type".to_owned(),
             JsonValue::from(self.token_type.as_str()),
         );
+        if let Some(id_token) = &self.id_token {
+            object.insert(
+                "id_token".to_owned(),
+                JsonValue::from(id_token.expose_secret()),
+            );
+        }
         if let Some(expires_in) = self.expires_in {
             object.insert("expires_in".to_owned(), JsonValue::from(expires_in));
         }
@@ -108,6 +178,7 @@ impl OAuthTokens {
                 JsonValue::from(refresh_token.expose_secret()),
             );
         }
+        expose_pin(&mut object, self.authorization_server_information.as_ref());
         JsonValue::Object(object)
     }
 }
@@ -149,9 +220,11 @@ pub struct OAuthClientInformation {
     /// Client secret, for confidential clients.
     pub client_secret: Option<SecretString>,
     /// Issue time (seconds since the epoch).
-    pub client_id_issued_at: Option<u64>,
+    pub client_id_issued_at: Option<f64>,
     /// Secret expiry (seconds since the epoch; `0` means never).
-    pub client_secret_expires_at: Option<u64>,
+    pub client_secret_expires_at: Option<f64>,
+    /// Authorization server identity persisted alongside client credentials.
+    pub authorization_server_information: Option<OAuthAuthorizationServerInformation>,
 }
 
 impl std::fmt::Debug for OAuthClientInformation {
@@ -164,6 +237,10 @@ impl std::fmt::Debug for OAuthClientInformation {
             )
             .field("client_id_issued_at", &self.client_id_issued_at)
             .field("client_secret_expires_at", &self.client_secret_expires_at)
+            .field(
+                "authorization_server_information",
+                &self.authorization_server_information,
+            )
             .finish()
     }
 }
@@ -174,9 +251,11 @@ struct RawClientInformation {
     #[serde(default)]
     client_secret: Option<String>,
     #[serde(default)]
-    client_id_issued_at: Option<u64>,
+    client_id_issued_at: Option<f64>,
     #[serde(default)]
-    client_secret_expires_at: Option<u64>,
+    client_secret_expires_at: Option<f64>,
+    #[serde(flatten)]
+    pin: CredentialPin,
 }
 
 impl OAuthClientInformation {
@@ -188,6 +267,7 @@ impl OAuthClientInformation {
             client_secret: None,
             client_id_issued_at: None,
             client_secret_expires_at: None,
+            authorization_server_information: None,
         }
     }
 
@@ -203,6 +283,7 @@ impl OAuthClientInformation {
             client_secret: raw.client_secret.map(SecretString::from),
             client_id_issued_at: raw.client_id_issued_at,
             client_secret_expires_at: raw.client_secret_expires_at,
+            authorization_server_information: raw.pin.into_information(),
         })
     }
 
@@ -229,6 +310,7 @@ impl OAuthClientInformation {
                 JsonValue::from(expires),
             );
         }
+        expose_pin(&mut object, self.authorization_server_information.as_ref());
         JsonValue::Object(object)
     }
 }

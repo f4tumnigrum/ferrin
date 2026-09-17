@@ -77,6 +77,7 @@
         "discovery_timeout: Duration",
         "initialization_timeout: Option<Duration>",
         "max_input_rounds: u32",
+        "send_cancel_notifications: bool",
         "on_uncaught_error: Option<UncaughtErrorHook>",
         "on_notification: Option<NotificationHook>",
         "elicitation_handler: Option<Arc<dyn ElicitationHandler>>"
@@ -87,12 +88,14 @@
         "fn discovery_timeout(self, timeout: Duration) -> Self",
         "fn elicitation_handler(self, handler: Arc<dyn ElicitationHandler>) -> Self",
         "fn initialization_timeout(self, timeout: Duration) -> Self",
+        "fn max_input_rounds(self, rounds: u32) -> Self",
         "fn max_tool_call_retries(self, retries: u32) -> Self",
         "fn name(self, name: impl Into<String>) -> Self",
         "fn new(transport: TransportConfig) -> Self",
         "fn on_notification(self, hook: NotificationHook) -> Self",
         "fn on_uncaught_error(self, hook: UncaughtErrorHook) -> Self",
         "fn protocol_discovery(self, enabled: bool) -> Self",
+        "fn send_cancel_notifications(self, enabled: bool) -> Self",
         "fn title(self, title: impl Into<String>) -> Self",
         "fn version(self, version: impl Into<String>) -> Self"
       ],
@@ -356,7 +359,7 @@
       "kind": "struct",
       "signature": "struct",
       "fields": [
-        "resource_uri: String",
+        "resource_uri: Option<String>",
         "visibility: Option<Vec<String>>",
         "extra: JsonObject"
       ],
@@ -536,6 +539,7 @@
         "discovery_timeout: Duration",
         "initialization_timeout: Option<Duration>",
         "max_input_rounds: u32",
+        "send_cancel_notifications: bool",
         "on_uncaught_error: Option<UncaughtErrorHook>",
         "on_notification: Option<NotificationHook>",
         "elicitation_handler: Option<Arc<dyn ElicitationHandler>>"
@@ -546,12 +550,14 @@
         "fn discovery_timeout(self, timeout: Duration) -> Self",
         "fn elicitation_handler(self, handler: Arc<dyn ElicitationHandler>) -> Self",
         "fn initialization_timeout(self, timeout: Duration) -> Self",
+        "fn max_input_rounds(self, rounds: u32) -> Self",
         "fn max_tool_call_retries(self, retries: u32) -> Self",
         "fn name(self, name: impl Into<String>) -> Self",
         "fn new(transport: TransportConfig) -> Self",
         "fn on_notification(self, hook: NotificationHook) -> Self",
         "fn on_uncaught_error(self, hook: UncaughtErrorHook) -> Self",
         "fn protocol_discovery(self, enabled: bool) -> Self",
+        "fn send_cancel_notifications(self, enabled: bool) -> Self",
         "fn title(self, title: impl Into<String>) -> Self",
         "fn version(self, version: impl Into<String>) -> Self"
       ],
@@ -688,19 +694,23 @@
       "path": "ferrin_mcp::oauth::AuthOptions",
       "kind": "struct",
       "signature": "struct",
-      "source": "flow::AuthOptions",
+      "source": "auth::AuthOptions",
       "attrs": [
         "non_exhaustive"
       ],
       "fields": [
         "server_url: Url",
         "authorization_code: Option<String>",
+        "callback_state: Option<String>",
+        "callback_issuer: Option<String>",
         "scope: Option<String>",
         "resource_metadata_url: Option<Url>",
         "url_policy: UrlPolicy"
       ],
       "methods": [
         "fn authorization_code(self, code: impl Into<String>) -> Self",
+        "fn callback_issuer(self, issuer: impl Into<String>) -> Self",
+        "fn callback_state(self, state: impl Into<String>) -> Self",
         "fn new(server_url: Url) -> Self",
         "fn resource_metadata_url(self, url: Option<Url>) -> Self",
         "fn scope(self, scope: Option<String>) -> Self",
@@ -741,7 +751,7 @@
         "code: String",
         "code_verifier: String",
         "redirect_url: Url",
-        "resource: Url"
+        "resource: Option<Url>"
       ],
       "traits": [
         "impl Clone for AuthorizationCodeGrant",
@@ -805,7 +815,8 @@
       "source": "discovery::MetadataUrl",
       "fields": [
         "url: Url",
-        "openid: bool"
+        "openid: bool",
+        "expected_issuer: String"
       ],
       "traits": [
         "impl Clone for MetadataUrl",
@@ -816,6 +827,26 @@
       ]
     },
     {
+      "path": "ferrin_mcp::oauth::OAuthAuthorizationServerInformation",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "types::OAuthAuthorizationServerInformation",
+      "fields": [
+        "issuer: Option<String>",
+        "authorization_server_url: Url",
+        "token_endpoint: Url"
+      ],
+      "traits": [
+        "impl Clone for OAuthAuthorizationServerInformation",
+        "impl Debug for OAuthAuthorizationServerInformation",
+        "impl Eq for OAuthAuthorizationServerInformation",
+        "impl PartialEq for OAuthAuthorizationServerInformation",
+        "impl Serialize for OAuthAuthorizationServerInformation",
+        "impl StructuralPartialEq for OAuthAuthorizationServerInformation",
+        "impl<'de> Deserialize<'de> for OAuthAuthorizationServerInformation"
+      ]
+    },
+    {
       "path": "ferrin_mcp::oauth::OAuthClientInformation",
       "kind": "struct",
       "signature": "struct",
@@ -823,8 +854,9 @@
       "fields": [
         "client_id: String",
         "client_secret: Option<SecretString>",
-        "client_id_issued_at: Option<u64>",
-        "client_secret_expires_at: Option<u64>"
+        "client_id_issued_at: Option<f64>",
+        "client_secret_expires_at: Option<f64>",
+        "authorization_server_information: Option<OAuthAuthorizationServerInformation>"
       ],
       "methods": [
         "fn expose_to_json(&self) -> JsonValue",
@@ -868,17 +900,24 @@
       "signature": "trait: Send + Sync",
       "source": "provider::OAuthClientProvider",
       "methods": [
+        "fn add_client_authentication<'a>(&'a self, headers: &'a mut Headers, params: &'a mut Vec<(String, String)>, authorization_server_url: &'a Url, metadata: Option<&'a AuthorizationServerMetadata>, client: &'a OAuthClientInformation) -> BoxFuture<'a, Result<(), McpError>>",
+        "fn authorization_server_information(&self) -> BoxFuture<'_, Result<Option<OAuthAuthorizationServerInformation>, McpError>>",
         "fn client_information(&self) -> BoxFuture<'_, Result<Option<OAuthClientInformation>, McpError>>",
         "fn client_metadata(&self) -> OAuthClientMetadata",
         "fn code_verifier(&self) -> BoxFuture<'_, Result<Option<String>, McpError>>",
         "fn invalidate_credentials(&self, scope: InvalidateScope) -> BoxFuture<'_, Result<(), McpError>>",
         "fn redirect_to_authorization(&self, authorization_url: Url) -> BoxFuture<'_, Result<(), McpError>>",
         "fn redirect_url(&self) -> Option<Url>",
+        "fn save_authorization_server_information(&self, information: OAuthAuthorizationServerInformation) -> BoxFuture<'_, Result<(), McpError>>",
         "fn save_client_information(&self, information: OAuthClientInformation) -> BoxFuture<'_, Result<(), McpError>>",
         "fn save_code_verifier(&self, code_verifier: String) -> BoxFuture<'_, Result<(), McpError>>",
+        "fn save_state(&self, state: String) -> BoxFuture<'_, Result<(), McpError>>",
         "fn save_tokens(&self, tokens: OAuthTokens) -> BoxFuture<'_, Result<(), McpError>>",
         "fn state(&self) -> BoxFuture<'_, Result<Option<String>, McpError>>",
-        "fn tokens(&self) -> BoxFuture<'_, Result<Option<OAuthTokens>, McpError>>"
+        "fn stored_state(&self) -> BoxFuture<'_, Result<Option<String>, McpError>>",
+        "fn tokens(&self) -> BoxFuture<'_, Result<Option<OAuthTokens>, McpError>>",
+        "fn validate_authorization_server_url<'a>(&'a self, server_url: &'a Url, authorization_server_url: &'a Url) -> BoxFuture<'a, Result<(), McpError>>",
+        "fn validate_resource_url<'a>(&'a self, server_url: &'a Url, resource: Option<&'a Url>) -> BoxFuture<'a, Result<Option<Url>, McpError>>"
       ]
     },
     {
@@ -888,10 +927,12 @@
       "source": "types::OAuthTokens",
       "fields": [
         "access_token: SecretString",
+        "id_token: Option<SecretString>",
         "token_type: String",
-        "expires_in: Option<u64>",
+        "expires_in: Option<f64>",
         "scope: Option<String>",
-        "refresh_token: Option<SecretString>"
+        "refresh_token: Option<SecretString>",
+        "authorization_server_information: Option<OAuthAuthorizationServerInformation>"
       ],
       "methods": [
         "fn bearer(access_token: impl Into<String>) -> Self",
@@ -963,7 +1004,7 @@
       "path": "ferrin_mcp::oauth::auth",
       "kind": "function",
       "signature": "async fn auth(provider: &dyn OAuthClientProvider, http: &dyn HttpTransport, options: AuthOptions) -> Result<AuthResult, McpError>",
-      "source": "flow::auth"
+      "source": "auth::auth"
     },
     {
       "path": "ferrin_mcp::oauth::authorization_server_metadata_urls",
@@ -1037,7 +1078,7 @@
     {
       "path": "ferrin_mcp::oauth::refresh_authorization",
       "kind": "function",
-      "signature": "async fn refresh_authorization(http: &dyn HttpTransport, metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, refresh_token: &SecretString, resource: &Url, policy: &UrlPolicy) -> Result<OAuthTokens, McpError>",
+      "signature": "async fn refresh_authorization<'a>(http: &dyn HttpTransport, metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, refresh_token: &SecretString, resource: impl Into<Option<&'a Url>>, policy: &UrlPolicy) -> Result<OAuthTokens, McpError>",
       "source": "flow::refresh_authorization"
     },
     {
@@ -1049,13 +1090,13 @@
     {
       "path": "ferrin_mcp::oauth::select_resource_url",
       "kind": "function",
-      "signature": "fn select_resource_url(server_url: &Url, metadata: Option<&ProtectedResourceMetadata>) -> Result<Url, McpError>",
+      "signature": "fn select_resource_url(server_url: &Url, metadata: Option<&ProtectedResourceMetadata>) -> Result<Option<Url>, McpError>",
       "source": "discovery::select_resource_url"
     },
     {
       "path": "ferrin_mcp::oauth::start_authorization",
       "kind": "function",
-      "signature": "fn start_authorization(metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, redirect_url: &Url, pkce: &Pkce, scope: Option<&str>, state: Option<&str>, resource: &Url) -> Result<Url, McpError>",
+      "signature": "fn start_authorization<'a>(metadata: &AuthorizationServerMetadata, client: &OAuthClientInformation, redirect_url: &Url, pkce: &Pkce, scope: Option<&str>, state: Option<&str>, resource: impl Into<Option<&'a Url>>) -> Result<Url, McpError>",
       "source": "flow::start_authorization"
     },
     {

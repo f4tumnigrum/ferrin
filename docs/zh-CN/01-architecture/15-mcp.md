@@ -93,7 +93,7 @@ pub trait McpTransport: Send + Sync + 'static {
 - `InputResponseRequestParams extends RequestParams { inputResponses?: InputResponses; requestState?: string }`：客户端以原方法、原参数加上这两个字段重试请求（新的 JSON-RPC id）。
 - `RequestMetaObject { progressToken?, "io.modelcontextprotocol/protocolVersion": string, "io.modelcontextprotocol/clientInfo"?: Implementation, "io.modelcontextprotocol/clientCapabilities": ClientCapabilities }`；`ResultMetaObject { "io.modelcontextprotocol/serverInfo"?: Implementation }`；`DiscoverResult { supportedVersions: string[], capabilities: ServerCapabilities, instructions? }`；错误码 `-32020 HeaderMismatch`、`-32021 MissingRequiredClientCapability`、`-32022 UnsupportedProtocolVersion { data: { supported, requested } }`。
 
-【决策】`ferrin-mcp` 的实现：现代代下结果缺少 `resultType` 视为协议错误（`McpError::Protocol`）；`input_required` 时对 `inputRequests` 的每个条目调用 `ElicitationHandler`（仅接受 `method == "elicitation/create"`；`sampling/createMessage` 与 `roots/list` 输入请求返回 `McpError::Protocol`，本 crate 不提供采样与 roots），把结果按键写入 `inputResponses`，连同服务端返回的 `requestState` 重试原请求，轮数上限 `McpClientConfig::max_input_rounds`（默认 8）；未注册处理器时返回 `McpError::Elicitation`。服务端信息取自 `DiscoverResult._meta["io.modelcontextprotocol/serverInfo"]`。
+【决策】现代代下结果缺少 `resultType` 视为协议错误（`McpError::Protocol`）。依据 ADR 0026，`input_required` 默认返回协议错误，与参考客户端一致。显式将 `max_input_rounds` 设为正数可启用 Ferrin 已有扩展：对每个输入请求调用 `ElicitationHandler`，仅接受 `elicitation/create`，随后携带按键写入的 `inputResponses` 与服务端返回的 `requestState` 重试原请求，最多指定轮数。采样与 roots 仍在范围外；未注册处理器时返回 `McpError::Elicitation`。服务端信息取自 `DiscoverResult._meta["io.modelcontextprotocol/serverInfo"]`。
 
 ### 2.3 客户端
 
@@ -138,7 +138,8 @@ pub struct McpClientConfig {                     // McpClientConfig::new(transpo
     pub protocol_discovery: bool,                // default true
     pub discovery_timeout: Duration,             // default 1 s
     pub initialization_timeout: Option<Duration>,
-    pub max_input_rounds: u32,                   // default 8
+    pub max_input_rounds: u32,                   // default 0; opt in to multi-round input
+    pub send_cancel_notifications: bool,        // default false; optional protocol extension
     pub on_uncaught_error: Option<UncaughtErrorHook>,
     pub on_notification: Option<NotificationHook>,
     pub elicitation_handler: Option<Arc<dyn ElicitationHandler>>,
@@ -147,7 +148,7 @@ pub struct McpClientConfig {                     // McpClientConfig::new(transpo
 pub struct RequestOptions { pub timeout: Option<Duration>, pub max_total_timeout: Option<Duration>, pub cancellation: Option<CancellationToken>, pub headers: Headers }
 ```
 
-【决策】每个方法显式接收 `RequestOptions`（超时、总超时、取消令牌、请求级头），超时取 `timeout.or(default_request_timeout)` 与 `max_total_timeout` 的最小值；超时或取消时客户端撤销挂起项并发送 `notifications/cancelled`。`server_capabilities()` 等访问器返回克隆的 `Option`（连接期间状态在 `Mutex` 内），`close(&self)` 可在任一克隆上调用并使所有挂起请求以 `McpError::Closed` 失败。
+【决策】每个方法显式接收 `RequestOptions`（超时、总超时、取消令牌、请求级头），超时取 `timeout.or(default_request_timeout)` 与 `max_total_timeout` 的最小值；超时或取消时客户端撤销挂起项并中止传输请求。依据 ADR 0026，取消通知必须显式启用 `send_cancel_notifications`，默认行为与参考实现一致。`server_capabilities()` 等访问器返回克隆的 `Option`（连接期间状态在 `Mutex` 内），`close(&self)` 可在任一克隆上调用并使所有挂起请求以 `McpError::Closed` 失败。
 
 ### 2.4 工具桥接
 
@@ -188,7 +189,13 @@ pub async fn auth(provider: &dyn OAuthClientProvider, http: &dyn HttpTransport, 
 
 【决策】方法返回 `Result`（存储可能失败）；`OAuthTokens`/`OAuthClientInformation` 的密钥字段为 `secrecy::SecretString`，不派生 `Serialize`，持久化须显式调用 `expose_to_json()`。`auth` 的流程：受保护资源元数据（`/.well-known/oauth-protected-resource[path]`，再回退根路径）→ 授权服务器元数据（RFC 8414 路径感知顺序，再 OpenID 配置；OpenID 文档必须宣告 `S256`）→ 无客户端信息时动态注册 → 有授权码则交换、有刷新令牌则刷新（协议错误直接返回，`server_error`/网络错误回退到新授权）→ 否则生成 PKCE `S256` 并重定向；`invalid_client`/`unauthorized_client` 使全部凭据失效后重试一次，`invalid_grant` 使令牌失效后重试一次。授权服务器的所有端点经 `AuthOptions::url_policy`（HTTP 传输传入自身的 `UrlPolicy`）校验，阻断指向内网的元数据。HTTP 传输对 `401` 只运行一次 `auth`（并发的 `401` 等待进行中的流程后按已存令牌重试）；结果为 `Redirect` 时返回 `McpError::Unauthorized`。
 
+【决策】依据 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md) 的参考对齐修订，将存储的客户端凭据与令牌绑定到授权服务器的 issuer、URL 和令牌端点。重定向前持久化绑定；交换授权码或刷新令牌前拒绝绑定变化，交换授权码必须已有绑定。可选回调 state 和 issuer 与存储值核对。提供者钩子可以持久化 state 与绑定、约束发现的授权服务器 URL、选择 resource 指示符，并自定义令牌请求认证。显式受保护资源元数据 URL 必须与配置的 MCP 服务器同源。旧版发现回退保留服务器路径，并校验发现元数据的 issuer。缺少受保护资源元数据时省略 resource 指示符，除非提供者显式选择一个（来源：`6c6c221` 的 `packages/mcp/src/tool/oauth.ts`，2026-09-17 对照）。
+
 ## 3. 与核心层的关系
+
+【决策】依据 ADR 0026，工具列表缓存合法的现代 `x-mcp-header` 绑定，供直接 `call_tool` 请求和生成的执行器共同使用。第一页清空旧绑定，后续分页追加；绑定不合法的定义被过滤并报告。整数头部值采用参考实现的安全整数范围，也接受整数值的 JSON 浮点表示。探测结果缺少所请求的协议版本或无法解码时回退旧版初始化；可识别的现代协议错误码仍中止协商（来源：`6c6c221` 的 `packages/mcp/src/tool/mcp-client.ts` 与 `mcp-http-headers.ts`，2026-09-17 对照）。
+
+【决策】`initialization_timeout` 统一约束传输启动、探测和旧版握手。超时后停止本地任务，失败连接的传输清理仍保留独立的一秒上限。此行为将初始化截止时间与 `mcp-client.ts` 对齐，同时保留明确的 Rust 任务所有权与有界清理（ADR 0026）。
 
 - `McpClient::tools()` 返回普通 `ToolSet`，可与本地工具合并后传给 `generate_text`。
 - 审批、超时、遥测由核心层按工具统一处理；MCP 工具不例外。
@@ -250,3 +257,15 @@ mcp.close().await?;
 【决策】2026-09-15 OAuth 单流程协调使用析构守卫，在成功、失败或认证 future 被丢弃时复位运行标志并推进及唤醒代次。取消元数据请求后，后续 401 处理不会永久等待已经中止的流程（回归覆盖：`crates/ferrin-mcp/tests/suite/oauth.rs`）。
 
 【事实】2026-09-15 Streamable HTTP 调试输出对配置和运行状态中的会话 ID 脱敏，包括服务端更新后的值；事件恢复 ID 同样脱敏（来源：`crates/ferrin-mcp/tests/suite/http_transport.rs`，`debug_redacts_initial_and_server_updated_session_ids`）。
+
+## 7. 参考 SDK 契约修订（2026-09-17）
+
+【决策】依照 ADR 0026，MCP 工具的 `isError` 结果保留为包含原始 `CallToolResult` 的正常执行器返回值，并跳过显式输出 Schema 校验；不再转成 `ToolError::Json`。模型输出仅将同时包含 base64 数据与 MIME 类型的 image 转成文件，audio 及其他内容转为 JSON 文本。工具元数据为 `{clientName, toolName, title?, annotations?, app?}`，标题回退到 annotations，annotations 仅含已知提示字段，仅有资源 URI 的 app 元数据加入 MCP App MIME 类型。
+
+【决策】MCP Apps 元数据允许只有 visibility 而没有资源 URI，并将 visibility 数组过滤为 `model`/`app`；缺省 visibility 仅对模型可见。非对象 `_meta.ui` 被忽略，仍考虑旧版 URI；非法资源 URI 继续报错。资源提取按请求 URI 选择条目、要求精确 MCP App MIME 类型，并接受文本或 base64 HTML。已知渲染元数据字段非法时省略该字段，未知键保留。`read_app_resource` 在发请求前拒绝非 `ui://` URI。这些决策通过 ADR 0026 取代初版较严格的 Apps 解析器，依据参考提交 `6c6c221` 的 `packages/mcp/src/tool/mcp-apps.ts`。
+
+【决策】旧版 HTTP 入站流遇到 405 后，后续 POST 返回 202 时可重新启动。入站 GET 响应更新会话 ID；GET 和 POST 的 404 过期通知均指向该请求实际发送的会话，仅在它仍为当前会话时清除，并在清除时触发会话变更钩子。并发产生的替代会话保持有效。现代代响应不采纳旧版会话头（ADR 0026；参考 `mcp-http-transport.ts`）。
+
+【事实】2026-09-17 本轮有限范围 MCP 对照通过 111 个本地测试，覆盖直接调用头部绑定缓存、安全整数头部、探测回退、显式启用的多轮输入与取消通知、整体初始化截止时间，以及 OAuth state、issuer 与授权服务器绑定回归（`ferrin-mcp` 本地 nextest 运行；测试组 `client_modern`、`client_legacy`、`client_deadlines`、`headers`、`oauth` 与 `oauth_parity`）。OAuth 令牌还保留脱敏的 `id_token`；令牌和客户端时间戳数字使用 `f64`，令牌响应要求 `token_type`。这些是本地协议测试，不代表真实授权服务器验证。
+
+【事实】同轮审计仍确认以下 OAuth 差异：发现流程尚未实现参考实现中经过校验的重定向跟随，或移除协议头后的网络/CORS 重试；已知可选元数据扩展的完整结构校验与部分凭据绑定字段保留尚不完整。自定义客户端认证通过 `auth` 的提供者钩子运行，直接交换/刷新辅助函数仍使用标准认证。没有客户端存储能力的提供者在动态注册后拒绝，而参考实现能在注册前检测缺少存储回调（来源：`oauth/{auth,discovery,flow,http,provider,types}.rs` 与 `6c6c221` 的 `packages/mcp/src/tool/oauth.ts`）。这些差异意味着尚不能宣称 OAuth 完全对齐。

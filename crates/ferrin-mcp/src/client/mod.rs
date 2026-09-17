@@ -44,7 +44,7 @@ pub const DEFAULT_CLIENT_NAME: &str = "ferrin-mcp-client";
 pub const DEFAULT_DISCOVERY_TIMEOUT: Duration = Duration::from_millis(1000);
 
 /// Default upper bound of `input_required` rounds per request.
-pub const DEFAULT_MAX_INPUT_ROUNDS: u32 = 8;
+pub const DEFAULT_MAX_INPUT_ROUNDS: u32 = 0;
 
 /// Receives errors that have no request to fail (parse errors, failed inbound
 /// streams, unmatched responses, failed server-request handling).
@@ -103,10 +103,13 @@ pub struct McpClientConfig {
     pub protocol_discovery: bool,
     /// Timeout of the `server/discover` probe (default 1 s).
     pub discovery_timeout: Duration,
-    /// Timeout of the legacy `initialize` request.
+    /// Total timeout of transport startup, discovery and initialization.
     pub initialization_timeout: Option<Duration>,
-    /// Maximum `input_required` rounds per request (default 8).
+    /// Maximum `input_required` rounds per request (default 0, unsupported).
     pub max_input_rounds: u32,
+    /// Sends protocol cancellation notifications in addition to aborting the
+    /// transport request (default false).
+    pub send_cancel_notifications: bool,
     /// Called for errors that cannot be attributed to a request.
     pub on_uncaught_error: Option<UncaughtErrorHook>,
     /// Called for every server notification.
@@ -129,6 +132,7 @@ impl std::fmt::Debug for McpClientConfig {
             .field("discovery_timeout", &self.discovery_timeout)
             .field("initialization_timeout", &self.initialization_timeout)
             .field("max_input_rounds", &self.max_input_rounds)
+            .field("send_cancel_notifications", &self.send_cancel_notifications)
             .field("elicitation_handler", &self.elicitation_handler.is_some())
             .finish_non_exhaustive()
     }
@@ -150,6 +154,7 @@ impl McpClientConfig {
             discovery_timeout: DEFAULT_DISCOVERY_TIMEOUT,
             initialization_timeout: None,
             max_input_rounds: DEFAULT_MAX_INPUT_ROUNDS,
+            send_cancel_notifications: false,
             on_uncaught_error: None,
             on_notification: None,
             elicitation_handler: None,
@@ -212,10 +217,24 @@ impl McpClientConfig {
         self
     }
 
-    /// Sets the `initialize` timeout.
+    /// Sets the total timeout of transport startup, discovery and initialization.
     #[must_use]
     pub fn initialization_timeout(mut self, timeout: Duration) -> Self {
         self.initialization_timeout = Some(timeout);
+        self
+    }
+
+    /// Enables the multi-round input extension with an explicit round limit.
+    #[must_use]
+    pub fn max_input_rounds(mut self, rounds: u32) -> Self {
+        self.max_input_rounds = rounds;
+        self
+    }
+
+    /// Enables protocol cancellation notifications alongside transport aborts.
+    #[must_use]
+    pub fn send_cancel_notifications(mut self, enabled: bool) -> Self {
+        self.send_cancel_notifications = enabled;
         self
     }
 
@@ -256,6 +275,7 @@ pub(crate) struct ServerState {
     pub(crate) info: Option<Implementation>,
     pub(crate) instructions: Option<String>,
     pub(crate) protocol_version: Option<String>,
+    pub(crate) tool_header_bindings: HashMap<String, Vec<crate::transport::HeaderBinding>>,
     pub(crate) closed: bool,
 }
 
@@ -477,30 +497,36 @@ impl McpClient {
     #[tracing::instrument(skip_all, fields(client = %config.name))]
     pub async fn connect(config: McpClientConfig) -> Result<Self, McpError> {
         let transport = config.transport.clone().build()?;
-        if let Err(error) = transport.start().await {
+        let timeout = config.initialization_timeout;
+        let operation = async {
+            transport.start().await?;
+            let tasks = Arc::new(Mutex::new(JoinSet::new()));
+            let inner = Arc::new(ClientInner {
+                transport: Arc::clone(&transport),
+                elicitation: Mutex::new(config.elicitation_handler.clone()),
+                config,
+                state: Mutex::new(ServerState::default()),
+                pending: Mutex::new(HashMap::new()),
+                next_id: AtomicI64::new(1),
+                cancellation: CancellationToken::new(),
+                cleanup_tasks: Arc::downgrade(&tasks),
+            });
+            let incoming = inner.transport.incoming();
+            lock(&tasks).spawn(Arc::clone(&inner).dispatch(incoming));
+            let client = Self { inner, tasks };
+            client.initialize().await?;
+            Ok(client)
+        };
+        let result = match timeout {
+            Some(timeout) => tokio::time::timeout(timeout, operation)
+                .await
+                .unwrap_or(Err(McpError::Timeout(timeout))),
+            None => operation.await,
+        };
+        if result.is_err() {
             close_failed_transport(&transport).await;
-            return Err(error);
         }
-        let tasks = Arc::new(Mutex::new(JoinSet::new()));
-        let inner = Arc::new(ClientInner {
-            transport,
-            elicitation: Mutex::new(config.elicitation_handler.clone()),
-            config,
-            state: Mutex::new(ServerState::default()),
-            pending: Mutex::new(HashMap::new()),
-            next_id: AtomicI64::new(1),
-            cancellation: CancellationToken::new(),
-            cleanup_tasks: Arc::downgrade(&tasks),
-        });
-        let incoming = inner.transport.incoming();
-        lock(&tasks).spawn(Arc::clone(&inner).dispatch(incoming));
-        let client = Self { inner, tasks };
-        if let Err(error) = client.initialize().await {
-            client.stop();
-            close_failed_transport(&client.inner.transport).await;
-            return Err(error);
-        }
-        Ok(client)
+        result
     }
 
     /// Replaces the elicitation handler.

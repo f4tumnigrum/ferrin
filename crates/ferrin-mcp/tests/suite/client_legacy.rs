@@ -144,16 +144,24 @@ async fn discover_listing_only_legacy_versions_runs_initialize() {
 }
 
 #[tokio::test]
-async fn no_common_version_is_a_protocol_error() {
-    let transport = MockTransport::new(discovery_capabilities(), |message| {
-        match message.method() {
-            Some("server/discover") => Ok(vec![reply(
-                message,
-                json!({"resultType": "complete", "supportedVersions": ["2030-01-01"], "capabilities": {}}),
-            )]),
+async fn unusable_discovery_results_fall_back_to_initialize() {
+    for result in [
+        json!({"resultType": "complete", "supportedVersions": ["2030-01-01"], "capabilities": {}}),
+        json!({"resultType": "complete", "capabilities": {}}),
+        json!({"supportedVersions": ["2026-07-28"], "capabilities": {}}),
+    ] {
+        let transport = MockTransport::new(discovery_capabilities(), move |message| match message
+            .method()
+        {
+            Some("server/discover") => Ok(vec![reply(message, result.clone())]),
+            Some("initialize") => Ok(vec![reply(message, initialize_result("2025-06-18"))]),
             _ => Ok(Vec::new()),
-        }
-    });
-    let error = McpClient::connect(config(transport)).await.unwrap_err();
-    assert!(matches!(error, McpError::Protocol { ref message } if message.contains("2030-01-01")));
+        });
+        let client = connect(Arc::clone(&transport)).await;
+        assert_eq!(client.protocol_version().as_deref(), Some("2025-06-18"));
+        assert_eq!(
+            transport.methods(),
+            vec!["server/discover", "initialize", "notifications/initialized"]
+        );
+    }
 }

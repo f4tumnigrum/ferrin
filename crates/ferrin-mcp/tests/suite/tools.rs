@@ -97,12 +97,9 @@ async fn automatic_schemas_produce_dynamic_tools_with_metadata() {
     let headered = tools.get("headered").unwrap();
     assert_eq!(
         headered.metadata().unwrap()["app"],
-        json!({"resourceUri": "ui://widgets/echo", "visibility": ["model", "app"]})
+        json!({"resourceUri": "ui://widgets/echo", "visibility": ["model", "app"], "mimeType":"text/html;profile=mcp-app"})
     );
-    assert_eq!(
-        headered.metadata().unwrap()["meta"],
-        json!({"ui": {"resourceUri": "ui://widgets/echo", "visibility": ["model", "app"]}})
-    );
+    assert!(!headered.metadata().unwrap().contains_key("meta"));
 }
 
 #[tokio::test]
@@ -165,12 +162,14 @@ async fn executing_a_tool_calls_the_server_and_maps_errors() {
     let call = transport.requests("tools/call").remove(0).params.unwrap();
     assert_eq!(call["name"], json!("echo"));
     assert_eq!(call["arguments"], json!({"city": "Berlin"}));
-    let error = run(tools.get("bare").unwrap(), json!({}))
-        .await
-        .unwrap_err();
-    assert!(
-        matches!(&error, ToolError::Json { value } if value["isError"] == json!(true)),
-        "{error:?}"
+    let output = run(tools.get("bare").unwrap(), json!({})).await.unwrap();
+    assert_eq!(
+        output,
+        json!({
+            "content":[{"type":"text","text":"boom"}],
+            "isError":true,
+            "resultType":"complete"
+        })
     );
     let invalid = tools
         .get("echo")
@@ -308,7 +307,7 @@ fn model_output_converts_content_arrays_and_passes_json_through() {
     ));
     assert!(matches!(
         &value[2],
-        ToolResultContentPart::File { media_type, .. } if media_type.as_str() == "audio/wav"
+        ToolResultContentPart::Text { text, .. } if serde_json::from_str::<Value>(text).unwrap() == json!({"type":"audio","data":"AQID"})
     ));
     assert!(matches!(
         &value[3],
@@ -322,4 +321,51 @@ fn model_output_converts_content_arrays_and_passes_json_through() {
         output: &structured,
     });
     assert!(matches!(converted, ToolResultOutput::Json { value, .. } if value == structured));
+}
+
+#[tokio::test]
+async fn annotations_title_metadata_and_error_results_match_reference() {
+    let transport = modern_transport(|request| match request.method.as_str() {
+        "tools/call" => Ok(json!({"content":[{"type":"text","text":"refused"}],"isError":true})),
+        _ => Err((-32601, "method not found".into())),
+    });
+    let client = connect(Arc::clone(&transport)).await;
+    let definition = serde_json::from_value(json!({
+        "name":"guarded","inputSchema":{"type":"object"},
+        "annotations":{"title":"annotation title","readOnlyHint":false,"unknown":true},
+        "_meta":{"ui":{"visibility":["app"]}}
+    }))
+    .unwrap();
+    let tools = client
+        .tools_from_definitions(
+            vec![definition],
+            &ToolsOptions::explicit(HashMap::from([(
+                "guarded".into(),
+                ToolSchemaPair {
+                    input: Schema::empty_object(),
+                    output: Some(Schema::from_json_schema(json!({"type":"integer"}))),
+                },
+            )])),
+        )
+        .unwrap();
+    let guarded = tools.get("guarded").unwrap();
+    assert_eq!(
+        (
+            guarded.title(),
+            Value::Object(guarded.metadata().unwrap().clone())
+        ),
+        (
+            Some("annotation title"),
+            json!({
+                "clientName":"ferrin-mcp-client","toolName":"guarded","title":"annotation title",
+                "annotations":{"title":"annotation title","readOnlyHint":false}
+            })
+        )
+    );
+    assert_eq!(
+        run(guarded, json!({})).await.unwrap(),
+        json!({
+            "content":[{"type":"text","text":"refused"}],"isError":true,"resultType":"complete"
+        })
+    );
 }
