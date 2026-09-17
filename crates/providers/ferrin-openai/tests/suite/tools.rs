@@ -98,6 +98,7 @@ fn provider_tools_convert_to_snake_case_wire_items() {
         definition(
             &tools.custom(CustomToolArgs {
                 name: "sql".to_owned(),
+                r#async: None,
                 description: Some("Run SQL".to_owned()),
                 format: Some(CustomToolFormat::Grammar {
                     syntax: "lark".to_owned(),
@@ -132,7 +133,7 @@ fn provider_tools_convert_to_snake_case_wire_items() {
 }
 
 #[test]
-fn unknown_provider_tools_produce_a_warning() {
+fn unknown_provider_tools_are_omitted_as_in_reference() {
     let definitions = vec![ToolDefinition::Provider {
         id: "other.magic".to_owned(),
         name: "magic".into(),
@@ -140,8 +141,8 @@ fn unknown_provider_tools_produce_a_warning() {
     }];
     let mapping = tool_name_mapping(&definitions);
     let converted = convert_tools(&definitions, None, &mapping, true, "openai").unwrap();
-    assert!(converted.tools.is_none());
-    assert_eq!(converted.warnings.len(), 1);
+    assert_eq!(converted.tools, Some(Vec::new()));
+    assert_eq!(converted.warnings, Vec::new());
 }
 
 #[test]
@@ -166,10 +167,8 @@ fn provider_tool_options_preserve_opaque_dictionary_keys() {
         Some(vec![json!({
             "type": "mcp", "server_label": "docs", "server_url": "https://example.test/mcp",
             "headers": {"X-API-Key": "test-key", "serverUrl": "opaque"},
-            "metadata": {"readOnly": true},
             "allowed_tools": {"read_only": true, "tool_names": ["getData"]},
             "require_approval": {"never": {"tool_names": ["getData"]}},
-            "parameters": {"type": "object", "properties": {"serverUrl": {"type": "string"}}}
         })])
     );
 }

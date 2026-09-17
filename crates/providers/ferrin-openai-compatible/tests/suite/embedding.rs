@@ -13,6 +13,26 @@ use super::common::example_options;
 use super::common::options_under;
 
 #[tokio::test]
+async fn embedding_json_keeps_reference_number_precision() {
+    let test = TestProvider::start().await;
+    let values = vec![0.123_456_789_012_345_66_f64, 1e100, 1e-100];
+    test.server.mount(
+        Method::POST,
+        "/v1/embeddings",
+        ferrin_testing::Fixture::json(&json!({
+            "data":[{"index":0,"embedding":values}], "usage":{"prompt_tokens":1,"total_tokens":1}
+        })),
+    );
+    let result = test
+        .provider
+        .embedding("model")
+        .do_embed(EmbedOptions::new(vec!["input".into()]))
+        .await
+        .unwrap();
+    assert_eq!(result.embeddings, vec![values]);
+}
+
+#[tokio::test]
 async fn embed_maps_vectors_usage_and_metadata() {
     let test = TestProvider::start().await;
     test.mount(Method::POST, "/v1/embeddings", "embedding", "basic");

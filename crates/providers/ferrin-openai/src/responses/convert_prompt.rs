@@ -49,6 +49,8 @@ pub struct ProviderToolSet {
     pub computer: bool,
     /// Names of `openai.custom` tools (provider-side names).
     pub custom_tool_names: HashSet<String>,
+    /// Function names whose scalar results must contain JSON for `output_schema`.
+    pub output_schema_tool_names: HashSet<String>,
 }
 
 impl ProviderToolSet {

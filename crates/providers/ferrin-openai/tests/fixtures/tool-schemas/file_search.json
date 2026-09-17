@@ -1,0 +1,198 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.file_search",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "queries": [
+        "value"
+      ],
+      "results": [
+        {
+          "attributes": {
+            "User_Key": {
+              "opaque_key": [
+                1,
+                true,
+                null
+              ]
+            }
+          },
+          "fileId": "value",
+          "filename": "value",
+          "score": 1,
+          "text": "value",
+          "extra_field": "strip this"
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "queries": [
+        "value"
+      ],
+      "results": [
+        {
+          "attributes": {
+            "User_Key": {
+              "opaque_key": [
+                1,
+                true,
+                null
+              ]
+            }
+          },
+          "fileId": "value",
+          "filename": "value",
+          "score": 1,
+          "text": "value"
+        }
+      ]
+    },
+    "invalid": [
+      {
+        "queries": null,
+        "results": [
+          {
+            "attributes": {
+              "User_Key": {
+                "opaque_key": [
+                  1,
+                  true,
+                  null
+                ]
+              }
+            },
+            "fileId": "value",
+            "filename": "value",
+            "score": 1,
+            "text": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "results": [
+          {
+            "attributes": {
+              "User_Key": {
+                "opaque_key": [
+                  1,
+                  true,
+                  null
+                ]
+              }
+            },
+            "fileId": "value",
+            "filename": "value",
+            "score": 1,
+            "text": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "queries": [
+          "value"
+        ],
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "vectorStoreIds": [
+        "value"
+      ],
+      "maxNumResults": 1,
+      "ranking": {
+        "ranker": "value",
+        "scoreThreshold": 1,
+        "extra_field": "strip this"
+      },
+      "filters": {
+        "key": "value",
+        "type": "eq",
+        "value": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "file_search",
+        "vector_store_ids": [
+          "value"
+        ],
+        "max_num_results": 1,
+        "ranking_options": {
+          "ranker": "value",
+          "score_threshold": 1
+        },
+        "filters": {
+          "key": "value",
+          "type": "eq",
+          "value": "value"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "vectorStoreIds": null,
+        "maxNumResults": 1,
+        "ranking": {
+          "ranker": "value",
+          "scoreThreshold": 1,
+          "extra_field": "strip this"
+        },
+        "filters": {
+          "key": "value",
+          "type": "eq",
+          "value": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "vectorStoreIds": [
+          "value"
+        ],
+        "maxNumResults": null,
+        "ranking": {
+          "ranker": "value",
+          "scoreThreshold": 1,
+          "extra_field": "strip this"
+        },
+        "filters": {
+          "key": "value",
+          "type": "eq",
+          "value": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "vectorStoreIds": [
+          "value"
+        ],
+        "maxNumResults": 1,
+        "ranking": null,
+        "filters": {
+          "key": "value",
+          "type": "eq",
+          "value": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

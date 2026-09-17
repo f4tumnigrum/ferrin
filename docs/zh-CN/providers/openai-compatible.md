@@ -87,4 +87,4 @@ fixture 位于 `crates/providers/ferrin-openai-compatible/tests/fixtures/<area>/
 
 【决策】Chat 和 Completion SSE EOF 必须已有显式结束原因，否则流会关闭开放的内容块并产生 `InvalidResponseData`。Chat 在提交缓存工具之前检查结束信号，避免将截断参数转换成可执行调用。来源：`stream_eof` fixture 边界回归测试（2026-09-15）；未进行 live API 验证。
 
-【决策】启用结构化输出时，`strictJsonSchema` 为 true（默认）会应用可失败的 OpenAI 严格转换；false 保留原 Schema，关闭 `supports_structured_outputs` 则仍回退到 `json_object`。函数 Schema 仅在显式 `strict: true` 时转换，缺省或 false 不受响应格式开关影响。无法表示的严格字典在 HTTP 请求前报错。来源：`strict_schema` 回归测试（2026-09-15）、[ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)；未进行 live API 验证。
+【决策】函数和结构化输出 Schema 原样转发，与本地 AI SDK `6c6c221` 一致；函数 `strict` 仅在提供时发送，`strictJsonSchema` 控制结构化输出的标记（默认 `true`）。关闭 `supports_structured_outputs` 时保留 `json_object` 回退。依照 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，此规则取代 2026-09-15 记录的自动严格转换；[ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 的显式转换 API 仍可使用。来源：`strict_schema` 请求回归；未进行 live API 验证。

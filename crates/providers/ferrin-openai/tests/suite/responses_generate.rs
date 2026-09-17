@@ -89,7 +89,7 @@ async fn tool_call_response_maps_to_tool_call_content() {
     let request = test.only_request().body_json().unwrap();
     assert_eq!(request["tools"][0]["type"], json!("function"));
     assert_eq!(request["tools"][0]["name"], json!("get_weather"));
-    assert_eq!(request["tools"][0]["strict"], json!(true));
+    assert_eq!(request["tools"][0].get("strict"), None);
 }
 
 #[tokio::test]

@@ -33,8 +33,8 @@ expression: converted.tools.unwrap()
   },
   {
     "type": "mcp",
-    "server_label": "docs",
     "require_approval": "never",
+    "server_label": "docs",
     "server_url": "https://mcp.example.test"
   },
   {
@@ -42,8 +42,8 @@ expression: converted.tools.unwrap()
     "name": "sql",
     "description": "Run SQL",
     "format": {
-      "type": "grammar",
       "syntax": "lark",
+      "type": "grammar",
       "definition": "start: \"SELECT\""
     }
   },
@@ -55,21 +55,9 @@ expression: converted.tools.unwrap()
       "type": "object",
       "properties": {
         "city": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "type": "string"
         }
-      },
-      "required": [
-        "city"
-      ],
-      "additionalProperties": false
-    },
-    "strict": true
+      }
+    }
   }
 ]

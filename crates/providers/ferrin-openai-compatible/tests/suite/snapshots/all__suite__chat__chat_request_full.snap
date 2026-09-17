@@ -55,20 +55,9 @@ expression: prepared.body
           "type": "object",
           "properties": {
             "city": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             }
-          },
-          "required": [
-            "city"
-          ],
-          "additionalProperties": false
+          }
         },
         "strict": true
       }

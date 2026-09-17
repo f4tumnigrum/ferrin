@@ -1,0 +1,137 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.mcp",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "type": "call",
+      "serverLabel": "value",
+      "name": "value",
+      "arguments": "value",
+      "output": "value",
+      "error": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "call",
+      "serverLabel": "value",
+      "name": "value",
+      "arguments": "value",
+      "output": "value",
+      "error": "value"
+    },
+    "invalid": [
+      {
+        "type": null,
+        "serverLabel": "value",
+        "name": "value",
+        "arguments": "value",
+        "output": "value",
+        "error": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "serverLabel": "value",
+        "name": "value",
+        "arguments": "value",
+        "output": "value",
+        "error": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "type": "call",
+        "serverLabel": null,
+        "name": "value",
+        "arguments": "value",
+        "output": "value",
+        "error": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "serverLabel": "value",
+      "allowedTools": [
+        "value"
+      ],
+      "authorization": "value",
+      "connectorId": "value",
+      "headers": {
+        "User_Key": "value"
+      },
+      "requireApproval": "always",
+      "serverDescription": "value",
+      "serverUrl": "value",
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "mcp",
+        "server_label": "value",
+        "allowed_tools": [
+          "value"
+        ],
+        "authorization": "value",
+        "connector_id": "value",
+        "headers": {
+          "User_Key": "value"
+        },
+        "require_approval": "always",
+        "server_description": "value",
+        "server_url": "value"
+      }
+    ],
+    "invalid": [
+      {
+        "serverLabel": null,
+        "allowedTools": [
+          "value"
+        ],
+        "authorization": "value",
+        "connectorId": "value",
+        "headers": {
+          "User_Key": "value"
+        },
+        "requireApproval": "always",
+        "serverDescription": "value",
+        "serverUrl": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "serverLabel": "value",
+        "allowedTools": null,
+        "authorization": "value",
+        "connectorId": "value",
+        "headers": {
+          "User_Key": "value"
+        },
+        "requireApproval": "always",
+        "serverDescription": "value",
+        "serverUrl": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "serverLabel": "value",
+        "allowedTools": [
+          "value"
+        ],
+        "authorization": null,
+        "connectorId": "value",
+        "headers": {
+          "User_Key": "value"
+        },
+        "requireApproval": "always",
+        "serverDescription": "value",
+        "serverUrl": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

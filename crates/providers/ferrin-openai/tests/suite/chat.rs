@@ -95,7 +95,7 @@ async fn generate_maps_tool_calls() {
         request["tools"][0]["function"]["name"],
         json!("get_weather")
     );
-    assert_eq!(request["tools"][0]["function"]["strict"], json!(true));
+    assert_eq!(request["tools"][0]["function"].get("strict"), None);
 }
 
 #[tokio::test]

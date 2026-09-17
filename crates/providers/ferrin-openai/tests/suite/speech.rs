@@ -27,7 +27,9 @@ async fn generate_returns_audio_bytes_and_media_type() {
     let mut options = SpeechOptions::new("Hello there");
     options.voice = Some("nova".to_owned());
     options.output_format = Some("mp3".to_owned());
-    options.provider_options = openai_options(json!({"instructions": "Cheerful", "speed": 1.2}));
+    options.speed = Some(1.2);
+    options.instructions = Some("Cheerful".to_owned());
+    options.provider_options = openai_options(json!({"instructions": "Ignored", "speed": 2.0}));
     let result = test
         .provider
         .speech("gpt-4o-mini-tts")
@@ -86,4 +88,36 @@ async fn unsupported_format_and_language_produce_warnings() {
     let request = test.only_request().body_json().unwrap();
     assert_eq!(request["response_format"], json!("mp3"));
     assert_eq!(request["voice"], json!("alloy"));
+}
+
+#[tokio::test]
+async fn provider_speech_options_are_validated_but_not_forwarded() {
+    let test = TestProvider::start().await;
+    test.mount_fixture(
+        Method::POST,
+        "/v1/audio/speech",
+        Fixture::complete(StatusCode::OK, "audio/mpeg", Bytes::from_static(b"ID3")),
+    );
+    let mut options = SpeechOptions::new("hello");
+    options.provider_options = openai_options(json!({"instructions":"ignored","speed":1.5}));
+    test.provider
+        .speech("tts-1")
+        .do_generate(options)
+        .await
+        .unwrap();
+    assert_eq!(
+        test.only_request().body_json().unwrap(),
+        json!({"model":"tts-1","input":"hello","voice":"alloy","response_format":"mp3"})
+    );
+    let mut invalid = SpeechOptions::new("hello");
+    invalid.provider_options = openai_options(json!({"speed":5.0}));
+    assert!(matches!(
+        test.provider
+            .speech("tts-1")
+            .do_generate(invalid)
+            .await
+            .unwrap_err(),
+        ferrin_spec::error::ProviderError::InvalidArgument(_)
+    ));
+    assert_eq!(test.server.received_count(), 1);
 }

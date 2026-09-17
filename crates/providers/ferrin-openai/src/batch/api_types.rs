@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 /// Batch-level provider options.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchProviderOptions {
     /// Lifetime of the uploaded input file in seconds (3600..=2592000).
     #[serde(default)]

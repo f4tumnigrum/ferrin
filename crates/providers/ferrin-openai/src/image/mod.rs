@@ -286,7 +286,7 @@ impl ImageModel for OpenAiImageModel {
             .usage
             .as_ref()
             .and_then(|u| u.input_tokens_details.as_ref());
-        for item in &value.data {
+        for (index, item) in value.data.iter().enumerate() {
             let Some(b64) = &item.b64_json else {
                 continue;
             };
@@ -345,10 +345,24 @@ impl ImageModel for OpenAiImageModel {
             );
             if let Some(details) = details {
                 if let Some(tokens) = details.image_tokens {
-                    entry.insert("imageTokens".to_owned(), JsonValue::from(tokens / count));
+                    entry.insert(
+                        "imageTokens".to_owned(),
+                        JsonValue::from(if index + 1 == value.data.len() {
+                            tokens - (tokens / count) * (count - 1)
+                        } else {
+                            tokens / count
+                        }),
+                    );
                 }
                 if let Some(tokens) = details.text_tokens {
-                    entry.insert("textTokens".to_owned(), JsonValue::from(tokens / count));
+                    entry.insert(
+                        "textTokens".to_owned(),
+                        JsonValue::from(if index + 1 == value.data.len() {
+                            tokens - (tokens / count) * (count - 1)
+                        } else {
+                            tokens / count
+                        }),
+                    );
                 }
             }
             entries.push(JsonValue::Object(compact(entry)));

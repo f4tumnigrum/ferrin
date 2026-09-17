@@ -11,6 +11,7 @@ mod parallel;
 mod replay_advanced;
 pub mod request;
 pub mod stream;
+mod tool_options;
 
 use std::collections::HashMap;
 

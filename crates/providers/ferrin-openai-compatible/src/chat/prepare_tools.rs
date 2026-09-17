@@ -1,6 +1,5 @@
 //! Conversion of tool definitions and tool choice.
 
-use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
@@ -27,8 +26,7 @@ pub struct PreparedTools {
 /// # Errors
 ///
 /// Returns [`ProviderError::UnsupportedFunctionality`] for an unsupported
-/// tool choice or [`ProviderError::InvalidArgument`] for schemas that cannot
-/// be represented in strict mode.
+/// tool choice.
 pub fn prepare_tools(
     tools: &[ToolDefinition],
     tool_choice: Option<&ToolChoice>,
@@ -55,12 +53,7 @@ pub fn prepare_tools(
                         JsonValue::from(description.as_str()),
                     );
                 }
-                let parameters = if *strict == Some(true) {
-                    SchemaTransform::OpenAiStrict.applied(input_schema.clone())?
-                } else {
-                    input_schema.clone()
-                };
-                function.insert("parameters".to_owned(), parameters);
+                function.insert("parameters".to_owned(), input_schema.clone());
                 if let Some(strict) = strict {
                     function.insert("strict".to_owned(), JsonValue::Bool(*strict));
                 }

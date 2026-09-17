@@ -54,8 +54,11 @@ pub struct ContextManagementOption {
 
 /// Call-level provider options.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct ResponsesProviderOptions {
+    /// Callable subset preserving the complete tool list for prompt caching.
+    #[serde(default)]
+    pub allowed_tools: Option<AllowedToolsOptions>,
     /// Conversation id (mutually exclusive with `previous_response_id`).
     #[serde(default)]
     pub conversation: Option<String>,
@@ -177,7 +180,7 @@ pub struct PartOptions {
 
 /// Tool-level options (`provider_options["openai"]` on function tools).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(from = "RawFunctionToolOptions")]
 pub struct FunctionToolOptions {
     /// Whether the tool is asynchronous.
     #[serde(default)]
@@ -199,6 +202,40 @@ pub struct FunctionToolOptions {
     pub namespace_description: Option<String>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawFunctionToolOptions {
+    r#async: Option<bool>,
+    defer_loading: Option<bool>,
+    allowed_callers: Option<Vec<String>>,
+    output_schema: Option<JsonValue>,
+    namespace: Option<NamespaceInput>,
+    namespace_description: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum NamespaceInput {
+    Name(String),
+    Object { name: String, description: String },
+}
+impl From<RawFunctionToolOptions> for FunctionToolOptions {
+    fn from(raw: RawFunctionToolOptions) -> Self {
+        let (namespace, namespace_description) = match raw.namespace {
+            Some(NamespaceInput::Name(name)) => (Some(name), raw.namespace_description),
+            Some(NamespaceInput::Object { name, description }) => (Some(name), Some(description)),
+            None => (None, raw.namespace_description),
+        };
+        Self {
+            r#async: raw.r#async,
+            defer_loading: raw.defer_loading,
+            allowed_callers: raw.allowed_callers,
+            output_schema: raw.output_schema,
+            namespace,
+            namespace_description,
+        }
+    }
+}
+
 /// Options for the allowed-tools tool choice.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -208,5 +245,6 @@ pub struct AllowedToolsOptions {
     pub mode: Option<String>,
     /// Names of the allowed tools.
     #[serde(default)]
+    #[serde(alias = "toolNames")]
     pub tools: Vec<String>,
 }

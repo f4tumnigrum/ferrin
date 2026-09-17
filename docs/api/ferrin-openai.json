@@ -903,7 +903,7 @@
     {
       "path": "ferrin_openai::chat::convert_tools::convert_tools",
       "kind": "function",
-      "signature": "fn convert_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, strict_json_schema: bool) -> Result<ConvertedTools, ProviderError>"
+      "signature": "fn convert_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, _strict_json_schema: bool) -> Result<ConvertedTools, ProviderError>"
     },
     {
       "path": "ferrin_openai::chat::options",
@@ -1858,7 +1858,8 @@
         "local_shell: bool",
         "shell: bool",
         "computer: bool",
-        "custom_tool_names: HashSet<String>"
+        "custom_tool_names: HashSet<String>",
+        "output_schema_tool_names: HashSet<String>"
       ],
       "methods": [
         "fn is_provider_defined(&self, provider_name: &str) -> bool"
@@ -1914,7 +1915,7 @@
     {
       "path": "ferrin_openai::responses::convert_tools::convert_tools",
       "kind": "function",
-      "signature": "fn convert_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, mapping: &ToolNameMapping, strict_json_schema: bool, provider_options_key: &str) -> Result<ConvertedTools, ProviderError>"
+      "signature": "fn convert_tools(tools: &[ToolDefinition], tool_choice: Option<&ToolChoice>, mapping: &ToolNameMapping, _strict_json_schema: bool, provider_options_key: &str) -> Result<ConvertedTools, ProviderError>"
     },
     {
       "path": "ferrin_openai::responses::convert_tools::provider_tool_type",
@@ -2057,6 +2058,7 @@
       "kind": "struct",
       "signature": "struct",
       "fields": [
+        "allowed_tools: Option<AllowedToolsOptions>",
         "conversation: Option<String>",
         "include: Option<Vec<String>>",
         "include_web_search_sources: Option<bool>",
@@ -2381,6 +2383,7 @@
       "signature": "struct",
       "fields": [
         "name: String",
+        "async: Option<bool>",
         "description: Option<String>",
         "format: Option<CustomToolFormat>"
       ],

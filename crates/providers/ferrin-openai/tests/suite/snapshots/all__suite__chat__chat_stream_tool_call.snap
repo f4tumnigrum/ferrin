@@ -47,11 +47,13 @@ expression: parts
     "usage": {
       "input": {
         "total": 15,
-        "no_cache": 15
+        "no_cache": 15,
+        "cache_read": 0
       },
       "output": {
         "total": 6,
-        "text": 6
+        "text": 6,
+        "reasoning": 0
       }
     },
     "provider_metadata": {

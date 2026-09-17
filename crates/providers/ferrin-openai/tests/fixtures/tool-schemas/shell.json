@@ -1,0 +1,125 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.shell",
+  "input": {
+    "value": {
+      "action": {
+        "commands": [
+          "value"
+        ],
+        "timeoutMs": 1,
+        "maxOutputLength": 1,
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": {
+        "commands": [
+          "value"
+        ],
+        "timeoutMs": 1,
+        "maxOutputLength": 1
+      }
+    },
+    "invalid": [
+      {
+        "action": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "output": [
+        {
+          "stdout": "value",
+          "stderr": "value",
+          "outcome": {
+            "type": "timeout",
+            "extra_field": "strip this"
+          },
+          "extra_field": "strip this"
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "output": [
+        {
+          "stdout": "value",
+          "stderr": "value",
+          "outcome": {
+            "type": "timeout"
+          }
+        }
+      ]
+    },
+    "invalid": [
+      {
+        "output": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "environment": {
+        "type": "containerAuto",
+        "fileIds": [
+          "value"
+        ],
+        "memoryLimit": "1g",
+        "networkPolicy": {
+          "type": "disabled",
+          "extra_field": "strip this"
+        },
+        "skills": [
+          {
+            "type": "skillReference",
+            "providerReference": {
+              "openai": "skill-fixture"
+            },
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "shell",
+        "environment": {
+          "type": "container_auto",
+          "file_ids": [
+            "value"
+          ],
+          "memory_limit": "1g",
+          "network_policy": {
+            "type": "disabled"
+          },
+          "skills": [
+            {
+              "type": "skill_reference",
+              "skill_id": "skill-fixture",
+              "version": "latest"
+            }
+          ]
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "environment": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

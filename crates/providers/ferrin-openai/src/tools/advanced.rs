@@ -4,32 +4,36 @@
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
-use ferrin_tool::Schema;
 use ferrin_tool::Tool;
 use ferrin_tool::ToolCallerDefinition;
-use serde_json::json;
 
 pub(super) fn programmatic() -> Tool {
-    Tool::provider_executed("openai.programmatic_tool_calling", JsonObject::new())
-        .input_schema(Schema::from_json_schema(json!({
-            "type": "object", "properties": {"code": {"type": "string"}, "fingerprint": {"type": "string"}},
-            "required": ["code", "fingerprint"]
-        })))
-        .output_schema(Schema::from_json_schema(json!({
-            "type": "object", "properties": {"result": {"type": "string"}, "status": {"enum": ["completed", "incomplete"]}},
-            "required": ["result", "status"]
-        })))
+    let builder = Tool::provider_executed("openai.programmatic_tool_calling", JsonObject::new())
+        .input_schema(super::schemas::input("openai.programmatic_tool_calling"))
         .supports_deferred_results(true)
         .caller(ToolCallerDefinition::provider(|options| {
             let mut options = options.unwrap_or_default();
             let openai = options.entry("openai".to_owned()).or_default();
-            let mut callers = openai.get("allowedCallers").and_then(JsonValue::as_array).cloned().unwrap_or_default();
+            let mut callers = openai
+                .get("allowedCallers")
+                .and_then(JsonValue::as_array)
+                .cloned()
+                .unwrap_or_default();
             let caller = JsonValue::from("programmatic");
-            if !callers.contains(&caller) { callers.push(caller); }
+            if !callers.contains(&caller) {
+                callers.push(caller);
+            }
             openai.insert("allowedCallers".into(), JsonValue::Array(callers));
             options
-        }))
-        .build()
+        }));
+    bind_output(builder, "openai.programmatic_tool_calling")
+}
+
+fn bind_output(mut builder: ferrin_tool::ToolBuilder<JsonValue>, id: &str) -> Tool {
+    if let Some(output) = super::schemas::output(id) {
+        builder = builder.output_schema(output);
+    }
+    builder.build()
 }
 
 pub(super) fn search(arguments: JsonObject) -> Tool {
@@ -38,11 +42,10 @@ pub(super) fn search(arguments: JsonObject) -> Tool {
     } else {
         Tool::provider_executed("openai.tool_search", arguments)
     };
-    builder.input_schema(Schema::from_json_schema(json!({
-        "type": "object", "properties": {"arguments": {}, "call_id": {"type": ["string", "null"]}}
-    }))).output_schema(Schema::from_json_schema(json!({
-        "type": "object", "properties": {"tools": {"type": "array", "items": {"type": "object"}}}, "required": ["tools"]
-    }))).build()
+    bind_output(
+        builder.input_schema(super::schemas::input("openai.tool_search")),
+        "openai.tool_search",
+    )
 }
 
 pub(super) fn shell(arguments: JsonObject) -> Tool {
@@ -56,19 +59,8 @@ pub(super) fn shell(arguments: JsonObject) -> Tool {
     } else {
         Tool::provider_defined("openai.shell", arguments)
     };
-    builder.input_schema(Schema::from_json_schema(json!({
-        "type": "object", "properties": {"action": {"type": "object", "properties": {
-            "commands": {"type": "array", "items": {"type": "string"}}, "timeoutMs": {"type": ["integer", "null"]}, "maxOutputLength": {"type": ["integer", "null"]}
-        }, "required": ["commands"]}}, "required": ["action"]
-    }))).output_schema(Schema::from_json_schema(json!({
-        "type":"object", "properties":{"output":{"type":"array","items":{
-            "type":"object", "properties":{
-                "stdout":{"type":"string"}, "stderr":{"type":"string"},
-                "outcome":{"oneOf":[
-                    {"type":"object","properties":{"type":{"const":"exit"},"exitCode":{"type":"integer"}},"required":["type","exitCode"]},
-                    {"type":"object","properties":{"type":{"const":"timeout"}},"required":["type"]}
-                ]}
-            }, "required":["stdout","stderr","outcome"]
-        }}}, "required":["output"]
-    }))).build()
+    bind_output(
+        builder.input_schema(super::schemas::input("openai.shell")),
+        "openai.shell",
+    )
 }

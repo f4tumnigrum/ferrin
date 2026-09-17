@@ -20,7 +20,6 @@ workspace = true
 
 [dependencies]
 ferrin-spec = { workspace = true }
-ferrin-schema = { workspace = true }
 ferrin-provider-util = { workspace = true, features = ["reqwest"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

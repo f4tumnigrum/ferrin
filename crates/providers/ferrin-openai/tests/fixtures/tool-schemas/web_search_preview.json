@@ -1,0 +1,79 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.web_search_preview",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "action": {
+        "type": "search",
+        "query": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": {
+        "type": "search",
+        "query": "value"
+      }
+    },
+    "invalid": [
+      {
+        "action": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "searchContextSize": "low",
+      "userLocation": {
+        "type": "approximate",
+        "country": "value",
+        "city": "value",
+        "region": "value",
+        "timezone": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "web_search_preview",
+        "search_context_size": "low",
+        "user_location": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "searchContextSize": null,
+        "userLocation": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "searchContextSize": "low",
+        "userLocation": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

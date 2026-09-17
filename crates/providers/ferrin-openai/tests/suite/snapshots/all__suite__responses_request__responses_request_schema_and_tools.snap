@@ -51,8 +51,7 @@ expression: prepared.body
           "city"
         ],
         "additionalProperties": false
-      },
-      "strict": true
+      }
     }
   ],
   "tool_choice": {

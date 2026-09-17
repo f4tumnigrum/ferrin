@@ -39,10 +39,12 @@ expression: parts
     },
     "usage": {
       "input": {
-        "total": 8
+        "total": 8,
+        "no_cache": 8
       },
       "output": {
-        "total": 5
+        "total": 5,
+        "text": 5
       }
     },
     "provider_metadata": {

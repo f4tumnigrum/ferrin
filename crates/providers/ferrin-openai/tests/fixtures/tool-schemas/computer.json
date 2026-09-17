@@ -1,0 +1,157 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.computer",
+  "input": {
+    "value": {
+      "actions": [
+        {
+          "type": "click",
+          "button": "left",
+          "x": 1,
+          "y": 1,
+          "extra_field": "strip this"
+        }
+      ],
+      "pendingSafetyChecks": [
+        {
+          "id": "value",
+          "code": "value",
+          "message": "value",
+          "extra_field": "strip this"
+        }
+      ],
+      "status": "in_progress",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "actions": [
+        {
+          "type": "click",
+          "button": "left",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      "pendingSafetyChecks": [
+        {
+          "id": "value",
+          "code": "value",
+          "message": "value"
+        }
+      ],
+      "status": "in_progress"
+    },
+    "invalid": [
+      {
+        "actions": null,
+        "pendingSafetyChecks": [
+          {
+            "id": "value",
+            "code": "value",
+            "message": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "status": "in_progress",
+        "extra_field": "strip this"
+      },
+      {
+        "pendingSafetyChecks": [
+          {
+            "id": "value",
+            "code": "value",
+            "message": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "status": "in_progress",
+        "extra_field": "strip this"
+      },
+      {
+        "actions": [
+          {
+            "type": "click",
+            "button": "left",
+            "x": 1,
+            "y": 1,
+            "extra_field": "strip this"
+          }
+        ],
+        "pendingSafetyChecks": null,
+        "status": "in_progress",
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "output": {
+        "type": "computer_screenshot",
+        "imageUrl": "value",
+        "fileId": "value",
+        "detail": "auto",
+        "extra_field": "strip this"
+      },
+      "acknowledgedSafetyChecks": [
+        {
+          "id": "value",
+          "code": "value",
+          "message": "value",
+          "extra_field": "strip this"
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "output": {
+        "type": "computer_screenshot",
+        "imageUrl": "value",
+        "fileId": "value",
+        "detail": "auto"
+      },
+      "acknowledgedSafetyChecks": [
+        {
+          "id": "value",
+          "code": "value",
+          "message": "value"
+        }
+      ]
+    },
+    "invalid": [
+      {
+        "output": null,
+        "acknowledgedSafetyChecks": [
+          {
+            "id": "value",
+            "code": "value",
+            "message": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "acknowledgedSafetyChecks": [
+          {
+            "id": "value",
+            "code": "value",
+            "message": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "output": {
+          "type": "computer_screenshot",
+          "imageUrl": "value",
+          "fileId": "value",
+          "detail": "auto",
+          "extra_field": "strip this"
+        },
+        "acknowledgedSafetyChecks": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.image_generation",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "result": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "result": "value"
+    },
+    "invalid": [
+      {
+        "result": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "action": "generate",
+      "background": "auto",
+      "inputFidelity": "low",
+      "inputImageMask": {
+        "fileId": "value",
+        "imageUrl": "value",
+        "extra_field": "strip this"
+      },
+      "model": "value",
+      "moderation": "auto",
+      "outputCompression": 1,
+      "outputFormat": "png",
+      "partialImages": 1,
+      "quality": "auto",
+      "size": "1024x1024"
+    },
+    "wire": [
+      {
+        "type": "image_generation",
+        "action": "generate",
+        "background": "auto",
+        "input_fidelity": "low",
+        "input_image_mask": {
+          "file_id": "value",
+          "image_url": "value"
+        },
+        "model": "value",
+        "moderation": "auto",
+        "partial_images": 1,
+        "quality": "auto",
+        "output_compression": 1,
+        "output_format": "png",
+        "size": "1024x1024"
+      }
+    ],
+    "invalid": [
+      {
+        "action": null,
+        "background": "auto",
+        "inputFidelity": "low",
+        "inputImageMask": {
+          "fileId": "value",
+          "imageUrl": "value",
+          "extra_field": "strip this"
+        },
+        "model": "value",
+        "moderation": "auto",
+        "outputCompression": 1,
+        "outputFormat": "png",
+        "partialImages": 1,
+        "quality": "auto",
+        "size": "1024x1024"
+      },
+      {
+        "action": "generate",
+        "background": null,
+        "inputFidelity": "low",
+        "inputImageMask": {
+          "fileId": "value",
+          "imageUrl": "value",
+          "extra_field": "strip this"
+        },
+        "model": "value",
+        "moderation": "auto",
+        "outputCompression": 1,
+        "outputFormat": "png",
+        "partialImages": 1,
+        "quality": "auto",
+        "size": "1024x1024"
+      },
+      {
+        "action": "generate",
+        "background": "auto",
+        "inputFidelity": null,
+        "inputImageMask": {
+          "fileId": "value",
+          "imageUrl": "value",
+          "extra_field": "strip this"
+        },
+        "model": "value",
+        "moderation": "auto",
+        "outputCompression": 1,
+        "outputFormat": "png",
+        "partialImages": 1,
+        "quality": "auto",
+        "size": "1024x1024"
+      }
+    ]
+  }
+}

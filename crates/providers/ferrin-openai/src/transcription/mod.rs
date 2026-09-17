@@ -166,7 +166,7 @@ impl ChunkingStrategy {
 
 /// Options of the streaming (realtime) transcription.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct StreamingOptions {
     /// Latency/accuracy trade-off (`minimal`, `low`, `medium`, `high`, `xhigh`).
     #[serde(default)]
@@ -178,7 +178,7 @@ pub struct StreamingOptions {
 
 /// Call-level provider options.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct TranscriptionProviderOptions {
     /// Extra response fields.
     #[serde(default)]

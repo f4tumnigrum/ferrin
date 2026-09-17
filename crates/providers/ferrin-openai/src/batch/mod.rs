@@ -57,6 +57,7 @@ use crate::config::SharedConfig;
 use crate::embedding::provider_metadata;
 use crate::error::failed_response_handler;
 use crate::files::OpenAiFileObject;
+use crate::path::encode_path_segment;
 use crate::responses::request::prepare_request;
 use crate::stream_util::timestamp_from_seconds;
 
@@ -199,7 +200,8 @@ impl OpenAiBatch {
         );
         let response = get(
             self.config.transport.as_ref(),
-            self.config.url(&format!("/batches/{batch_id}")),
+            self.config
+                .url(&format!("/batches/{}", encode_path_segment(batch_id))),
             self.config.headers(headers)?,
             &handlers,
             cancellation,
@@ -453,8 +455,10 @@ impl Batch for OpenAiBatch {
         );
         post_json(
             self.config.transport.as_ref(),
-            self.config
-                .url(&format!("/batches/{}/cancel", options.batch_id.as_str())),
+            self.config.url(&format!(
+                "/batches/{}/cancel",
+                encode_path_segment(options.batch_id.as_str())
+            )),
             self.config.headers(&options.headers)?,
             &json!({}),
             &handlers,

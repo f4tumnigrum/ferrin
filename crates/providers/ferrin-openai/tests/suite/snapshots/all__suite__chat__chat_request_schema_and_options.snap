@@ -25,20 +25,9 @@ expression: prepared.body
         "type": "object",
         "properties": {
           "a": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string"
           }
-        },
-        "required": [
-          "a"
-        ],
-        "additionalProperties": false
+        }
       },
       "strict": true,
       "name": "response"

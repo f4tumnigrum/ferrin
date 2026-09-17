@@ -1,9 +1,10 @@
 //! Files service (`<name>.files`).
 
 use bytes::Bytes;
-use bytes::BytesMut;
 use ferrin_provider_util::MultipartForm;
 use ferrin_provider_util::http::ResponseHandlers;
+use ferrin_provider_util::http::TransportError;
+use ferrin_provider_util::http::TransportErrorKind;
 use ferrin_provider_util::http::binary_stream_response_handler;
 use ferrin_provider_util::http::delete;
 use ferrin_provider_util::http::get;
@@ -16,6 +17,7 @@ use ferrin_spec::JsonValue;
 use ferrin_spec::MediaType;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ProviderReference;
+use ferrin_spec::error::InvalidArgumentError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::files::DeleteFileResult;
 use ferrin_spec::files::DownloadFileResult;
@@ -33,6 +35,7 @@ use crate::config::SharedConfig;
 use crate::embedding::compact;
 use crate::embedding::provider_metadata;
 use crate::error::failed_response_handler;
+use crate::path::encode_path_segment;
 
 /// Default upload purpose.
 pub const DEFAULT_PURPOSE: &str = "assistants";
@@ -50,14 +53,36 @@ pub struct FilesProviderOptions {
 }
 
 /// File expiry configuration.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpiresAfter {
     /// Anchor (`created_at`).
-    #[serde(default)]
     pub anchor: Option<String>,
     /// Seconds after the anchor.
     pub seconds: u64,
+}
+
+impl<'de> Deserialize<'de> for ExpiresAfter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Input {
+            Seconds(u64),
+            Object {
+                anchor: Option<String>,
+                seconds: u64,
+            },
+        }
+        Ok(match Input::deserialize(deserializer)? {
+            Input::Seconds(seconds) => Self {
+                anchor: None,
+                seconds,
+            },
+            Input::Object { anchor, seconds } => Self { anchor, seconds },
+        })
+    }
 }
 
 /// A file object returned by the API.
@@ -110,7 +135,15 @@ impl OpenAiFiles {
     }
 
     fn file_id<'a>(&self, reference: &'a ProviderReference) -> Result<&'a str, ProviderError> {
-        Ok(resolve_provider_reference(reference, &self.config.name)?)
+        let id = resolve_provider_reference(reference, &self.config.name)?;
+        if id.trim().is_empty() {
+            return Err(InvalidArgumentError::new(
+                "file",
+                "file reference must contain a non-blank file id",
+            )
+            .into());
+        }
+        Ok(id)
     }
 
     fn reference(&self, id: &str) -> ProviderReference {
@@ -173,20 +206,26 @@ impl OpenAiFiles {
     }
 }
 
-async fn collect(data: UploadData) -> Result<Bytes, ProviderError> {
+fn file_form(data: UploadData, filename: Option<String>, media_type: String) -> MultipartForm {
+    let form = MultipartForm::new();
     match data {
-        UploadData::Bytes(bytes) => Ok(bytes),
-        UploadData::Text(text) => Ok(Bytes::from(text)),
-        UploadData::Stream(stream) => {
-            let mut buffer = BytesMut::new();
-            let mut stream = stream;
-            while let Some(chunk) = stream.next().await {
-                buffer.extend_from_slice(&chunk?);
-            }
-            Ok(buffer.freeze())
-        }
-        #[allow(unreachable_patterns, reason = "UploadData may grow")]
-        _ => Err(ProviderError::unsupported("upload data type")),
+        UploadData::Bytes(data) => form.file("file", filename, Some(media_type), data),
+        UploadData::Text(text) => form.file("file", filename, Some(media_type), Bytes::from(text)),
+        UploadData::Stream(stream) => form.file_stream(
+            "file",
+            filename,
+            Some(media_type),
+            stream
+                .map_err(|error| {
+                    if matches!(error, ProviderError::Cancelled) {
+                        TransportError::cancelled()
+                    } else {
+                        TransportError::new(TransportErrorKind::Body, "file upload stream failed")
+                            .with_cause(error)
+                    }
+                })
+                .boxed(),
+        ),
     }
 }
 
@@ -204,22 +243,19 @@ impl Files for OpenAiFiles {
             &options.provider_options,
         )?
         .unwrap_or_default();
-        let data = collect(options.data).await?;
         let filename = options
             .filename
             .clone()
-            .unwrap_or_else(|| "file".to_owned());
-        let mut form = MultipartForm::new()
-            .file(
-                "file",
-                Some(filename),
-                Some(options.media_type.as_str().to_owned()),
-                data,
-            )
-            .field(
-                "purpose",
-                openai.purpose.as_deref().unwrap_or(DEFAULT_PURPOSE),
-            );
+            .unwrap_or_else(|| "blob".to_owned());
+        let mut form = file_form(
+            options.data,
+            Some(filename),
+            options.media_type.as_str().to_owned(),
+        )
+        .field(
+            "purpose",
+            openai.purpose.as_deref().unwrap_or(DEFAULT_PURPOSE),
+        );
         if let Some(expires) = &openai.expires_after {
             form = form
                 .field(
@@ -241,7 +277,11 @@ impl Files for OpenAiFiles {
             options.cancellation,
         )
         .await?;
-        Ok(self.to_result(&response.value, Some(options.media_type)))
+        let mut result = self.to_result(&response.value, Some(options.media_type));
+        if result.filename.is_none() {
+            result.filename = options.filename;
+        }
+        Ok(result)
     }
 
     fn supports_get_file_metadata(&self) -> bool {
@@ -252,7 +292,7 @@ impl Files for OpenAiFiles {
         &self,
         options: FileReferenceOptions,
     ) -> Result<FileMetadataResult, ProviderError> {
-        let id = self.file_id(&options.file)?;
+        let id = encode_path_segment(self.file_id(&options.file)?);
         let handlers = ResponseHandlers::new(
             json_response_handler::<OpenAiFileObject>(),
             failed_response_handler(),
@@ -276,7 +316,7 @@ impl Files for OpenAiFiles {
         &self,
         options: FileReferenceOptions,
     ) -> Result<DownloadFileResult, ProviderError> {
-        let id = self.file_id(&options.file)?;
+        let id = encode_path_segment(self.file_id(&options.file)?);
         let handlers =
             ResponseHandlers::new(binary_stream_response_handler(), failed_response_handler());
         let response = get(
@@ -308,7 +348,7 @@ impl Files for OpenAiFiles {
         &self,
         options: FileReferenceOptions,
     ) -> Result<DeleteFileResult, ProviderError> {
-        let id = self.file_id(&options.file)?;
+        let id = encode_path_segment(self.file_id(&options.file)?);
         let handlers = ResponseHandlers::new(
             json_response_handler::<DeleteResponse>(),
             failed_response_handler(),

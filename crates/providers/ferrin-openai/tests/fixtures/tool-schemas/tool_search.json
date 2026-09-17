@@ -1,0 +1,136 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.tool_search",
+  "input": {
+    "value": {
+      "arguments": {
+        "opaque_key": [
+          1,
+          true,
+          null
+        ]
+      },
+      "call_id": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "arguments": {
+        "opaque_key": [
+          1,
+          true,
+          null
+        ]
+      },
+      "call_id": "value"
+    },
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "tools": [
+        {
+          "User_Key": {
+            "opaque_key": [
+              1,
+              true,
+              null
+            ]
+          }
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "tools": [
+        {
+          "User_Key": {
+            "opaque_key": [
+              1,
+              true,
+              null
+            ]
+          }
+        }
+      ]
+    },
+    "invalid": [
+      {
+        "tools": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "execution": "server",
+      "description": "value",
+      "parameters": {
+        "User_Key": {
+          "opaque_key": [
+            1,
+            true,
+            null
+          ]
+        }
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "tool_search",
+        "execution": "server",
+        "description": "value",
+        "parameters": {
+          "User_Key": {
+            "opaque_key": [
+              1,
+              true,
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "execution": null,
+        "description": "value",
+        "parameters": {
+          "User_Key": {
+            "opaque_key": [
+              1,
+              true,
+              null
+            ]
+          }
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "execution": "server",
+        "description": null,
+        "parameters": {
+          "User_Key": {
+            "opaque_key": [
+              1,
+              true,
+              null
+            ]
+          }
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "execution": "server",
+        "description": "value",
+        "parameters": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

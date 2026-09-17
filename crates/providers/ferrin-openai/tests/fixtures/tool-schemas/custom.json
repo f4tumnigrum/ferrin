@@ -1,0 +1,67 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.custom",
+  "input": {
+    "value": "value",
+    "expected": "value",
+    "invalid": [
+      {}
+    ]
+  },
+  "arguments": {
+    "value": {
+      "description": "value",
+      "async": true,
+      "format": {
+        "type": "grammar",
+        "syntax": "regex",
+        "definition": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "custom",
+        "name": "registered_tool",
+        "description": "value",
+        "async": true,
+        "format": {
+          "type": "grammar",
+          "syntax": "regex",
+          "definition": "value"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "description": null,
+        "async": true,
+        "format": {
+          "type": "grammar",
+          "syntax": "regex",
+          "definition": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "description": "value",
+        "async": null,
+        "format": {
+          "type": "grammar",
+          "syntax": "regex",
+          "definition": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "description": "value",
+        "async": true,
+        "format": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

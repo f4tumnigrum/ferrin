@@ -119,15 +119,17 @@ async fn provider_options_snapshot() {
 }
 
 #[tokio::test]
-async fn unknown_provider_option_is_an_invalid_argument() {
+async fn unknown_provider_option_is_ignored() {
     let test = TestProvider::start().await;
     let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+    let expected = prepare_request(test.provider.config(), "gpt-5", &options).unwrap();
     options.provider_options = openai_options(json!({"notAnOption": true}));
-    let error = prepare_request(test.provider.config(), "gpt-5", &options).unwrap_err();
-    assert!(
-        matches!(error, ferrin_spec::error::ProviderError::InvalidArgument(_)),
-        "{error:?}"
+    let actual = prepare_request(test.provider.config(), "gpt-5", &options).unwrap();
+    assert_eq!(
+        serde_json::to_value(actual.body).unwrap(),
+        serde_json::to_value(expected.body).unwrap()
     );
+    assert_eq!(actual.warnings, expected.warnings);
 }
 
 #[tokio::test]
@@ -254,7 +256,7 @@ async fn conversation_sends_new_local_tool_results() {
 }
 
 #[tokio::test]
-async fn custom_tool_aliases_roundtrip_calls_results_and_choice() {
+async fn custom_registered_names_roundtrip_calls_results_and_choice() {
     use ferrin_openai::responses::convert_tools::tool_name_mapping;
     use ferrin_spec::language_model::prompt::AssistantPromptPart;
     use ferrin_spec::language_model::prompt::ToolCallPart;
@@ -295,21 +297,21 @@ async fn custom_tool_aliases_roundtrip_calls_results_and_choice() {
     assert_eq!(
         body["input"],
         json!([
-            {"type": "custom_tool_call", "call_id": "query", "name": "sql", "input": "run"},
+            {"type": "custom_tool_call", "call_id": "query", "name": "query", "input": "run"},
             {"type": "custom_tool_call_output", "call_id": "query", "output": "ok"},
-            {"type": "custom_tool_call", "call_id": "script", "name": "python", "input": "run"},
+            {"type": "custom_tool_call", "call_id": "script", "name": "script", "input": "run"},
             {"type": "custom_tool_call_output", "call_id": "script", "output": "ok"}
         ])
     );
     assert_eq!(
         body["tool_choice"],
-        json!({"type": "custom", "name": "sql"})
+        json!({"type": "custom", "name": "query"})
     );
     let mapping = tool_name_mapping(&options.tools);
     assert_eq!(
         [
-            mapping.to_custom_tool_name("sql"),
-            mapping.to_custom_tool_name("python")
+            mapping.to_custom_tool_name("query"),
+            mapping.to_custom_tool_name("script")
         ],
         ["query", "script"]
     );

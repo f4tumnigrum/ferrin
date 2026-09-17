@@ -1,0 +1,177 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.web_search",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "action": {
+        "type": "search",
+        "query": "value",
+        "queries": [
+          "value"
+        ],
+        "extra_field": "strip this"
+      },
+      "sources": [
+        {
+          "type": "url",
+          "url": "value",
+          "extra_field": "strip this"
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": {
+        "type": "search",
+        "query": "value",
+        "queries": [
+          "value"
+        ]
+      },
+      "sources": [
+        {
+          "type": "url",
+          "url": "value"
+        }
+      ]
+    },
+    "invalid": [
+      {
+        "action": null,
+        "sources": [
+          {
+            "type": "url",
+            "url": "value",
+            "extra_field": "strip this"
+          }
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "action": {
+          "type": "search",
+          "query": "value",
+          "queries": [
+            "value"
+          ],
+          "extra_field": "strip this"
+        },
+        "sources": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "externalWebAccess": true,
+      "filters": {
+        "allowedDomains": [
+          "value"
+        ],
+        "blockedDomains": [
+          "value"
+        ],
+        "extra_field": "strip this"
+      },
+      "searchContextSize": "low",
+      "userLocation": {
+        "type": "approximate",
+        "country": "value",
+        "city": "value",
+        "region": "value",
+        "timezone": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "web_search",
+        "filters": {
+          "allowed_domains": [
+            "value"
+          ],
+          "blocked_domains": [
+            "value"
+          ]
+        },
+        "external_web_access": true,
+        "search_context_size": "low",
+        "user_location": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "externalWebAccess": null,
+        "filters": {
+          "allowedDomains": [
+            "value"
+          ],
+          "blockedDomains": [
+            "value"
+          ],
+          "extra_field": "strip this"
+        },
+        "searchContextSize": "low",
+        "userLocation": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "externalWebAccess": true,
+        "filters": null,
+        "searchContextSize": "low",
+        "userLocation": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "externalWebAccess": true,
+        "filters": {
+          "allowedDomains": [
+            "value"
+          ],
+          "blockedDomains": [
+            "value"
+          ],
+          "extra_field": "strip this"
+        },
+        "searchContextSize": null,
+        "userLocation": {
+          "type": "approximate",
+          "country": "value",
+          "city": "value",
+          "region": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

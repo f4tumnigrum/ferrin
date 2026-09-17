@@ -16,7 +16,6 @@ use ferrin_provider_util::http::json_response_handler;
 use ferrin_provider_util::http::post_json;
 use ferrin_provider_util::provider_options::parse_provider_options;
 use ferrin_provider_util::reasoning::is_custom_reasoning;
-use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::ModelId;
@@ -167,11 +166,6 @@ impl OpenAiChatLanguageModel {
                 description,
             }) => {
                 let (schema, schema_warnings) = normalize_json_schema(schema)?;
-                let schema = if strict_json_schema {
-                    SchemaTransform::OpenAiStrict.applied(schema)?
-                } else {
-                    schema
-                };
                 warnings.extend(schema_warnings);
                 let mut json_schema = json!({
                     "schema": schema,

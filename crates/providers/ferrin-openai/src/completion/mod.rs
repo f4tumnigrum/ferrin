@@ -56,7 +56,7 @@ const TEXT_PART_ID: &str = "0";
 
 /// Call-level provider options.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct CompletionProviderOptions {
     /// Echo the prompt.
     #[serde(default)]
@@ -245,11 +245,14 @@ pub fn convert_prompt(prompt: &[PromptMessage]) -> Result<CompletionPrompt, Prov
     })
 }
 
-fn map_usage(usage: &CompletionUsage) -> Usage {
-    Usage::totals(
-        usage.prompt_tokens.unwrap_or(0),
-        usage.completion_tokens.unwrap_or(0),
-    )
+fn map_usage(usage: &CompletionUsage, raw: Option<JsonObject>) -> Usage {
+    let mut result = Usage::default();
+    result.input.total = usage.prompt_tokens;
+    result.input.no_cache = Some(usage.prompt_tokens.unwrap_or(0));
+    result.output.total = usage.completion_tokens;
+    result.output.text = Some(usage.completion_tokens.unwrap_or(0));
+    result.raw = raw;
+    result
 }
 
 /// A prepared request.
@@ -368,7 +371,7 @@ struct CompletionStreamState {
     key: String,
     finish_reason: FinishReason,
     received_finish_reason: bool,
-    usage: Option<CompletionUsage>,
+    usage: Option<(CompletionUsage, Option<JsonObject>)>,
     first_chunk: bool,
     provider_metadata: JsonObject,
 }
@@ -420,7 +423,10 @@ impl StreamMachine for CompletionStreamState {
             });
         }
         if let Some(usage) = value.usage {
-            self.usage = Some(usage);
+            self.usage = Some((
+                usage,
+                raw.get("usage").and_then(JsonValue::as_object).cloned(),
+            ));
         }
         let Some(choice) = value
             .choices
@@ -464,7 +470,11 @@ impl StreamMachine for CompletionStreamState {
         }
         parts.push(StreamPart::Finish {
             finish_reason: self.finish_reason,
-            usage: self.usage.as_ref().map(map_usage).unwrap_or_default(),
+            usage: self
+                .usage
+                .as_ref()
+                .map(|(usage, raw)| map_usage(usage, raw.clone()))
+                .unwrap_or_default(),
             provider_metadata: Some(metadata(&self.key, self.provider_metadata)),
         });
         parts
@@ -534,7 +544,21 @@ impl LanguageModel for OpenAiCompletionLanguageModel {
             map_chat_finish_reason,
         );
         let mut result = GenerateResult::new(content, finish_reason);
-        result.usage = body.usage.as_ref().map(map_usage).unwrap_or_default();
+        result.usage = body
+            .usage
+            .as_ref()
+            .map(|usage| {
+                map_usage(
+                    usage,
+                    response
+                        .raw
+                        .as_ref()
+                        .and_then(|raw| raw.get("usage"))
+                        .and_then(JsonValue::as_object)
+                        .cloned(),
+                )
+            })
+            .unwrap_or_default();
         result.provider_metadata = Some(metadata(
             &self.config.provider_options_key,
             provider_metadata,

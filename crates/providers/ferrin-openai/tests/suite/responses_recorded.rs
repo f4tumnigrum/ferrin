@@ -39,6 +39,9 @@ fn options(case: &str) -> CallOptions {
             Some("Returns the current weather for a city.".to_owned()),
             json!({"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"], "additionalProperties": false}),
         )];
+        if let ToolDefinition::Function { strict, .. } = &mut options.tools[0] {
+            *strict = Some(true);
+        }
         options.tool_choice = Some(ToolChoice::tool("get_weather"));
     }
     if case == "structured-output" {

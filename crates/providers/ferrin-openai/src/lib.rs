@@ -34,6 +34,7 @@ pub mod error;
 pub mod files;
 pub mod image;
 pub mod json_schema;
+mod path;
 pub mod realtime;
 #[cfg(feature = "realtime")]
 pub(crate) mod realtime_ws;

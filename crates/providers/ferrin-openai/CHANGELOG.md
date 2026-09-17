@@ -21,6 +21,20 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Ignore unknown provider-option keys as the reference object schemas do, while
+  continuing to validate known option fields.
+- Preserve supplied function and structured-output schemas after compatibility
+  normalization; send function strict flags only when supplied, independently of
+  `strictJsonSchema`, and keep namespace entries in declaration order.
+- Match the reference schemas for all thirteen existing provider tools, including
+  input/output validation, defaults, object parsing and request arguments.
+- Normalize function output schemas and JSON-encode scalar results for functions
+  that declare them; preserve allowed-tool aliases and model-specific async flags.
+- Stream multipart file uploads with cancellation and encode file/batch IDs as
+  individual path segments; retain file expiry and filename defaults.
+- Preserve embedding precision, complete Chat/Completions usage fields, image
+  token remainders, and reference speech option precedence.
+
 - Complete hosted program/search/shell mapping, caller bindings, deferred results and replay; expand internal parallel wrappers only for declared functions.
 
 ## [0.1.2] - 2026-09-16

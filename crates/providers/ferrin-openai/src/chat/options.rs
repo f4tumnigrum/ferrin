@@ -10,7 +10,7 @@ use crate::responses::options::LogprobsOption;
 
 /// Call-level provider options (`provider_options["openai"]`).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatProviderOptions {
     /// Token id → bias.
     #[serde(default)]

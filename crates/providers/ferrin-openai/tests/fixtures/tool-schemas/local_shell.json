@@ -1,0 +1,63 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.local_shell",
+  "input": {
+    "value": {
+      "action": {
+        "type": "exec",
+        "command": [
+          "value"
+        ],
+        "timeoutMs": 1,
+        "user": "value",
+        "workingDirectory": "value",
+        "env": {
+          "User_Key": "value"
+        },
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": {
+        "type": "exec",
+        "command": [
+          "value"
+        ],
+        "timeoutMs": 1,
+        "user": "value",
+        "workingDirectory": "value",
+        "env": {
+          "User_Key": "value"
+        }
+      }
+    },
+    "invalid": [
+      {
+        "action": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "output": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "output": "value"
+    },
+    "invalid": [
+      {
+        "output": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

@@ -1,7 +1,6 @@
 //! Conversion of tool definitions and tool choice for the Chat Completions
 //! API.
 
-use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
 use ferrin_spec::error::ProviderError;
@@ -29,10 +28,12 @@ pub struct ConvertedTools {
 ///
 /// Returns [`ProviderError::UnsupportedFunctionality`] for an unsupported tool
 /// choice or an unsupported JSON schema construct.
+/// The legacy `strict_json_schema` argument is ignored; function strict flags
+/// are independent of the structured-output setting.
 pub fn convert_tools(
     tools: &[ToolDefinition],
     tool_choice: Option<&ToolChoice>,
-    strict_json_schema: bool,
+    _strict_json_schema: bool,
 ) -> Result<ConvertedTools, ProviderError> {
     let mut out = ConvertedTools::default();
     if tools.is_empty() {
@@ -49,11 +50,6 @@ pub fn convert_tools(
                 ..
             } => {
                 let (parameters, schema_warnings) = normalize_json_schema(input_schema)?;
-                let parameters = if strict.unwrap_or(strict_json_schema) {
-                    SchemaTransform::OpenAiStrict.applied(parameters)?
-                } else {
-                    parameters
-                };
                 out.warnings.extend(schema_warnings);
                 let mut inner = json!({
                     "name": name,
@@ -66,23 +62,21 @@ pub fn convert_tools(
                             JsonValue::from(description.as_str()),
                         );
                     }
-                    if strict.unwrap_or(strict_json_schema) {
-                        object.insert("strict".to_owned(), JsonValue::Bool(true));
+                    if let Some(strict) = strict {
+                        object.insert("strict".to_owned(), JsonValue::Bool(*strict));
                     }
                 }
                 converted.push(json!({"type": "function", "function": inner}));
             }
-            ToolDefinition::Provider { id, .. } => {
+            ToolDefinition::Provider { .. } => {
                 out.warnings
-                    .push(Warning::unsupported(format!("tool type: {id}")));
+                    .push(Warning::unsupported("tool type: provider"));
             }
             #[allow(unreachable_patterns, reason = "ToolDefinition is non-exhaustive")]
             _ => out.warnings.push(Warning::unsupported("tool type")),
         }
     }
-    if !converted.is_empty() {
-        out.tools = Some(converted);
-    }
+    out.tools = Some(converted);
     out.tool_choice = match tool_choice {
         None => None,
         Some(ToolChoice::Auto) => Some(JsonValue::from("auto")),

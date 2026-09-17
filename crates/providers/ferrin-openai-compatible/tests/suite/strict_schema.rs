@@ -1,131 +1,74 @@
-//! Strict schema conversion respects compatible endpoint opt-outs.
+//! Compatible endpoints receive original schemas with independent strict flags.
 
 use ferrin_spec::CallOptions;
 use ferrin_spec::JsonValue;
 use ferrin_spec::PromptMessage;
 use ferrin_spec::ResponseFormat;
 use ferrin_spec::ToolDefinition;
-use ferrin_spec::error::ProviderError;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 
 use super::common::TestProvider;
 use super::common::example_options;
 
-fn options(schema: &JsonValue) -> CallOptions {
-    let mut options = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
-    options.tools = vec![ToolDefinition::function("lookup", None, schema.clone())];
-    options.response_format = Some(ResponseFormat::Json {
-        schema: Some(schema.clone()),
-        name: None,
-        description: None,
-    });
-    options
-}
-
 #[tokio::test]
-async fn structured_output_and_explicit_tool_strict_transform_optional_values() {
+async fn strict_flags_preserve_optional_values_and_dictionary_schemas() {
     let test = TestProvider::start_with(|mut settings| {
         settings.supports_structured_outputs = true;
         settings
     })
     .await;
-    let schema = json!({"type": "object", "properties": {
-        "mode": {"type": "string", "enum": ["fast", "slow"]}
-    }});
-    let expected = json!({"type": "object", "properties": {
-        "mode": {"anyOf": [{"type": "string", "enum": ["fast", "slow"]}, {"type": "null"}]}
-    }, "required": ["mode"], "additionalProperties": false});
-    for strict in [None, Some(false), Some(true)] {
-        let mut options = options(&schema);
-        let ToolDefinition::Function { strict: value, .. } = &mut options.tools[0] else {
-            panic!("expected function")
-        };
-        *value = strict;
-        let body = test
-            .provider
-            .chat("example-model")
-            .prepare_request(&options)
-            .unwrap()
-            .body;
-        assert_eq!(body["response_format"]["json_schema"]["schema"], expected);
-        assert_eq!(
-            body["tools"][0]["function"]["parameters"],
-            if strict == Some(true) {
-                expected.clone()
-            } else {
-                schema.clone()
+    for schema in [
+        json!({"type":"object","properties":{"mode":{"type":"string","enum":["fast","slow"]}}}),
+        json!({"type":"object","additionalProperties":{"type":"integer"}}),
+    ] {
+        for global in [true, false] {
+            for local in [None, Some(false), Some(true)] {
+                let mut call = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+                let mut tool = ToolDefinition::function("lookup", None, schema.clone());
+                let ToolDefinition::Function { strict, .. } = &mut tool else {
+                    panic!("expected function")
+                };
+                *strict = local;
+                call.tools.push(tool);
+                call.response_format = Some(ResponseFormat::json(schema.clone()));
+                call.provider_options = example_options(json!({"strictJsonSchema":global}));
+                let body = test
+                    .provider
+                    .chat("model")
+                    .prepare_request(&call)
+                    .unwrap()
+                    .body;
+                assert_eq!(
+                    (
+                        body["tools"][0]["function"]["parameters"].clone(),
+                        body["response_format"]["json_schema"].clone()
+                    ),
+                    (
+                        schema.clone(),
+                        json!({"schema":schema,"strict":global,"name":"response"})
+                    ),
+                );
+                assert_eq!(
+                    body["tools"][0]["function"].get("strict"),
+                    local.map(JsonValue::Bool).as_ref()
+                );
             }
-        );
-        assert_eq!(
-            body["tools"][0]["function"].get("strict"),
-            strict.map(JsonValue::Bool).as_ref()
-        );
-        options.provider_options = example_options(json!({"strictJsonSchema": false}));
-        let body = test
-            .provider
-            .chat("example-model")
-            .prepare_request(&options)
-            .unwrap()
-            .body;
-        assert_eq!(body["response_format"]["json_schema"]["schema"], schema);
-        assert_eq!(
-            body["response_format"]["json_schema"]["strict"],
-            json!(false)
-        );
-        assert_eq!(
-            body["tools"][0]["function"]["parameters"],
-            if strict == Some(true) {
-                expected.clone()
-            } else {
-                schema.clone()
-            }
-        );
+        }
     }
 }
 
 #[tokio::test]
-async fn strict_dictionaries_fail_but_opt_out_and_schema_fallback_remain_available() {
-    let schema = json!({"type": "object", "additionalProperties": {"type": "integer"}});
-    let test = TestProvider::start_with(|mut settings| {
-        settings.supports_structured_outputs = true;
-        settings
-    })
-    .await;
-    let mut options = options(&schema);
-    assert!(matches!(
-        test.provider
-            .chat("example-model")
-            .prepare_request(&options),
-        Err(ProviderError::InvalidArgument(_))
+async fn unsupported_structured_output_retains_json_object_fallback() {
+    let test = TestProvider::start().await;
+    let mut call = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
+    call.response_format = Some(ResponseFormat::json(
+        json!({"type":"object","additionalProperties":{"type":"integer"}}),
     ));
-    options.provider_options = example_options(json!({"strictJsonSchema": false}));
-    let body = test
-        .provider
-        .chat("example-model")
-        .prepare_request(&options)
-        .unwrap()
-        .body;
-    assert_eq!(body["response_format"]["json_schema"]["schema"], schema);
-    let ToolDefinition::Function { strict, .. } = &mut options.tools[0] else {
-        panic!("expected function")
-    };
-    *strict = Some(true);
-    assert!(matches!(
-        test.provider
-            .chat("example-model")
-            .prepare_request(&options),
-        Err(ProviderError::InvalidArgument(_))
-    ));
-
-    let fallback = TestProvider::start().await;
-    options.tools.clear();
-    options.provider_options.clear();
-    let body = fallback
-        .provider
-        .chat("example-model")
-        .prepare_request(&options)
-        .unwrap()
-        .body;
-    assert_eq!(body["response_format"], json!({"type": "json_object"}));
+    let request = test.provider.chat("model").prepare_request(&call).unwrap();
+    assert_eq!(
+        request.body["response_format"],
+        json!({"type":"json_object"})
+    );
+    assert_eq!(request.warnings.len(), 1);
 }

@@ -51,7 +51,7 @@
 
 ## 供应商选项（`provider_options["openai"]`）
 
-选项键为 camelCase，未知键返回 `ProviderError::InvalidArgument`。完整 schema 见各模块的 `*ProviderOptions` 结构体。
+【决策】选项键为 camelCase。未知选项键按参考 Zod 对象解析规则忽略，已知字段的非法值仍在 HTTP 前失败。完整 schema 见各模块的 `*ProviderOptions` 结构体。来源：本地 AI SDK `6c6c221` 的选项 schema。
 
 【事实】Responses（`src/responses/options.rs`）：`conversation`、`include`、`includeWebSearchSources`、`instructions`、`logprobs`（`true` 或 top-N 数值）、`maxToolCalls`、`metadata`、`parallelToolCalls`、`previousResponseId`、`promptCacheKey`、`promptCacheOptions {retention}`、`promptCacheRetention`、`reasoningEffort`、`reasoningEffortUpdate`、`reasoningSummary`、`reasoningMode`、`reasoningContext`、`safetyIdentifier`、`serviceTier`、`store`、`strictJsonSchema`、`systemMessageMode`（`system`/`developer`/`remove`）、`textVerbosity`、`truncation`、`user`、`forceReasoning`、`contextManagement [{type, compactThreshold}]`、`compactionTrigger`、`passThroughUnsupportedFiles`。部件级选项：`itemId`、`reasoningEncryptedContent`、`phase`、`imageDetail`、`encryptedContent`（`openai.compaction` 自定义部件）。函数工具选项：`deferLoading`、`allowedCallers`、`outputSchema`、`namespace`、`namespaceDescription`。
 
@@ -67,7 +67,21 @@
 
 【事实】图像：`images[{revisedPrompt}]`、`background`、`outputFormat`、`quality`、`size`、`created`，用量补充 `imageTokens`、`textTokens`。转写（`gpt-4o-transcribe-diarize`）：`segments[{text, startSecond, endSecond, speaker}]`。文件：`purpose`、`status`、`bytes`、`filename`、`createdAt`、`expiresAt`。技能：`defaultVersion`、`createdAt`、`updatedAt`。批处理：`inputFileId`、`inputFileExpiresAt`。
 
+【决策】用量映射对齐本地 AI SDK `6c6c221`：Chat 缺失的缓存读取/推理计数映射为零；Completion 保留缺失的总量，同时提供默认零的非缓存/文本细分，并保留原始用量对象。图像输入 token 细分在返回图像间均分，余数计入最后一张，保证合计等于供应商用量。来源：参考实现 `chat/convert-openai-chat-usage.ts`、`completion/convert-openai-completion-usage.ts`、`image/openai-image-model.ts`；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】文件与批处理资源 ID 作为独立路径段编码；空白文件 ID 在 HTTP 前报错。文件上传接受参考实现的数字形式 `expiresAfter` 秒数，并保留现有 `{anchor, seconds}` 形式以兼容旧调用；响应省略文件名时回退到调用方提供的名称，未命名的 multipart 文件使用 `blob`。来源：参考实现 `files/openai-files.ts`、`files/openai-files.test.ts`、`openai-batch.ts`；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】已有工具工厂校验完整的参考输入/输出 schema，包括动作变体、必需字段、元组长度和默认值。对象输入遵循参考解析器：未知字段被移除，显式字典/透传策略保留的字段除外；严格对象拒绝未知字段。供应商配置参数在请求转换前校验。来源：本地 `6c6c221` 的 `packages/openai/src/tool` schema、[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】语音 `speed` 与 `instructions` 仅从顶层语音选项发送，以匹配参考请求构造器。`provider_options["openai"]` 中的重复字段仍会解析（包括 speed 的 0.25–4.0 范围），但不覆盖请求。使用重复字段的调用应迁移到语音构建器的 `.speed(...)` / `.instructions(...)`。来源：参考 `speech/openai-speech-model.ts::getArgs`、`speech/openai-speech-model-options.ts` 及其顶层 speed 回归；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】`UploadData::Stream` 经共享传输进行流式 multipart 上传，不在 HTTP 前把文件收集进内存。取消或丢弃请求释放输入流；源流失败使用脱敏的请求体错误。来源：`src/files/mod.rs` 及参考文件上传实现；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】Responses 自定义工具在声明、选择和回放中均使用注册名称；旧 `CustomToolArgs::name` 提示被忽略。GPT-6 之前的模型会警告并移除函数/自定义工具的 `async: true`。函数 `namespace` 接受参考的 `{name, description}` 对象，并兼容旧字符串加 `namespaceDescription`，同名空间描述冲突时报错。调用级 `allowedTools {toolNames, mode}` 覆盖工具选择但保留完整定义，解析供应商别名并警告/移除不支持的条目。托管 shell 技能引用解析 `openai` 键并默认版本 `latest`。来源：参考 `responses/openai-responses-prepare-tools.ts`；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
 ## 已知限制与警告
+
+【决策】Responses 函数的 `outputSchema` 使用与输入 schema 相同的 `propertyNames` 规则规范化。其文本、错误文本和拒绝结果编码为 JSON 字符串字面量，JSON 结果保留原有 JSON 编码，使 OpenAI 能按 `output_schema` 解析结果字符串。来源：本地 AI SDK `6c6c221` 的 `prepareFunctionTool` 和 `convertFunctionToolResultOutput`；仅有本地请求回归验证。
 
 - 【事实】Responses：`topK`、`seed`、`presencePenalty`、`frequencyPenalty`、`stopSequences` 产生 `unsupported` 警告并被丢弃；推理模型丢弃 `temperature`、`topP`（`reasoningEffort: none` 且模型支持采样参数时保留）；GPT-6 及以后的推理模型丢弃 `logprobs`；非推理模型上的 `reasoning*` 选项产生警告；`serviceTier: flex` 只对 o3、o4-mini、GPT-5 及以后生效，`priority`/`fast` 只对 gpt-4*、GPT-5（`nano`、`chat` 除外）及 o3 以后生效，否则警告并移除。
 - 【事实】Responses 文件部件：图像接受 URL、字节、文件 ID；其他媒体类型只接受 `application/pdf` 字节与任意 URL，否则返回 `UnsupportedFunctionality`（`passThroughUnsupportedFiles: true` 时原样发送）；`FileData::Text` 只在匹配 `file_id_prefixes` 时作为文件 ID。
@@ -146,7 +160,7 @@ just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & t
 
 【事实】Chat 非流式和流式生成均在 `Usage.raw` 保留上游完整 `usage` 对象，包括音频计数及未纳入归一化用量类型的字段。来源：`chat/mod.rs`、`chat/stream.rs`；回归测试 `raw_usage_preserves_unmodeled_fields_in_generate_and_stream`（2026-09-15）。
 
-【决策】Responses/Chat 的函数输入和结构化输出 Schema 在最终 strict 为 true（默认）时使用 `SchemaTransform::OpenAiStrict`。函数 `strict` 覆盖 `strictJsonSchema`；false 保留归一化后的 Schema。严格转换关闭对象、将全部属性设为必需，并使可选受约束值允许 null；无法表示的字典在 HTTP 请求前报错（ADR [0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)）。来源：`strict_schema` 回归测试（2026-09-15），仅验证请求形态。
+【决策】Responses/Chat 在 `propertyNames` 兼容性规范化后保留原有函数及结构化输出 Schema。函数 `strict` 仅在显式提供时发送；`strictJsonSchema` 只控制结构化输出的 strict 标记（默认 `true`）。依照 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，此规则取代 2026-09-15 记录的自动严格 Schema 转换。应用仍可显式使用 [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md) 的可失败转换 API。来源：本地 AI SDK `6c6c221` 的 Responses/Chat 请求编码和 `strict_schema` 回归；仅验证请求形态。
 
 【决策】Responses 高级工具往返遵循 [ADR 0022](../04-decisions/2026-09-17-0022-provider-tool-roundtrips.md)：托管程序、搜索和 shell 保留 ID 与回放字段；客户端搜索结果保留协议类型；供应商调用者绑定支持延迟程序结果。未声明的 parallel 包装仅展开已声明函数接收者，并保留有序回放元数据。确定性验证不关闭 PV-031。
 

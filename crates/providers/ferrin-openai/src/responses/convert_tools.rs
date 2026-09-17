@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use ferrin_provider_util::provider_options::parse_provider_options;
 use ferrin_provider_util::tool_name_mapping::ToolNameMapping;
-use ferrin_schema::SchemaTransform;
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::Warning;
@@ -14,7 +13,6 @@ use ferrin_spec::language_model::ToolDefinition;
 use serde_json::json;
 
 use super::convert_prompt::ProviderToolSet;
-use super::options::AllowedToolsOptions;
 use super::options::FunctionToolOptions;
 use crate::json_schema::normalize_json_schema;
 
@@ -46,19 +44,7 @@ pub fn tool_name_mapping(tools: &[ToolDefinition]) -> ToolNameMapping {
         .copied()
         .filter(|(id, _)| *id != "openai.custom")
         .collect();
-    let mut mapping = ToolNameMapping::new(tools, &names);
-    for tool in tools {
-        if let ToolDefinition::Provider { id, name, args } = tool
-            && id == "openai.custom"
-        {
-            let provider_name = args
-                .get("name")
-                .and_then(JsonValue::as_str)
-                .unwrap_or(name.as_str());
-            mapping = mapping.with_pair(name.as_str(), provider_name);
-        }
-    }
-    mapping
+    ToolNameMapping::new(tools, &names)
 }
 
 /// Converted tools.
@@ -86,16 +72,21 @@ pub struct ConvertedTools {
 ///
 /// Returns [`ProviderError::InvalidArgument`] for invalid tool options and
 /// [`ProviderError::UnsupportedFunctionality`] for unsupported schemas.
+/// The legacy `strict_json_schema` argument is ignored; only explicit per-tool
+/// strict flags are sent, and schemas retain their supplied constraints.
 pub fn convert_tools(
     tools: &[ToolDefinition],
     tool_choice: Option<&ToolChoice>,
     mapping: &ToolNameMapping,
-    strict_json_schema: bool,
+    _strict_json_schema: bool,
     provider_options_key: &str,
 ) -> Result<ConvertedTools, ProviderError> {
     let mut out = ConvertedTools::default();
+    if tools.is_empty() {
+        return Ok(out);
+    }
     let mut converted: Vec<JsonValue> = Vec::new();
-    let mut namespaces: Vec<(String, Option<String>, Vec<JsonValue>)> = Vec::new();
+    let mut namespaces: Vec<(String, Option<String>, usize)> = Vec::new();
     for tool in tools {
         match tool {
             ToolDefinition::Function {
@@ -115,24 +106,20 @@ pub fn convert_tools(
                     .flatten()
                     .unwrap_or_default();
                 let (parameters, warnings) = normalize_json_schema(input_schema)?;
-                let parameters = if strict.unwrap_or(strict_json_schema) {
-                    SchemaTransform::OpenAiStrict.applied(parameters)?
-                } else {
-                    parameters
-                };
                 out.warnings.extend(warnings);
                 let mut function = JsonObject::new();
                 function.insert("type".to_owned(), JsonValue::from("function"));
                 function.insert("name".to_owned(), JsonValue::from(name.as_str()));
-                function.insert(
-                    "description".to_owned(),
-                    description.clone().map_or(JsonValue::Null, JsonValue::from),
-                );
+                if let Some(description) = description {
+                    function.insert(
+                        "description".to_owned(),
+                        JsonValue::from(description.as_str()),
+                    );
+                }
                 function.insert("parameters".to_owned(), parameters);
-                function.insert(
-                    "strict".to_owned(),
-                    JsonValue::from(strict.unwrap_or(strict_json_schema)),
-                );
+                if let Some(strict) = strict {
+                    function.insert("strict".to_owned(), JsonValue::from(*strict));
+                }
                 if let Some(is_async) = options.r#async {
                     function.insert("async".to_owned(), JsonValue::from(is_async));
                 }
@@ -143,16 +130,38 @@ pub fn convert_tools(
                     function.insert("allowed_callers".to_owned(), json!(callers));
                 }
                 if let Some(schema) = &options.output_schema {
-                    function.insert("output_schema".to_owned(), schema.clone());
+                    let (schema, warnings) = normalize_json_schema(schema)?;
+                    out.warnings.extend(warnings);
+                    function.insert("output_schema".to_owned(), schema);
+                    out.provider_tools
+                        .output_schema_tool_names
+                        .insert(name.as_str().to_owned());
                 }
                 let item = JsonValue::Object(function);
                 match options.namespace {
                     Some(namespace) => {
                         if let Some(entry) = namespaces.iter_mut().find(|(n, _, _)| *n == namespace)
                         {
-                            entry.2.push(item);
+                            if entry.1 != options.namespace_description {
+                                return Err(ProviderError::unsupported(format!(
+                                    "conflicting descriptions for OpenAI tool namespace {namespace}"
+                                )));
+                            }
+                            if let Some(children) = converted[entry.2]["tools"].as_array_mut() {
+                                children.push(item);
+                            }
                         } else {
-                            namespaces.push((namespace, options.namespace_description, vec![item]));
+                            let mut group =
+                                json!({"type":"namespace","name":namespace,"tools":[item]});
+                            if let Some(description) = &options.namespace_description {
+                                group["description"] = json!(description);
+                            }
+                            namespaces.push((
+                                namespace,
+                                options.namespace_description,
+                                converted.len(),
+                            ));
+                            converted.push(group);
                         }
                     }
                     None => converted.push(item),
@@ -160,8 +169,6 @@ pub fn convert_tools(
             }
             ToolDefinition::Provider { id, name, args } => {
                 let Some(provider_type) = provider_tool_type(id) else {
-                    out.warnings
-                        .push(Warning::unsupported(format!("provider tool {id}")));
                     continue;
                 };
                 match provider_type {
@@ -172,12 +179,9 @@ pub fn convert_tools(
                     "shell" => out.provider_tools.shell = true,
                     "computer" => out.provider_tools.computer = true,
                     "custom" => {
-                        let custom_name = args
-                            .get("name")
-                            .and_then(JsonValue::as_str)
-                            .unwrap_or(name.as_str())
-                            .to_owned();
-                        out.provider_tools.custom_tool_names.insert(custom_name);
+                        out.provider_tools
+                            .custom_tool_names
+                            .insert(name.as_str().to_owned());
                     }
                     "web_search" | "web_search_preview" => {
                         out.has_web_search = true;
@@ -186,7 +190,8 @@ pub fn convert_tools(
                     "code_interpreter" => out.has_code_interpreter = true,
                     _ => {}
                 }
-                converted.push(provider_tool_item(provider_type, name.as_str(), args));
+                let args = crate::tools::schemas::arguments(id, args)?;
+                converted.push(provider_tool_item(provider_type, name.as_str(), &args)?);
             }
             #[allow(unreachable_patterns, reason = "ToolDefinition is non-exhaustive")]
             _ => out
@@ -194,20 +199,8 @@ pub fn convert_tools(
                 .push(Warning::unsupported("tool definition type")),
         }
     }
-    for (namespace, description, tools) in namespaces {
-        let mut item = json!({"type": "namespace", "name": namespace, "tools": tools});
-        if let Some(description) = description
-            && let Some(object) = item.as_object_mut()
-        {
-            object.insert("description".to_owned(), JsonValue::from(description));
-        }
-        converted.push(item);
-    }
-    if !converted.is_empty() {
-        out.tools = Some(converted);
-    }
-    out.tool_choice = tool_choice
-        .and_then(|choice| convert_tool_choice(choice, tools, mapping, provider_options_key));
+    out.tools = Some(converted);
+    out.tool_choice = tool_choice.and_then(|choice| convert_tool_choice(choice, tools, mapping));
     Ok(out)
 }
 
@@ -269,7 +262,11 @@ fn snake_case_keys(value: &JsonValue) -> JsonValue {
     }
 }
 
-fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> JsonValue {
+fn provider_tool_item(
+    provider_type: &str,
+    name: &str,
+    args: &JsonObject,
+) -> Result<JsonValue, ProviderError> {
     let mut item = JsonObject::new();
     item.insert("type".to_owned(), JsonValue::from(provider_type));
     match provider_type {
@@ -333,13 +330,8 @@ fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> Jso
             }
         }
         "custom" => {
-            item.insert(
-                "name".to_owned(),
-                args.get("name")
-                    .cloned()
-                    .unwrap_or_else(|| JsonValue::from(name)),
-            );
-            for key in ["description", "format"] {
+            item.insert("name".to_owned(), JsonValue::from(name));
+            for key in ["description", "format", "async"] {
                 if let Some(value) = args.get(key) {
                     item.insert(key.to_owned(), value.clone());
                 }
@@ -347,18 +339,10 @@ fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> Jso
         }
         "shell" => {
             if let Some(environment) = args.get("environment") {
-                let mut environment = snake_case_keys(environment);
-                if let Some(object) = environment.as_object_mut() {
-                    let kind = match object.get("type").and_then(JsonValue::as_str) {
-                        Some("containerAuto") => Some("container_auto"),
-                        Some("containerReference") => Some("container_reference"),
-                        _ => None,
-                    };
-                    if let Some(kind) = kind {
-                        object.insert("type".into(), kind.into());
-                    }
-                }
-                item.insert("environment".to_owned(), environment);
+                item.insert(
+                    "environment".into(),
+                    super::tool_options::shell_environment(environment)?,
+                );
             }
         }
         _ => {
@@ -370,65 +354,46 @@ fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> Jso
             }
         }
     }
-    JsonValue::Object(item)
+    if provider_type == "mcp" {
+        item.entry("require_approval")
+            .or_insert_with(|| JsonValue::from("never"));
+    }
+    Ok(JsonValue::Object(item))
 }
 
 fn convert_tool_choice(
     choice: &ToolChoice,
     tools: &[ToolDefinition],
     mapping: &ToolNameMapping,
-    provider_options_key: &str,
 ) -> Option<JsonValue> {
     match choice {
         ToolChoice::Auto => Some(JsonValue::from("auto")),
         ToolChoice::None => Some(JsonValue::from("none")),
         ToolChoice::Required => Some(JsonValue::from("required")),
         ToolChoice::Tool { tool_name } => {
-            let tool = tools.iter().find(|tool| tool.name() == tool_name);
-            match tool {
-                Some(ToolDefinition::Provider { id, args, .. }) => {
-                    let provider_type = provider_tool_type(id)?;
-                    if provider_type == "custom" {
-                        return Some(json!({
-                            "type": "custom",
-                            "name": args.get("name").cloned().unwrap_or_else(|| JsonValue::from(tool_name.as_str())),
-                        }));
-                    }
-                    if provider_type == "mcp"
-                        && let Some(label) = args.get("serverLabel")
-                    {
-                        return Some(json!({"type": "mcp", "server_label": label}));
-                    }
-                    Some(json!({"type": provider_type}))
-                }
-                Some(ToolDefinition::Function {
-                    provider_options, ..
-                }) => {
-                    let allowed = provider_options
-                        .as_ref()
-                        .and_then(|options| options.get(provider_options_key))
-                        .and_then(|options| options.get("allowedTools"))
-                        .and_then(|value| {
-                            serde_json::from_value::<AllowedToolsOptions>(value.clone()).ok()
-                        });
-                    if let Some(allowed) = allowed
-                        && !allowed.tools.is_empty()
-                    {
-                        return Some(json!({
-                            "type": "allowed_tools",
-                            "mode": allowed.mode.unwrap_or_else(|| "auto".to_owned()),
-                            "tools": allowed.tools.iter().map(|name| json!({"type": "function", "name": name})).collect::<Vec<_>>(),
-                        }));
-                    }
-                    Some(json!({
-                        "type": "function",
-                        "name": mapping.to_provider_tool_name(tool_name.as_str()),
-                    }))
-                }
-                _ => Some(json!({
-                    "type": "function",
-                    "name": mapping.to_provider_tool_name(tool_name.as_str()),
-                })),
+            let name = mapping.to_provider_tool_name(tool_name.as_str());
+            if matches!(
+                name,
+                "code_interpreter"
+                    | "file_search"
+                    | "image_generation"
+                    | "web_search_preview"
+                    | "web_search"
+                    | "mcp"
+                    | "apply_patch"
+                    | "computer"
+                    | "programmatic_tool_calling"
+            ) {
+                Some(json!({"type":name}))
+            } else if tools.iter().any(|tool| {
+                matches!(tool,
+                    ToolDefinition::Provider {id,name: tool_name,..}
+                    if id == "openai.custom" && tool_name.as_str() == name
+                )
+            }) {
+                Some(json!({"type":"custom","name":name}))
+            } else {
+                Some(json!({"type":"function","name":name}))
             }
         }
         #[allow(unreachable_patterns, reason = "ToolChoice is non-exhaustive")]

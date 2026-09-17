@@ -1,0 +1,58 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.programmatic_tool_calling",
+  "input": {
+    "value": {
+      "code": "value",
+      "fingerprint": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "code": "value",
+      "fingerprint": "value"
+    },
+    "invalid": [
+      {
+        "code": null,
+        "fingerprint": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "fingerprint": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "code": "value",
+        "fingerprint": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "result": "value",
+      "status": "completed",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "result": "value",
+      "status": "completed"
+    },
+    "invalid": [
+      {
+        "result": null,
+        "status": "completed",
+        "extra_field": "strip this"
+      },
+      {
+        "status": "completed",
+        "extra_field": "strip this"
+      },
+      {
+        "result": "value",
+        "status": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

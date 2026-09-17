@@ -190,7 +190,20 @@ fn convert_tool_result(
         )
         .into());
     }
-    let output = convert_output(&result.output, ctx, out)?;
+    let mut output = convert_output(&result.output, ctx, out)?;
+    if ctx
+        .provider_tools
+        .output_schema_tool_names
+        .contains(result.tool_name.as_str())
+        && matches!(
+            result.output,
+            ToolResultOutput::Text { .. }
+                | ToolResultOutput::ErrorText { .. }
+                | ToolResultOutput::ExecutionDenied { .. }
+        )
+    {
+        output = JsonValue::String(output.to_string());
+    }
     let item_type = if ctx.provider_tools.custom_tool_names.contains(provider_name) {
         "custom_tool_call_output"
     } else {

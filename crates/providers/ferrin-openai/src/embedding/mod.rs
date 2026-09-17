@@ -59,7 +59,7 @@ struct EmbeddingResponse {
 
 #[derive(Debug, Deserialize)]
 struct EmbeddingData {
-    embedding: Vec<f32>,
+    embedding: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize)]

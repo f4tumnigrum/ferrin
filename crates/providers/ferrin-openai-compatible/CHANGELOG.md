@@ -5,6 +5,13 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Forward supplied function and structured-output schemas unchanged; retain
+  independent strict flags and the unsupported-schema JSON-object fallback.
+- Preserve full JSON number precision in embedding vectors, matching the
+  reference adapter's number representation.
+
 ### Changed
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.

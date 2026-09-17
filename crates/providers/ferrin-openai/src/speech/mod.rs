@@ -10,6 +10,7 @@ use ferrin_spec::ProviderId;
 use ferrin_spec::RequestMetadata;
 use ferrin_spec::ResponseMetadata;
 use ferrin_spec::Warning;
+use ferrin_spec::error::InvalidArgumentError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::speech_model::SpeechModel;
 use ferrin_spec::speech_model::SpeechOptions;
@@ -100,6 +101,16 @@ impl SpeechModel for OpenAiSpeechModel {
             &options.provider_options,
         )?
         .unwrap_or_default();
+        if openai
+            .speed
+            .is_some_and(|speed| !(0.25..=4.0).contains(&speed))
+        {
+            return Err(InvalidArgumentError::new(
+                "provider_options",
+                "speech speed must be between 0.25 and 4.0",
+            )
+            .into());
+        }
         let format = match options.output_format.as_deref() {
             Some(format) if OUTPUT_FORMATS.contains(&format) => format.to_owned(),
             Some(format) => {
@@ -122,11 +133,8 @@ impl SpeechModel for OpenAiSpeechModel {
             input: &options.text,
             voice: options.voice.as_deref().unwrap_or(DEFAULT_VOICE),
             response_format: &format,
-            speed: openai.speed.or(options.speed),
-            instructions: openai
-                .instructions
-                .as_deref()
-                .or(options.instructions.as_deref()),
+            speed: options.speed,
+            instructions: options.instructions.as_deref(),
         };
         let request_body = serde_json::to_value(&body).map_err(ProviderError::other)?;
         let handlers = ResponseHandlers::new(binary_response_handler(), failed_response_handler());

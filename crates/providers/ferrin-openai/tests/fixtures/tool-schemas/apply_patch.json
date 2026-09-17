@@ -1,0 +1,86 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.apply_patch",
+  "input": {
+    "value": {
+      "callId": "value",
+      "operation": {
+        "type": "create_file",
+        "path": "value",
+        "diff": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "callId": "value",
+      "operation": {
+        "type": "create_file",
+        "path": "value",
+        "diff": "value"
+      }
+    },
+    "invalid": [
+      {
+        "callId": null,
+        "operation": {
+          "type": "create_file",
+          "path": "value",
+          "diff": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "operation": {
+          "type": "create_file",
+          "path": "value",
+          "diff": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "callId": "value",
+        "operation": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "status": "completed",
+      "output": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "status": "completed",
+      "output": "value"
+    },
+    "invalid": [
+      {
+        "status": null,
+        "output": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "output": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "status": "completed",
+        "output": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {},
+    "wire": [
+      {
+        "type": "apply_patch"
+      }
+    ],
+    "invalid": []
+  }
+}

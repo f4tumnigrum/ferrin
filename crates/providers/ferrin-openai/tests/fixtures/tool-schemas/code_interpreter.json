@@ -1,0 +1,67 @@
+{
+  "reference": "6c6c221",
+  "tool": "openai.code_interpreter",
+  "input": {
+    "value": {
+      "code": "value",
+      "containerId": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "code": "value",
+      "containerId": "value"
+    },
+    "invalid": [
+      {
+        "code": "value",
+        "containerId": null,
+        "extra_field": "strip this"
+      },
+      {
+        "code": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "outputs": [
+        {
+          "type": "logs",
+          "logs": "value",
+          "extra_field": "strip this"
+        }
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "outputs": [
+        {
+          "type": "logs",
+          "logs": "value"
+        }
+      ]
+    },
+    "invalid": [
+      42
+    ]
+  },
+  "arguments": {
+    "value": {
+      "container": "value",
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "code_interpreter",
+        "container": "value"
+      }
+    ],
+    "invalid": [
+      {
+        "container": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

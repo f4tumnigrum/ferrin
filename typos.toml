@@ -10,3 +10,5 @@ hel = "hel"
 tru = "tru"
 caf = "caf"
 thi = "thi"
+# OpenAI file-search filter operator: not in.
+nin = "nin"

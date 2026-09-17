@@ -243,6 +243,7 @@ pub(super) fn results_stream(state: ResultsState) -> BatchResultStream {
                     json_lines_response_handler::<BatchResultLine>(),
                     failed_response_handler(),
                 );
+                let file_id = crate::path::encode_path_segment(&file_id);
                 let url = state.config.url(&format!("/files/{file_id}/content"));
                 match get(
                     state.config.transport.as_ref(),

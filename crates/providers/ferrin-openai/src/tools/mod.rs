@@ -6,10 +6,10 @@
 //! format.
 
 mod advanced;
+pub(crate) mod schemas;
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
-use ferrin_tool::Schema;
 use ferrin_tool::Tool;
 use serde::Serialize;
 
@@ -248,8 +248,11 @@ pub enum CustomToolFormat {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomToolArgs {
-    /// Tool name on the wire.
+    /// Legacy name hint; the registered tool name is used on the wire.
     pub name: String,
+    /// Whether the model may continue without waiting for the tool result.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#async: Option<bool>,
     /// Description.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -295,15 +298,19 @@ impl OpenAiTools {
     }
 
     fn executed(id: &str, arguments: JsonObject) -> Tool {
-        Tool::provider_executed(id, arguments)
-            .input_schema(Schema::empty_object())
-            .build()
+        let mut builder = Tool::provider_executed(id, arguments).input_schema(schemas::input(id));
+        if let Some(output) = schemas::output(id) {
+            builder = builder.output_schema(output);
+        }
+        builder.build()
     }
 
     fn defined(id: &str, arguments: JsonObject) -> Tool {
-        Tool::provider_defined(id, arguments)
-            .input_schema(Schema::any())
-            .build()
+        let mut builder = Tool::provider_defined(id, arguments).input_schema(schemas::input(id));
+        if let Some(output) = schemas::output(id) {
+            builder = builder.output_schema(output);
+        }
+        builder.build()
     }
 
     /// `openai.web_search` (provider-executed).

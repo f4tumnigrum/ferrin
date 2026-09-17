@@ -43,10 +43,10 @@ pub fn map_chat_usage(usage: &ChatUsage, raw: Option<JsonObject>) -> Usage {
             .saturating_sub(cached.unwrap_or(0))
             .saturating_sub(cache_write.unwrap_or(0)),
     );
-    result.input.cache_read = cached;
+    result.input.cache_read = Some(cached.unwrap_or(0));
     result.input.cache_write = cache_write;
     result.output.text = Some(output.saturating_sub(reasoning.unwrap_or(0)));
-    result.output.reasoning = reasoning;
+    result.output.reasoning = Some(reasoning.unwrap_or(0));
     result.raw = raw;
     result
 }
