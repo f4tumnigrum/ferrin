@@ -1,0 +1,118 @@
+{
+  "crate": "ferrin-voyage",
+  "version": "0.1.2",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_voyage::SharedConfig",
+      "kind": "type_alias",
+      "signature": "type = Arc<VoyageConfig>",
+      "source": "config::SharedConfig"
+    },
+    {
+      "path": "ferrin_voyage::VoyageConfig",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "config::VoyageConfig",
+      "fields": [
+        "name: String",
+        "base_url: Url",
+        "api_key: Option<SecretString>",
+        "headers: Headers",
+        "transport: SharedTransport"
+      ],
+      "methods": [
+        "fn api_key(&self) -> Result<SecretString, ProviderError>",
+        "fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError>",
+        "fn new(name: impl Into<String>, base_url: Url) -> Result<Self, ProviderError>",
+        "fn url(&self, path: &str) -> Url",
+        "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Result<Self, ProviderError>"
+      ],
+      "traits": [
+        "impl Debug for VoyageConfig"
+      ]
+    },
+    {
+      "path": "ferrin_voyage::VoyageProvider",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "provider::VoyageProvider",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn from_config(config: SharedConfig) -> Self",
+        "fn reranking(&self, model_id: impl Into<ModelId>) -> VoyageRerankingModel"
+      ],
+      "traits": [
+        "impl Clone for VoyageProvider",
+        "impl Debug for VoyageProvider",
+        "impl Provider for VoyageProvider"
+      ]
+    },
+    {
+      "path": "ferrin_voyage::VoyageRerankingModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "reranking::VoyageRerankingModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &RerankOptions) -> Result<(JsonValue, Vec<Warning>), ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for VoyageRerankingModel",
+        "impl Debug for VoyageRerankingModel",
+        "impl RerankingModel for VoyageRerankingModel"
+      ]
+    },
+    {
+      "path": "ferrin_voyage::VoyageRerankingOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "options::VoyageRerankingOptions",
+      "fields": [
+        "return_documents: Option<bool>",
+        "truncation: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for VoyageRerankingOptions",
+        "impl Debug for VoyageRerankingOptions",
+        "impl Default for VoyageRerankingOptions",
+        "impl Eq for VoyageRerankingOptions",
+        "impl JsonSchema for VoyageRerankingOptions",
+        "impl PartialEq for VoyageRerankingOptions",
+        "impl Serialize for VoyageRerankingOptions",
+        "impl StructuralPartialEq for VoyageRerankingOptions",
+        "impl<'de> Deserialize<'de> for VoyageRerankingOptions"
+      ]
+    },
+    {
+      "path": "ferrin_voyage::VoyageSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "provider::VoyageSettings",
+      "fields": [
+        "base_url: Option<Url>",
+        "api_key: Option<SecretString>",
+        "name: Option<String>",
+        "headers: Headers",
+        "transport: Option<SharedTransport>"
+      ],
+      "traits": [
+        "impl Debug for VoyageSettings",
+        "impl Default for VoyageSettings"
+      ]
+    },
+    {
+      "path": "ferrin_voyage::create_voyage",
+      "kind": "function",
+      "signature": "fn create_voyage(settings: VoyageSettings) -> Result<VoyageProvider, ProviderError>",
+      "source": "provider::create_voyage"
+    }
+  ]
+}

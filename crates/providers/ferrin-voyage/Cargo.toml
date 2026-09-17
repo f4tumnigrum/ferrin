@@ -1,0 +1,38 @@
+[package]
+name = "ferrin-voyage"
+description = "Ferrin provider for Voyage reranking."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "reranking", "sdk", "voyage"]
+categories = ["api-bindings", "asynchronous"]
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+secrecy = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+ferrin-core = { workspace = true }
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+http = { workspace = true }
+wiremock = { workspace = true }
+insta = { workspace = true }
+pretty_assertions = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

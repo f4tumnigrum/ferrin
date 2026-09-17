@@ -781,6 +781,7 @@ version = "0.1.2"
 dependencies = [
  "criterion",
  "ferrin-anthropic",
+ "ferrin-azure",
  "ferrin-core",
  "ferrin-google",
  "ferrin-macros",
@@ -795,6 +796,7 @@ dependencies = [
  "ferrin-spec",
  "ferrin-testing",
  "ferrin-tool",
+ "ferrin-voyage",
  "futures-util",
  "http",
  "pretty_assertions",
@@ -828,6 +830,25 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "ferrin-azure"
+version = "0.1.2"
+dependencies = [
+ "ferrin-openai",
+ "ferrin-provider-util",
+ "ferrin-spec",
+ "ferrin-testing",
+ "futures-util",
+ "http",
+ "insta",
+ "percent-encoding",
+ "pretty_assertions",
+ "secrecy",
+ "serde_json",
+ "tokio",
  "url",
 ]
 
@@ -889,6 +910,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-tungstenite",
  "tokio-util",
  "tracing",
  "url",
@@ -1138,6 +1160,27 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "ferrin-voyage"
+version = "0.1.2"
+dependencies = [
+ "ferrin-core",
+ "ferrin-provider-util",
+ "ferrin-spec",
+ "ferrin-testing",
+ "http",
+ "insta",
+ "pretty_assertions",
+ "schemars",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "url",
+ "wiremock",
 ]
 
 [[package]]

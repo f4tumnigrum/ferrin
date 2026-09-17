@@ -1,0 +1,8 @@
+---
+source: crates/providers/ferrin-azure/tests/suite/provider.rs
+expression: "requests[0].body_json().unwrap()"
+---
+{
+  "model": "deployment-main",
+  "input": []
+}

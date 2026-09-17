@@ -33,6 +33,8 @@ ferrin-openai = { path = "crates/providers/ferrin-openai", version = "0.1.2" }
 ferrin-anthropic = { path = "crates/providers/ferrin-anthropic", version = "0.1.2" }
 ferrin-openai-compatible = { path = "crates/providers/ferrin-openai-compatible", version = "0.1.2" }
 ferrin-google = { path = "crates/providers/ferrin-google", version = "0.1.2" }
+ferrin-azure = { path = "crates/providers/ferrin-azure", version = "0.1.2" }
+ferrin-voyage = { path = "crates/providers/ferrin-voyage", version = "0.1.2" }
 
 # ---- external: versions verified 2026-09-13, see docs/03-engineering/01-toolchain-and-dependencies.md ----
 # async runtime and streams

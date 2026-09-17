@@ -1,0 +1,19 @@
+Ferrin
+Copyright 2026 Ferrin contributors
+
+This product includes software derived from the Vercel AI SDK
+(https://github.com/vercel/ai), Copyright 2023 Vercel, Inc., licensed
+under the Apache License, Version 2.0. The derived portions were
+translated from TypeScript to Rust and modified. They are found in the
+crates ferrin-spec, ferrin-schema, ferrin-message, ferrin-tool,
+ferrin-core, ferrin-mcp, ferrin-policy, ferrin-openai, ferrin-anthropic,
+ferrin-openai-compatible, ferrin-google, ferrin-azure and ferrin-voyage; the crate documentation of
+these crates and the module documentation of the closest translations
+carry a notice.
+
+Engineering conventions (workspace layout, lint configuration, CI
+structure) were informed by OpenAI Codex (https://github.com/openai/codex),
+Apache License, Version 2.0.
+
+Ferrin is an independent project and is not affiliated with or endorsed
+by Vercel, Inc. or OpenAI.

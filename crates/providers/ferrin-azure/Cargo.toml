@@ -1,0 +1,37 @@
+[package]
+name = "ferrin-azure"
+description = "Azure OpenAI provider for Ferrin with API-key and Microsoft Entra authentication."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["ai", "sdk", "azure", "openai"]
+categories = ["api-bindings", "asynchronous"]
+
+[lints]
+workspace = true
+
+[dependencies]
+ferrin-spec = { workspace = true }
+ferrin-openai = { workspace = true }
+ferrin-provider-util = { workspace = true, features = ["reqwest"] }
+secrecy = { workspace = true }
+url = { workspace = true }
+percent-encoding = { workspace = true }
+tokio = { workspace = true, features = ["macros", "time"] }
+
+[dev-dependencies]
+ferrin-testing = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+serde_json = { workspace = true }
+http = { workspace = true }
+pretty_assertions = { workspace = true }
+futures-util = { workspace = true }
+insta = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

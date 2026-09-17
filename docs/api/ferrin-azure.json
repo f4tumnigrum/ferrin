@@ -1,0 +1,116 @@
+{
+  "crate": "ferrin-azure",
+  "version": "0.1.2",
+  "format_version": 60,
+  "items": [
+    {
+      "path": "ferrin_azure::AzureProvider",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "provider::AzureProvider",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn chat(&self, deployment: &str) -> OpenAiChatLanguageModel",
+        "fn completion(&self, deployment: &str) -> OpenAiCompletionLanguageModel",
+        "fn embedding(&self, deployment: &str) -> OpenAiEmbeddingModel",
+        "fn image(&self, deployment: &str) -> OpenAiImageModel",
+        "fn responses(&self, deployment: &str) -> OpenAiResponsesLanguageModel",
+        "fn speech(&self, deployment: &str) -> OpenAiSpeechModel",
+        "fn tools(&self) -> OpenAiTools",
+        "fn transcription(&self, deployment: &str) -> AzureTranscriptionModel"
+      ],
+      "traits": [
+        "impl Clone for AzureProvider",
+        "impl Debug for AzureProvider",
+        "impl Provider for AzureProvider"
+      ]
+    },
+    {
+      "path": "ferrin_azure::AzureSettings",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "settings::AzureSettings",
+      "fields": [
+        "resource_name: Option<String>",
+        "base_url: Option<Url>",
+        "api_key: Option<SecretString>",
+        "token_provider: Option<Arc<dyn TokenProvider>>",
+        "headers: Headers",
+        "url_mode: AzureUrlMode",
+        "api_version: Option<String>",
+        "transport: Option<SharedTransport>"
+      ],
+      "methods": [
+        "fn new(resource_name: impl Into<String>) -> Self"
+      ],
+      "traits": [
+        "impl Debug for AzureSettings",
+        "impl Default for AzureSettings"
+      ]
+    },
+    {
+      "path": "ferrin_azure::AzureTranscriptionModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "transcription::AzureTranscriptionModel",
+      "fields": [
+        "/* private */"
+      ],
+      "traits": [
+        "impl Clone for AzureTranscriptionModel",
+        "impl Debug for AzureTranscriptionModel",
+        "impl TranscriptionModel for AzureTranscriptionModel"
+      ]
+    },
+    {
+      "path": "ferrin_azure::AzureUrlMode",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "settings::AzureUrlMode",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "V1",
+        "Deployment"
+      ],
+      "traits": [
+        "impl Clone for AzureUrlMode",
+        "impl Copy for AzureUrlMode",
+        "impl Debug for AzureUrlMode",
+        "impl Default for AzureUrlMode",
+        "impl Eq for AzureUrlMode",
+        "impl PartialEq for AzureUrlMode",
+        "impl StructuralPartialEq for AzureUrlMode"
+      ]
+    },
+    {
+      "path": "ferrin_azure::TokenProvider",
+      "kind": "trait",
+      "signature": "trait: Send + Sync + 'static",
+      "source": "settings::TokenProvider",
+      "methods": [
+        "fn token(&self) -> BoxFuture<'_, Result<SecretString, ProviderError>>"
+      ]
+    },
+    {
+      "path": "ferrin_azure::create_azure",
+      "kind": "function",
+      "signature": "fn create_azure(settings: AzureSettings) -> Result<AzureProvider, ProviderError>",
+      "source": "provider::create_azure"
+    },
+    {
+      "path": "ferrin_azure::token_provider",
+      "kind": "function",
+      "signature": "fn token_provider<F, Fut>(callback: F) -> Arc<dyn TokenProvider> where F: Fn() -> Fut + Send + Sync + 'static, Fut: Future<Output = Result<SecretString, ProviderError>> + Send + 'static",
+      "source": "settings::token_provider"
+    },
+    {
+      "path": "ferrin_azure::tools",
+      "kind": "use",
+      "source": "ferrin_openai::tools"
+    }
+  ]
+}
