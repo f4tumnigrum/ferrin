@@ -119,8 +119,14 @@
     {
       "path": "ferrin_policy::OnDecisionFn",
       "kind": "type_alias",
-      "signature": "type = Arc<dyn Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync>",
+      "signature": "type = Arc<dyn Fn(PolicyDecisionEvent) -> BoxFuture<'static, ()> + Send + Sync>",
       "source": "shadow::OnDecisionFn"
+    },
+    {
+      "path": "ferrin_policy::OnDecisionSyncFn",
+      "kind": "type_alias",
+      "signature": "type = Arc<dyn Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync>",
+      "source": "shadow::OnDecisionSyncFn"
     },
     {
       "path": "ferrin_policy::PolicyApproval",
@@ -197,6 +203,46 @@
       ]
     },
     {
+      "path": "ferrin_policy::PolicyDecisionEvent",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "shadow::PolicyDecisionEvent",
+      "fields": [
+        "tool_call: PolicyDecisionToolCall",
+        "decision: ApprovalStatus",
+        "enforced: bool",
+        "effective: ApprovalStatus",
+        "timestamp: DateTime<Utc>"
+      ],
+      "traits": [
+        "impl Clone for PolicyDecisionEvent",
+        "impl Debug for PolicyDecisionEvent",
+        "impl PartialEq for PolicyDecisionEvent",
+        "impl Serialize for PolicyDecisionEvent",
+        "impl StructuralPartialEq for PolicyDecisionEvent",
+        "impl<'de> Deserialize<'de> for PolicyDecisionEvent"
+      ]
+    },
+    {
+      "path": "ferrin_policy::PolicyDecisionToolCall",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "shadow::PolicyDecisionToolCall",
+      "fields": [
+        "tool_name: ToolName",
+        "tool_call_id: ToolCallId",
+        "input: JsonValue"
+      ],
+      "traits": [
+        "impl Clone for PolicyDecisionToolCall",
+        "impl Debug for PolicyDecisionToolCall",
+        "impl PartialEq for PolicyDecisionToolCall",
+        "impl Serialize for PolicyDecisionToolCall",
+        "impl StructuralPartialEq for PolicyDecisionToolCall",
+        "impl<'de> Deserialize<'de> for PolicyDecisionToolCall"
+      ]
+    },
+    {
       "path": "ferrin_policy::PolicyError",
       "kind": "enum",
       "signature": "enum",
@@ -268,8 +314,10 @@
         "/* private fields */"
       ],
       "methods": [
+        "async fn flush_decisions(&self)",
         "fn enforcement(self, enforcement: Enforcement) -> Self",
-        "fn on_decision(self, f: impl Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync + 'static) -> Self"
+        "fn on_decision<F, Fut>(self, observer: F) -> Self where F: Fn(PolicyDecisionEvent) -> Fut + Send + Sync + 'static, Fut: Future + Send + 'static",
+        "fn on_decision_sync(self, observer: impl Fn(&ParsedToolCall, Option<&ApprovalStatus>) + Send + Sync + 'static) -> Self"
       ],
       "traits": [
         "impl<P: ApprovalPolicy> ApprovalPolicy for Shadow<P>",

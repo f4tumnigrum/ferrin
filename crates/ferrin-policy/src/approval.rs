@@ -30,32 +30,17 @@ pub enum FailureMode {
 /// Builds the policy input for a tool call.
 pub type ToInputFn = Arc<dyn Fn(&ParsedToolCall, &ApprovalContext<'_>) -> JsonValue + Send + Sync>;
 
-/// The default policy input:
+/// The default policy input matches the reference SDK's OPA rule input.
 ///
-/// ```json
-/// {
-///   "tool": { "name": "..", "tool_call_id": "..", "dynamic": false,
-///             "provider_executed": false, "invalid": false },
-///   "input": <tool input>,
-///   "messages": [<messages of this step>],
-///   "tools_context": <tools context or null>,
-///   "runtime_context": <application runtime context or null>
-/// }
-/// ```
+/// The document contains `tool: { name }`, `args`, `messages` and
+/// `runtimeContext`. Use [`PolicyApproval::to_input`] for a custom contract.
 #[must_use]
 pub fn default_input(call: &ParsedToolCall, ctx: &ApprovalContext<'_>) -> JsonValue {
     json!({
-        "tool": {
-            "name": call.tool_name,
-            "tool_call_id": call.tool_call_id,
-            "dynamic": call.dynamic,
-            "provider_executed": call.provider_executed,
-            "invalid": call.invalid,
-        },
-        "input": call.input,
+        "tool": { "name": call.tool_name },
+        "args": call.input,
         "messages": serde_json::to_value(ctx.messages).unwrap_or(JsonValue::Null),
-        "tools_context": ctx.tools_context.cloned().unwrap_or(JsonValue::Null),
-        "runtime_context": ctx.runtime_context.cloned().unwrap_or(JsonValue::Null),
+        "runtimeContext": ctx.runtime_context.cloned().unwrap_or(JsonValue::Null),
     })
 }
 
@@ -170,7 +155,7 @@ pub struct WithDefault<P> {
     default: ApprovalStatus,
 }
 
-/// Gives calls the inner policy does not decide (`None`) the status
+/// Gives calls with `None` or `NotApplicable` from the inner policy the status
 /// `default`, so that every call has a decision.
 ///
 /// Typical use: tools bridged from an MCP server have no `needs_approval`
@@ -202,8 +187,8 @@ impl<P: ApprovalPolicy> ApprovalPolicy for WithDefault<P> {
     ) -> BoxFuture<'a, Option<ApprovalStatus>> {
         Box::pin(async move {
             match self.inner.resolve(call, ctx).await {
+                Some(ApprovalStatus::NotApplicable) | None => Some(self.default.clone()),
                 Some(status) => Some(status),
-                None => Some(self.default.clone()),
             }
         })
     }

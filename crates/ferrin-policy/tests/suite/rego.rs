@@ -20,12 +20,12 @@ default decision := {"decision": "not-applicable"}
 
 decision := {"decision": "deny", "reason": "protected path"} if {
     input.tool.name == "delete_file"
-    startswith(input.input.path, "/tmp/")
+    startswith(input.args.path, "/tmp/")
 }
 
 decision := {"decision": "requires-approval"} if {
     input.tool.name == "delete_file"
-    not startswith(input.input.path, "/tmp/")
+    not startswith(input.args.path, "/tmp/")
 }
 
 allow if input.tool.name in data.allowed_tools
@@ -51,7 +51,7 @@ async fn evaluates_rules_with_input_and_data() {
     let deny = client
         .evaluate(
             "ferrin/tools/decision",
-            json!({ "tool": { "name": "delete_file" }, "input": { "path": "/tmp/x" } }),
+            json!({ "tool": { "name": "delete_file" }, "args": { "path": "/tmp/x" } }),
         )
         .await
         .unwrap();
@@ -63,7 +63,7 @@ async fn evaluates_rules_with_input_and_data() {
     let ask = client
         .evaluate(
             "ferrin.tools.decision",
-            json!({ "tool": { "name": "delete_file" }, "input": { "path": "/home/x" } }),
+            json!({ "tool": { "name": "delete_file" }, "args": { "path": "/home/x" } }),
         )
         .await
         .unwrap();

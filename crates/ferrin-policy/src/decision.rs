@@ -1,8 +1,7 @@
 //! Decision documents and their normalization.
 //!
 //! Derived from the Vercel AI SDK decision normalization (Apache-2.0,
-//! Copyright 2023 Vercel, Inc.), reimplemented in Rust with the bare boolean
-//! form added.
+//! Copyright 2023 Vercel, Inc.), reimplemented in Rust.
 
 use ferrin_core::generate_text::ApprovalStatus;
 use ferrin_spec::JsonValue;
@@ -10,7 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 /// Reason attached to denials of documents that are not recognized.
-pub const UNRECOGNIZED_DECISION: &str = "unrecognized policy decision";
+pub const UNRECOGNIZED_DECISION: &str = "unrecognized OPA policy decision";
 
 /// A normalized policy decision.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,7 +34,7 @@ pub enum PolicyDecision {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         reason: Option<String>,
     },
-    /// The policy has no opinion; the tool's own `needs_approval` applies.
+    /// No approval is required, overriding the tool's own `needs_approval`.
     NotApplicable,
 }
 
@@ -86,13 +85,12 @@ impl PolicyDecision {
     /// Recognized forms:
     ///
     /// - `null`: not applicable (an undefined rule or a missing result).
-    /// - `true` / `false`: allow / deny.
     /// - `{ "decision": "allow" | "deny" | "requires-approval" | "not-applicable", "reason"?: string }`.
     /// - `{ "allow": bool, "reason"?: string }` (legacy form).
     ///
-    /// Anything else, including an unknown `decision` string, is a denial
-    /// with the reason [`UNRECOGNIZED_DECISION`], so that a broken policy
-    /// fails closed.
+    /// A missing or unknown `decision` falls back to a valid legacy `allow`
+    /// field. Anything else is a denial with the reason
+    /// [`UNRECOGNIZED_DECISION`], so that a broken policy fails closed.
     #[must_use]
     pub fn normalize(raw: &JsonValue) -> Self {
         let unrecognized = || Self::Deny {
@@ -100,21 +98,18 @@ impl PolicyDecision {
         };
         match raw {
             JsonValue::Null => Self::NotApplicable,
-            JsonValue::Bool(true) => Self::allow(),
-            JsonValue::Bool(false) => Self::deny(),
             JsonValue::Object(object) => {
                 let reason = object
                     .get("reason")
                     .and_then(JsonValue::as_str)
+                    .filter(|reason| !reason.is_empty())
                     .map(str::to_owned);
-                if let Some(decision) = object.get("decision") {
-                    return match decision.as_str() {
-                        Some("allow") => Self::Allow { reason },
-                        Some("deny") => Self::Deny { reason },
-                        Some("requires-approval") => Self::RequiresApproval { reason },
-                        Some("not-applicable") => Self::NotApplicable,
-                        _ => unrecognized(),
-                    };
+                match object.get("decision").and_then(JsonValue::as_str) {
+                    Some("allow") => return Self::Allow { reason },
+                    Some("deny") => return Self::Deny { reason },
+                    Some("requires-approval") => return Self::RequiresApproval { reason },
+                    Some("not-applicable") => return Self::NotApplicable,
+                    _ => {}
                 }
                 match object.get("allow").and_then(JsonValue::as_bool) {
                     Some(true) => Self::Allow { reason },
@@ -128,16 +123,15 @@ impl PolicyDecision {
 
     /// Converts the decision into an approval status.
     ///
-    /// `NotApplicable` becomes `None`, which makes an
-    /// [`ApprovalPolicy`](ferrin_core::generate_text::ApprovalPolicy) fall
-    /// through to the tool's own `needs_approval`.
+    /// `NotApplicable` is an explicit status and overrides tool-defined approval.
+    /// Use [`crate::with_default`] to gate calls without a policy decision.
     #[must_use]
     pub fn into_approval(self) -> Option<ApprovalStatus> {
         match self {
             Self::Allow { reason } => Some(ApprovalStatus::Approved { reason }),
             Self::Deny { reason } => Some(ApprovalStatus::Denied { reason }),
             Self::RequiresApproval { reason } => Some(ApprovalStatus::UserApproval { reason }),
-            Self::NotApplicable => None,
+            Self::NotApplicable => Some(ApprovalStatus::NotApplicable),
         }
     }
 }

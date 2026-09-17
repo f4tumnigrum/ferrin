@@ -31,12 +31,21 @@ fn approval() -> Result<impl ferrin_core::generate_text::ApprovalPolicy, ferrin_
 }
 ```
 
-The policy receives `{ "tool": { "name", "tool_call_id", .. }, "input",
-"messages", "tools_context", "runtime_context" }` and answers with
-`{ "decision": "allow" | "deny" | "requires-approval" | "not-applicable", "reason"? }`,
-a legacy `{ "allow": bool }` or a bare boolean. A `null` result (an undefined
-rule) is not applicable and falls through to the tool's own `needs_approval`;
-evaluation errors deny the call unless `FailureMode::FallThrough` is chosen.
+The policy receives `{ "tool": { "name" }, "args", "messages", "runtimeContext" }`
+and answers with an explicit decision object or a legacy `{ "allow": bool }`.
+Bare booleans are rejected. A `null` result is `NotApplicable`, which overrides
+`needs_approval`; use `with_default(policy, ApprovalStatus::user_approval())` to
+require approval for unmatched rules. Shadow observe mode approves calls;
+backend failures deny unless `FailureMode::FallThrough` is explicitly chosen.
+
+`shadow(policy).on_decision(|event| async move { ... })` observes normalized
+decisions, effective decisions, enforcement mode, tool identifiers/input and
+the UTC evaluation time. Auditing runs independently; errors and task panics
+do not change approval. Keep the policy in an `Arc` and pass a clone to
+`.tool_approval(...)`, then call `.flush_decisions().await` before dropping it
+when all audit callbacks must finish. Dropping the policy cancels pending
+callbacks. The explicit `on_decision_sync` extension retains the synchronous
+`(call, status)` observer and blocks approval while that callback runs.
 
 ## Features
 

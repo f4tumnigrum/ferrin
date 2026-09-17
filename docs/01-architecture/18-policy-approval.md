@@ -45,19 +45,19 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 ## 3. Decision documents
 
-[Decision] `PolicyDecision::normalize(raw)` accepts the following forms and rejects everything else as a denial with the reason `unrecognized policy decision`, so that a broken or misrouted policy fails closed:
+[Decision] `PolicyDecision::normalize(raw)` accepts the following forms and rejects everything else as a denial with the reason `unrecognized OPA policy decision`, so that a broken or misrouted policy fails closed:
 
 | Raw document | Decision |
 | --- | --- |
 | `null` (undefined rule, missing `result`) | `NotApplicable` |
-| `true` / `false` | `Allow` / `Deny` |
+| Bare `true` / `false` | `Deny` (unrecognized document) |
 | `{"decision": "allow" \| "deny" \| "requires-approval" \| "not-applicable", "reason"?}` | the named decision with the reason |
 | `{"allow": bool, "reason"?}` (legacy form) | `Allow` / `Deny` |
-| anything else, including an unknown `decision` string | `Deny` with the unrecognized reason |
+| anything else, with neither a recognized `decision` nor valid `allow` | `Deny` with the unrecognized reason |
 
-[Decision] `into_approval` maps `Allow` to `Approved`, `Deny` to `Denied`, `RequiresApproval` to `UserApproval` (reasons preserved) and `NotApplicable` to `None`, which makes the approval policy fall through to the tool's own `needs_approval`. Rationale: a policy that has no rule for a tool must not override the tool author's declaration.
+[Decision] `into_approval` maps `Allow` to `Approved`, `Deny` to `Denied`, `RequiresApproval` to `UserApproval` and `NotApplicable` to the explicit `NotApplicable` status. The last status overrides tool-defined approval. Use `with_default` to require a decision for unmatched rules. This revises the original ADR 0020 fall-through decision under [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md) (2026-09-17).
 
-[Decision] The bare boolean form is a Ferrin extension: `default allow := false` followed by `allow if { .. }` is the most common Rego idiom, and its meaning is unambiguous.
+[Decision] Accept the reference SDK's explicit decision objects and legacy `{allow: bool}` objects. Bare booleans are rejected; a missing or unrecognized `decision` falls back to a valid legacy `allow` field, otherwise denies. Empty reasons are omitted. These rules replace the original bare-boolean extension (2026-09-17; ADR 0026).
 
 ## 4. Approval policy
 
@@ -65,17 +65,16 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 ```json
 {
-  "tool": { "name": "..", "tool_call_id": "..", "dynamic": false, "provider_executed": false, "invalid": false },
-  "input": <parsed tool input>,
+  "tool": { "name": ".." },
+  "args": <parsed tool input>,
   "messages": [<messages of this step>],
-  "tools_context": <tools context or null>,
-  "runtime_context": <application runtime context or null>
+  "runtimeContext": <application runtime context or null>
 }
 ```
 
 and `to_input(|call, ctx| ..)` replaces it, for example to drop the messages. Evaluation errors deny the call with the reason `policy evaluation failed`; `on_error(FailureMode::FallThrough)` returns `None` instead. Decisions are logged at `debug`, failures at `warn`, with the tool name, path and decision type only; reasons and error payloads are omitted.
 
-[Decision] `with_default(policy, status)` returns `status` for calls the inner policy leaves undecided, so that tools without a `needs_approval` declaration (for example tools bridged from an MCP server) do not execute silently. `shadow(policy)` evaluates the inner policy, reports every decision through `on_decision(|call, status| ..)` and returns `None` until `enforcement(Enforcement::Enforce)` is set; a rollout switches from observing to enforcing without rewiring.
+[Decision] `with_default(policy, status)` returns `status` for `None` or explicit `NotApplicable` from the inner policy, so that tools without a `needs_approval` declaration (for example tools bridged from an MCP server) do not execute silently. `shadow(policy)` evaluates the inner policy, reports every decision through `on_decision(|event| async move { .. })` and returns `Approved` until `enforcement(Enforcement::Enforce)` is set; a rollout switches from observing to enforcing without rewiring.
 
 Example policy for the default input:
 
@@ -88,12 +87,12 @@ default decision := {"decision": "not-applicable"}
 
 decision := {"decision": "deny", "reason": "protected path"} if {
     input.tool.name == "delete_file"
-    startswith(input.input.path, "/tmp/")
+    startswith(input.args.path, "/tmp/")
 }
 
 decision := {"decision": "requires-approval"} if {
     input.tool.name == "delete_file"
-    not startswith(input.input.path, "/tmp/")
+    not startswith(input.args.path, "/tmp/")
 }
 ```
 
@@ -120,4 +119,10 @@ decision := {"decision": "requires-approval"} if {
 
 [Decision] Capability filtering constrains execution and tool-choice validation through the core middleware tool contract. Diagnostics omit decision reasons, error payloads and server URL credentials; the explicit decision callback remains the application-controlled audit interface.
 
-[Decision] Since 2026-09-17, the default approval policy input contains independent `runtime_context` from the current generation step (or JSON `null` when unset). Selecting a policy client authorizes passing this context to that client; `PolicyApproval::to_input` can omit or reshape it. This policy input is independent of telemetry recording controls (ADR 0021).
+[Decision] Since 2026-09-17, the default approval policy input contains independent `runtimeContext` from the current generation step (or JSON `null` when unset). Selecting a policy client authorizes passing this context to that client; `PolicyApproval::to_input` can omit or reshape it. This policy input is independent of telemetry recording controls (ADR 0021).
+
+## 9. Reference SDK contract revision (2026-09-17)
+
+[Decision] Migration under ADR 0026: policy rules read `input.args` instead of `input.input`, and `input.runtimeContext` instead of `input.runtime_context`. The default `tool` object contains only `name`; tools context and additional call fields require `to_input`. `NotApplicable` now executes without tool-defined approval; wrap the policy in `with_default(..., UserApproval)` to gate unmatched tools. Shadow observe mode explicitly approves, including tools declaring `needs_approval`; use enforce mode when that gate must act. Backend failures remain denied by default; `FailureMode::FallThrough` is an explicit Ferrin extension.
+
+[Decision] `Shadow::on_decision` receives a `PolicyDecisionEvent` with the tool name/id/input, normalized decision, `enforced`, effective decision and UTC timestamp. Its asynchronous callback runs in a Tokio `JoinSet` owned by the shadow policy, so returned errors and task panics cannot change approval and pending logging does not delay generation. Completed tasks are drained when queuing later events; `flush_decisions` waits for events already queued when flushing begins, while concurrent decisions can queue independently. Dropping the policy cancels pending callbacks under Ferrin's task-ownership rule. The explicit `on_decision_sync` extension preserves the old `(call, status)` callback and catches unwinding panics, but its synchronous work delays approval. Setting either callback replaces the other (ADR 0026).

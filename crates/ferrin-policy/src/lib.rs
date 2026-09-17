@@ -3,7 +3,7 @@
 //! A [`PolicyClient`] evaluates a policy path with a JSON input and returns
 //! the raw decision document. [`policy_approval`] turns a client into an
 //! [`ApprovalPolicy`](ferrin_core::generate_text::ApprovalPolicy): the tool
-//! call, its input, the messages and the tools context become the policy
+//! name, its input, the messages and the runtime context become the policy
 //! input, and the normalized [`PolicyDecision`] becomes the approval status.
 //! [`capability_middleware`] filters the tools offered to the model through
 //! the same client. [`shadow`] observes decisions without enforcing them and
@@ -90,5 +90,8 @@ pub use rego::RegoPolicyClient;
 pub use rego::RegoPolicyClientBuilder;
 pub use shadow::Enforcement;
 pub use shadow::OnDecisionFn;
+pub use shadow::OnDecisionSyncFn;
+pub use shadow::PolicyDecisionEvent;
+pub use shadow::PolicyDecisionToolCall;
 pub use shadow::Shadow;
 pub use shadow::shadow;

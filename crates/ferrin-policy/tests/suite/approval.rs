@@ -6,6 +6,7 @@ use ferrin_core::generate_text::ApprovalContext;
 use ferrin_core::generate_text::ApprovalPolicy;
 use ferrin_core::generate_text::ApprovalStatus;
 use ferrin_core::step_count;
+use ferrin_core::stream_text;
 use ferrin_message::Message;
 use ferrin_policy::FailureMode;
 use ferrin_policy::default_input;
@@ -16,7 +17,9 @@ use ferrin_spec::Content;
 use ferrin_spec::FinishReason;
 use ferrin_spec::GenerateResult;
 use ferrin_spec::JsonValue;
+use ferrin_spec::StreamPart;
 use ferrin_spec::ToolCall;
+use ferrin_spec::Usage;
 use ferrin_testing::MockLanguageModel;
 use ferrin_tool::Schema;
 use ferrin_tool::Tool;
@@ -52,27 +55,23 @@ async fn sends_the_default_input_and_maps_the_decision() {
     assert_eq!(
         calls[0].1,
         json!({
-            "tool": {
-                "name": "delete_file",
-                "tool_call_id": "call-1",
-                "dynamic": false,
-                "provider_executed": false,
-                "invalid": false,
-            },
-            "input": { "path": "/tmp/x" },
+            "tool": { "name": "delete_file" },
+            "args": { "path": "/tmp/x" },
             "messages": serde_json::to_value(&messages).unwrap(),
-            "tools_context": { "tenant": "acme" },
-            "runtime_context": { "phase": "cleanup" },
+            "runtimeContext": { "phase": "cleanup" },
         })
     );
     assert_eq!(calls[0].1, default_input(&delete_call(), &ctx));
 }
 
 #[tokio::test]
-async fn not_applicable_falls_through() {
+async fn not_applicable_is_an_explicit_override() {
     let client = RecordingClient::returning(JsonValue::Null);
     let policy = policy_approval(client, "ferrin/tools/decision");
-    assert_eq!(policy.resolve(&delete_call(), empty_context()).await, None);
+    assert_eq!(
+        policy.resolve(&delete_call(), empty_context()).await,
+        Some(ApprovalStatus::NotApplicable)
+    );
 }
 
 #[tokio::test]
@@ -90,7 +89,7 @@ async fn evaluation_errors_deny_by_default_and_can_fall_through() {
 
 #[tokio::test]
 async fn custom_input_replaces_the_default() {
-    let client = RecordingClient::returning(json!(true));
+    let client = RecordingClient::returning(json!({"allow":true}));
     let policy = policy_approval(Arc::clone(&client), "p")
         .to_input(|call, _ctx| json!({ "name": call.tool_name }));
     let status = policy.resolve(&delete_call(), empty_context()).await;
@@ -107,7 +106,7 @@ async fn with_default_fills_undecided_calls() {
         Some(ApprovalStatus::user_approval())
     );
 
-    let inner = policy_approval(RecordingClient::returning(json!(true)), "p");
+    let inner = policy_approval(RecordingClient::returning(json!({"allow":true})), "p");
     let policy = with_default(inner, ApprovalStatus::user_approval());
     assert_eq!(
         policy.resolve(&delete_call(), empty_context()).await,
@@ -129,18 +128,24 @@ fn tools() -> ToolSet {
 }
 
 fn model() -> Arc<MockLanguageModel> {
+    let tool_call = ToolCall::new(
+        "call-1",
+        "delete_file",
+        json!({ "path": "/tmp/x" }).to_string(),
+    );
     let call = GenerateResult::new(
-        vec![Content::ToolCall(ToolCall::new(
-            "call-1",
-            "delete_file",
-            json!({ "path": "/tmp/x" }).to_string(),
-        ))],
+        vec![Content::ToolCall(tool_call.clone())],
         FinishReason::tool_calls(),
     );
     let done = GenerateResult::new(vec![Content::text("done")], FinishReason::stop());
     MockLanguageModel::builder()
         .generate(call)
         .generate(done)
+        .stream(vec![
+            StreamPart::stream_start(),
+            StreamPart::ToolCall(tool_call),
+            StreamPart::finish(FinishReason::tool_calls(), Usage::default()),
+        ])
         .build_shared()
 }
 
@@ -151,7 +156,7 @@ fn kinds(content: &[StepContent]) -> Vec<&'static str> {
 #[tokio::test]
 async fn denied_calls_do_not_execute_in_the_generation_loop() {
     let client = policy_client(|_path, input| {
-        let path = input["input"]["path"].as_str().unwrap_or_default();
+        let path = input["args"]["path"].as_str().unwrap_or_default();
         Ok(json!({
             "decision": if path.starts_with("/tmp/") { "deny" } else { "allow" },
             "reason": "temporary files are protected",
@@ -219,5 +224,126 @@ async fn allowed_calls_execute_and_approval_requests_stop_the_loop() {
     assert_eq!(
         kinds(&result.steps[0].content),
         vec!["tool-call", "tool-approval-request"]
+    );
+}
+
+async fn assert_policy_in_both_loops<P: ApprovalPolicy + 'static>(
+    policy: impl Fn() -> P,
+    expected: (usize, usize, Vec<bool>),
+) {
+    for streaming in [false, true] {
+        let guarded = ToolSet::new()
+            .insert(
+                "delete_file",
+                Tool::function_with_schema(Schema::any())
+                    .needs_approval(ferrin_tool::NeedsApproval::Always)
+                    .execute(|input, _| async { Ok::<_, ToolError>(input) })
+                    .build(),
+            )
+            .unwrap();
+        let result = if streaming {
+            stream_text(model())
+                .prompt("delete it")
+                .tools(guarded)
+                .tool_approval(policy())
+                .await
+                .unwrap()
+                .consume()
+                .await
+        } else {
+            generate_text(model())
+                .prompt("delete it")
+                .tools(guarded)
+                .tool_approval(policy())
+                .await
+        }
+        .unwrap();
+        let step = result.last_step();
+        let responses: Vec<_> = step
+            .content
+            .iter()
+            .filter_map(|part| match part {
+                StepContent::ToolApprovalResponse(response) => Some(response.approved),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            (
+                step.tool_results().count(),
+                step.tool_approval_requests().count(),
+                responses
+            ),
+            expected,
+        );
+    }
+}
+
+#[tokio::test]
+async fn reference_policy_results_control_tool_declared_approval() {
+    assert_policy_in_both_loops(
+        || policy_approval(RecordingClient::returning(JsonValue::Null), "p"),
+        (1, 0, vec![]),
+    )
+    .await;
+    assert_policy_in_both_loops(
+        || {
+            with_default(
+                ApprovalStatus::NotApplicable,
+                ApprovalStatus::user_approval(),
+            )
+        },
+        (0, 1, vec![]),
+    )
+    .await;
+    assert_policy_in_both_loops(
+        || ferrin_policy::shadow(ApprovalStatus::denied()),
+        (1, 1, vec![true]),
+    )
+    .await;
+    assert_policy_in_both_loops(
+        || policy_approval(RecordingClient::failing(engine_error()), "p"),
+        (0, 1, vec![false]),
+    )
+    .await;
+    assert_policy_in_both_loops(
+        || {
+            policy_approval(RecordingClient::failing(engine_error()), "p")
+                .on_error(FailureMode::FallThrough)
+        },
+        (0, 1, vec![]),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn shared_shadow_can_flush_events_after_generate_and_stream() {
+    let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observer = Arc::clone(&seen);
+    let policy = Arc::new(ferrin_policy::shadow(ApprovalStatus::denied()).on_decision(
+        move |event| {
+            let observer = Arc::clone(&observer);
+            async move {
+                observer.lock().unwrap().push((
+                    event.tool_call.tool_name,
+                    event.decision,
+                    event.effective,
+                    event.enforced,
+                ));
+            }
+        },
+    ));
+    assert_policy_in_both_loops(|| Arc::clone(&policy), (1, 1, vec![true])).await;
+    policy.flush_decisions().await;
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![
+            (
+                "delete_file".into(),
+                ApprovalStatus::denied(),
+                ApprovalStatus::approved(),
+                false,
+            );
+            2
+        ]
     );
 }

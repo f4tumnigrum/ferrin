@@ -45,19 +45,19 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 ## 3. 决策文档
 
-【决策】`PolicyDecision::normalize(raw)` 接受下列形式，其余一律视为拒绝并附原因 `unrecognized policy decision`，使损坏或误路由的策略失败关闭：
+【决策】`PolicyDecision::normalize(raw)` 接受下列形式，其余一律视为拒绝并附原因 `unrecognized OPA policy decision`，使损坏或误路由的策略失败关闭：
 
 | 原始文档 | 决策 |
 | --- | --- |
 | `null`（未定义规则、缺失 `result`） | `NotApplicable` |
-| `true` / `false` | `Allow` / `Deny` |
+| 裸 `true` / `false` | `Deny`（未识别文档） |
 | `{"decision": "allow" \| "deny" \| "requires-approval" \| "not-applicable", "reason"?}` | 对应决策及原因 |
 | `{"allow": bool, "reason"?}`（旧形式） | `Allow` / `Deny` |
-| 其他任何值，包括未知的 `decision` 字符串 | 附未识别原因的 `Deny` |
+| 其他任何值（既无有效 `decision`，也无有效 `allow`） | 附未识别原因的 `Deny` |
 
-【决策】`into_approval` 把 `Allow` 映射为 `Approved`、`Deny` 为 `Denied`、`RequiresApproval` 为 `UserApproval`（保留原因），`NotApplicable` 为 `None`，使审批策略回落到工具自身的 `needs_approval`。依据：没有针对某工具规则的策略不应覆盖工具作者的声明。
+【决策】`into_approval` 把 `Allow` 映射为 `Approved`、`Deny` 为 `Denied`、`RequiresApproval` 为 `UserApproval`，`NotApplicable` 为显式 `NotApplicable` 并覆盖工具自身审批。使用 `with_default` 为未匹配规则指定审批状态。该变更通过 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md) 修订 ADR 0020 的回退决策（2026-09-17）。
 
-【决策】裸布尔形式是 Ferrin 的扩展：`default allow := false` 加 `allow if { .. }` 是最常见的 Rego 写法，含义没有歧义。
+【决策】仅接受参考 SDK 的显式决策对象与旧版 `{allow: bool}` 对象。裸布尔值被拒绝；`decision` 缺失或未知时回退到有效的 `allow` 字段，否则拒绝。空 reason 不保留。这取代了最初的裸布尔扩展（2026-09-17；ADR 0026）。
 
 ## 4. 审批策略
 
@@ -65,17 +65,16 @@ pub trait PolicyClient: Send + Sync + 'static {
 
 ```json
 {
-  "tool": { "name": "..", "tool_call_id": "..", "dynamic": false, "provider_executed": false, "invalid": false },
-  "input": <解析后的工具输入>,
+  "tool": { "name": ".." },
+  "args": <解析后的工具输入>,
   "messages": [<本步骤的消息>],
-  "tools_context": <工具上下文或 null>,
-  "runtime_context": <应用运行上下文或 null>
+  "runtimeContext": <应用运行上下文或 null>
 }
 ```
 
 `to_input(|call, ctx| ..)` 可替换它，例如去掉消息。评估错误以原因 `policy evaluation failed` 拒绝调用；`on_error(FailureMode::FallThrough)` 则改为返回 `None`。决策以 `debug` 级别、失败以 `warn` 级别记录日志，只含工具名、路径和决策类型，不包含原因或错误载荷。
 
-【决策】`with_default(policy, status)` 对内层策略未决定的调用返回 `status`，使没有 `needs_approval` 声明的工具（例如从 MCP 服务器桥接的工具）不会静默执行。`shadow(policy)` 评估内层策略，通过 `on_decision(|call, status| ..)` 上报每个决策，在设置 `enforcement(Enforcement::Enforce)` 之前一律返回 `None`；上线时从观察切换到执行无需改动接线。
+【决策】`with_default(policy, status)` 对内层策略的 `None` 或显式 `NotApplicable` 返回 `status`，使没有 `needs_approval` 声明的工具（例如从 MCP 服务器桥接的工具）不会静默执行。`shadow(policy)` 评估内层策略，通过 `on_decision(|event| async move { .. })` 上报每个决策，在设置 `enforcement(Enforcement::Enforce)` 之前一律返回 `Approved`；上线时从观察切换到执行无需改动接线。
 
 针对默认输入的示例策略：
 
@@ -88,12 +87,12 @@ default decision := {"decision": "not-applicable"}
 
 decision := {"decision": "deny", "reason": "protected path"} if {
     input.tool.name == "delete_file"
-    startswith(input.input.path, "/tmp/")
+    startswith(input.args.path, "/tmp/")
 }
 
 decision := {"decision": "requires-approval"} if {
     input.tool.name == "delete_file"
-    not startswith(input.input.path, "/tmp/")
+    not startswith(input.args.path, "/tmp/")
 }
 ```
 
@@ -120,4 +119,10 @@ decision := {"decision": "requires-approval"} if {
 
 【决策】 能力过滤通过 core 中间件工具约束同时约束执行和工具选择校验。诊断信息不输出决策原因、错误载荷或服务器 URL 凭据；显式决策回调仍是应用自行控制的审计接口。
 
-【决策】自 2026-09-17 起，默认审批策略输入包含当前生成步骤的独立 `runtime_context`（未设置时为 JSON `null`）。选择策略客户端即允许向该客户端传递上下文；`PolicyApproval::to_input` 可移除或重塑该字段。策略输入独立于遥测记录开关（ADR 0021）。
+【决策】自 2026-09-17 起，默认审批策略输入包含当前生成步骤的独立 `runtimeContext`（未设置时为 JSON `null`）。选择策略客户端即允许向该客户端传递上下文；`PolicyApproval::to_input` 可移除或重塑该字段。策略输入独立于遥测记录开关（ADR 0021）。
+
+## 9. 参考 SDK 契约修订（2026-09-17）
+
+【决策】ADR 0026 的迁移要求：策略规则将 `input.input` 改为 `input.args`，将 `input.runtime_context` 改为 `input.runtimeContext`。默认 `tool` 对象仅含 `name`；工具上下文及额外调用字段通过 `to_input` 自行加入。`NotApplicable` 现在直接执行而不采用工具自身审批；使用 `with_default(..., UserApproval)` 为未匹配工具保留审批。Shadow Observe 模式显式批准，包括声明 `needs_approval` 的工具；需要实际审批约束时使用 Enforce 模式。后端失败仍默认拒绝；`FailureMode::FallThrough` 是显式 Ferrin 扩展。
+
+【决策】`Shadow::on_decision` 接收 `PolicyDecisionEvent`，包含工具名/id/输入、归一化决策、`enforced`、实际决策与 UTC 时间戳。异步回调运行在 Shadow 策略持有的 Tokio `JoinSet` 中，返回错误和任务 panic 不影响审批，尚未完成的日志不阻塞生成。加入后续事件时清理已完成任务；`flush_decisions` 等待调用开始时已入队的事件，同时允许并发决策独立入队。依照 Ferrin 任务所有权规则，丢弃策略会取消尚未完成的回调。显式扩展 `on_decision_sync` 保留旧 `(call, status)` 回调，并捕获展开式 panic，但同步工作会延迟审批。设置任一种回调都会替换另一种（ADR 0026）。

@@ -12,8 +12,8 @@ fn unrecognized() -> PolicyDecision {
 fn normalizes_decision_documents() {
     let cases = [
         (json!(null), PolicyDecision::NotApplicable),
-        (json!(true), PolicyDecision::allow()),
-        (json!(false), PolicyDecision::deny()),
+        (json!(true), unrecognized()),
+        (json!(false), unrecognized()),
         (json!({ "decision": "allow" }), PolicyDecision::allow()),
         (
             json!({ "decision": "deny", "reason": "no" }),
@@ -33,6 +33,18 @@ fn normalizes_decision_documents() {
             PolicyDecision::deny().with_reason("legacy"),
         ),
         (json!({ "decision": "maybe" }), unrecognized()),
+        (
+            json!({ "decision": "maybe", "allow":true }),
+            PolicyDecision::allow(),
+        ),
+        (
+            json!({ "decision": 1, "allow":false }),
+            PolicyDecision::deny(),
+        ),
+        (
+            json!({ "decision": "allow", "reason":"" }),
+            PolicyDecision::allow(),
+        ),
         (json!({ "decision": 1 }), unrecognized()),
         (json!({ "allow": "yes" }), unrecognized()),
         (json!({}), unrecognized()),
@@ -59,7 +71,10 @@ fn maps_to_approval_statuses() {
         PolicyDecision::requires_approval().into_approval(),
         Some(ApprovalStatus::user_approval())
     );
-    assert_eq!(PolicyDecision::NotApplicable.into_approval(), None);
+    assert_eq!(
+        PolicyDecision::NotApplicable.into_approval(),
+        Some(ApprovalStatus::NotApplicable)
+    );
     assert_eq!(
         PolicyDecision::NotApplicable.with_reason("x").reason(),
         None

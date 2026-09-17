@@ -7,10 +7,17 @@ All notable changes to this crate are documented here. The format follows
 
 ### Added
 
+- Asynchronous shadow decision observers, explicit synchronous observer support,
+  a flush operation and owned observer tasks that cancel when dropped (ADR 0026).
+
 - Include the generation step's independent `runtime_context` in default approval
   policy input, alongside `tools_context` (ADR 0021).
 
 ### Changed
+
+- Match reference decision normalization, default fallback and policy input
+  `{tool: {name}, args, messages, runtimeContext}`. Shadow observation permits
+  execution and reports the original decision through richer observer events.
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 

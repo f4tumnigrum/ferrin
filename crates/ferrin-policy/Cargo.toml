@@ -34,6 +34,8 @@ bytes = { workspace = true }
 http = { workspace = true }
 url = { workspace = true }
 tracing = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 regorus = { workspace = true, optional = true }
 
 [dev-dependencies]
