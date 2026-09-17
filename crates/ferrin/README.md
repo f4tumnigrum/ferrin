@@ -8,7 +8,7 @@ This crate is the facade: it re-exports the `ferrin-core` API at the crate
 root, the lower layers as modules (`spec`, `message`, `schema`, `tool`,
 `provider_util`), and behind features the provider crates
 (`ferrin::openai`, `ferrin::anthropic`, `ferrin::google`,
-`ferrin::openai_compatible`, also grouped under `ferrin::providers`), the MCP
+`ferrin::openai_compatible`, `ferrin::azure`, `ferrin::voyage`, also grouped under `ferrin::providers`), the MCP
 client (`ferrin::mcp`), the OpenTelemetry bridge (`ferrin::otel`),
 policy-based tool approval (`ferrin::policy`) and the `#[ferrin::tool]`
 macro. `ferrin::prelude` gathers the items most programs
@@ -57,12 +57,14 @@ async fn run() -> Result<(), ferrin::Error> {
 | `openai` | off | `ferrin::openai` (crate `ferrin-openai`) |
 | `anthropic` | off | `ferrin::anthropic` (crate `ferrin-anthropic`) |
 | `google` | off | `ferrin::google` (crate `ferrin-google`) |
+| `azure` | off | `ferrin::azure` (unreleased crate `ferrin-azure`) |
+| `voyage` | off | `ferrin::voyage` (unreleased crate `ferrin-voyage`) |
 | `openai-compatible` | off | `ferrin::openai_compatible` (crate `ferrin-openai-compatible`) |
 | `mcp` | off | `ferrin::mcp` (crate `ferrin-mcp`) |
 | `otel` | off | `ferrin::otel` (crate `ferrin-otel`) |
 | `policy` | off | `ferrin::policy` (crate `ferrin-policy`) |
 | `policy-rego` | off | `policy` plus the embedded Rego engine (`ferrin-policy/rego`) |
-| `realtime` | off | `ferrin::realtime` (WebSocket realtime sessions of `ferrin-core`) |
+| `realtime` | off | `ferrin::realtime` plus WebSocket transcription/translation on enabled OpenAI/Google providers |
 
 ## Testing
 

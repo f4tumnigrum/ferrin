@@ -24,12 +24,14 @@ macros = ["dep:ferrin-macros"]
 openai = ["dep:ferrin-openai"]
 anthropic = ["dep:ferrin-anthropic"]
 google = ["dep:ferrin-google"]
+azure = ["dep:ferrin-azure"]
+voyage = ["dep:ferrin-voyage"]
 openai-compatible = ["dep:ferrin-openai-compatible"]
 mcp = ["dep:ferrin-mcp"]
 otel = ["dep:ferrin-otel"]
 policy = ["dep:ferrin-policy"]
 policy-rego = ["policy", "ferrin-policy/rego"]
-realtime = ["ferrin-core/realtime"]
+realtime = ["ferrin-core/realtime", "ferrin-openai?/realtime", "ferrin-google?/realtime"]
 
 [dependencies]
 ferrin-spec = { workspace = true }
@@ -42,6 +44,8 @@ ferrin-macros = { workspace = true, optional = true }
 ferrin-openai = { workspace = true, optional = true }
 ferrin-anthropic = { workspace = true, optional = true }
 ferrin-google = { workspace = true, optional = true }
+ferrin-azure = { workspace = true, optional = true }
+ferrin-voyage = { workspace = true, optional = true }
 ferrin-openai-compatible = { workspace = true, optional = true }
 ferrin-mcp = { workspace = true, optional = true }
 ferrin-otel = { workspace = true, optional = true }

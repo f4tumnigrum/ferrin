@@ -30,7 +30,7 @@ Ferrin is an independently implemented Rust library. Its design draws on the Ver
 | OpenTelemetry export | `ferrin-otel` |
 | Policy-based tool approval (OPA REST Data API, embedded Rego) | `ferrin-policy` |
 | Testing utilities | `ferrin-testing` |
-| Provider adapters | `ferrin-openai`, `ferrin-anthropic`, `ferrin-openai-compatible`, `ferrin-google` |
+| Provider adapters | `ferrin-openai`, `ferrin-anthropic`, `ferrin-openai-compatible`, `ferrin-google`, `ferrin-azure`, `ferrin-voyage` |
 
 ## 3. Non-goals
 

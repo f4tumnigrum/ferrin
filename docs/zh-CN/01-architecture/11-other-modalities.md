@@ -80,7 +80,7 @@ pub fn stream_transcribe(model: impl Into<TranscriptionModelRef>, audio: AudioIn
 
 ```rust
 pub fn rerank<D: Into<RerankDocument> + Clone>(model: impl Into<RerankingModelRef>, query: impl Into<String>, documents: Vec<D>) -> Rerank<D>;
-pub struct RerankResult<D> { pub ranking: Vec<Ranked<D>>, pub usage: RerankUsage, pub warnings: Vec<Warning>, pub response: ResponseMetadata, pub provider_metadata: Option<ProviderMetadata> }
+pub struct RerankResult<D> { pub ranking: Vec<Ranked<D>>, pub warnings: Vec<Warning>, pub response: ResponseMetadata, pub provider_metadata: Option<ProviderMetadata> }
 ```
 
 `RerankDocument` 为字符串或 JSON 对象。

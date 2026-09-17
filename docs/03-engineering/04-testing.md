@@ -130,3 +130,22 @@ Proptest covers:
 [Fact] `StreamContractChecker` remembers text, reasoning and tool-input IDs after their end events and rejects reuse within one provider call. Independent checker instances allow reuse across calls. Regression: `closed_part_ids_cannot_be_reused` (2026-09-15, review I02).
 
 [Fact] `FixtureServer::mount_times(..., 0)` mounts no route, so the next matching request reaches the fallback or returns 404. Regression coverage checks zero, one and multiple responses (2026-09-15, review I03).
+
+## Capability completion verification (2026-09-17)
+
+[Fact] Local macOS verification of the unreleased Agent/provider additions passed
+903 nextest tests, with 10 credentialed live tests skipped; 14 doctests passed and
+one was ignored. All 68 `just features` cases, workspace Clippy, rustdoc with denied
+warnings, formatting, module-size, 18 public API snapshots, dependency audit,
+unused-dependency detection, documentation links and typos passed. Sources: the
+local `just` runs on 2026-09-17. Coverage includes ordinary/streamed/deferred tool
+loops and approval replay, persistent contexts, Google Interactions/Live audio,
+Azure authentication/routing and Voyage reranking. This record does not verify
+Windows/Linux or real provider availability; PV-031 remains open.
+
+[Fact] All 18 publishable crates were packaged and compiled from their packaged
+sources with `--locked --allow-dirty` in an isolated source copy using the original
+crates.io registry. The local `rsproxy-sparse` source replacement could not resolve
+unpublished workspace packages during packaging; removing that replacement only
+in the isolated check allowed verification to pass. No packages were published.
+Source: local package verification, 2026-09-17.

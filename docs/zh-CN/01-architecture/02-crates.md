@@ -19,6 +19,8 @@
 | `ferrin-anthropic` | L3 | Anthropic 适配器：Messages、Files、Skills、Batch、供应商工具。 | 同上 |
 | `ferrin-openai-compatible` | L3 | OpenAI 兼容端点通用适配器（Chat、Completion、Embedding、Image），供第三方端点直接使用或被其他适配器复用。 | 同上 |
 | `ferrin-google` | L3 | Google Generative AI 适配器。 | 同上 |
+| `ferrin-azure` | L3 | Azure OpenAI 模型、API key/Entra 认证与 deployment 路由。 | `ferrin-openai`、`ferrin-spec`、`ferrin-provider-util`（适配器复用例外，ADR 0025） |
+| `ferrin-voyage` | L3 | Voyage 重排模型。 | `ferrin-spec`、`ferrin-provider-util` |
 | `ferrin-mcp` | L3 | MCP 客户端：传输（Streamable HTTP、SSE、stdio）、OAuth、工具桥接、资源与提示、诱导（elicitation）。 | `ferrin-spec`、`ferrin-schema`、`ferrin-tool`、`ferrin-provider-util`（2026-09-14 实现时未用到 `ferrin-message`，见 [MCP 集成](15-mcp.md)第 6 节） |
 | `ferrin-core` | L4 | 核心：Prompt 标准化与转换、文本生成循环、流式管线、结构化输出、Agent、中间件、注册表、重试与超时、遥测接口、其他模态函数、核心错误。 | L0–L2 全部 |
 | `ferrin-otel` | L5 | `Telemetry` 的 OpenTelemetry 实现，遵循 GenAI 语义约定。 | `ferrin-core`、`ferrin-spec`、`ferrin-tool`（2026-09-14 实现：`opentelemetry_sdk` 仅为测试依赖，见 [可观测性](13-observability.md)第 9 节） |
@@ -44,6 +46,9 @@ flowchart TD
     schema --> openai
     schema --> compatible
     util --> google[ferrin-google]
+    util --> azure[ferrin-azure]
+    openai --> azure
+    util --> voyage[ferrin-voyage]
     util --> mcp[ferrin-mcp]
     spec --> core[ferrin-core]
     schema --> core
@@ -58,6 +63,8 @@ flowchart TD
     anthropic --> facade
     compatible --> facade
     google --> facade
+    azure --> facade
+    voyage --> facade
     mcp --> facade
     otel --> facade
     policy --> facade
@@ -228,12 +235,13 @@ src/
 | `ferrin-provider-util` | `reqwest` | 提供 `ReqwestTransport` 默认实现 | 开 |
 | `ferrin-provider-util` | `platform-verifier` | 直接依赖 `rustls-platform-verifier` 以配置系统证书校验（reqwest 0.13 默认已启用该校验器；无 `native-tls` feature，见 CI 文档第 3 节） | 关 |
 | `ferrin-tool` | `sandbox` | 编译 `Sandbox` trait 与相关执行上下文字段 | 关 |
+| `ferrin-openai`、`ferrin-google` | `realtime` | 编译 WebSocket 流式转写与语音翻译模型 | 关 |
 | `ferrin-core` | `realtime` | 编译实时会话 API（引入 WebSocket 依赖） | 关 |
 | `ferrin-core` | `video` | 编译视频生成 API（轮询/Webhook） | 开 |
 | `ferrin-mcp` | `stdio` | 子进程 stdio 传输 | 开 |
 | `ferrin-mcp` | `oauth` | OAuth 授权流程 | 开 |
 | `ferrin-policy` | `rego` | `RegoPolicyClient`：用 `regorus` 进程内求值 Rego | 关 |
-| `ferrin` | `openai`、`anthropic`、`google`、`openai-compatible`、`mcp`、`otel`、`policy`、`policy-rego`、`macros`、`realtime` | 启用对应 crate 并在 `ferrin::providers::*` 与 crate 根（`ferrin::openai` 等）下 re-export；`realtime` 转发 `ferrin-core/realtime`（2026-09-14 实现，见 [API 参考](../02-api/02-api-reference.md)第 14 节） | `macros` 开，其余关 |
+| `ferrin` | `openai`、`anthropic`、`google`、`openai-compatible`、`azure`、`voyage`、`mcp`、`otel`、`policy`、`policy-rego`、`macros`、`realtime` | 启用对应 crate 并在 `ferrin::providers::*` 与 crate 根（`ferrin::openai` 等）下 re-export；`realtime` 转发 `ferrin-core/realtime` 及已启用 OpenAI/Google 供应商的 `realtime`，不会自行启用供应商（来源：`crates/ferrin/Cargo.toml`，2026-09-17） | `macros` 开，其余关 |
 
 【决策】工作区内部 crate 之间不使用可选 feature 改变公共类型的形状（feature 只增删 API，不改变已有签名）。依据：Cargo feature 统一（unification）会让下游组合出未测试的形状；完全禁止 feature 又会让外部用户无法裁剪依赖，因此保留少量 feature，但限制其语义为纯增量。
 
@@ -244,3 +252,5 @@ src/
 - 联动规则与流程见[版本与发布](../03-engineering/06-versioning-and-release.md)。
 
 【事实】2026-09-15，OpenAI 和 OpenAI-compatible 请求编码器复用 `ferrin-schema` 的严格 Schema 变换，在发出请求之前拒绝无法表示的字典结构；来源：两个供应商的 `Cargo.toml` 和严格 Schema 请求回归测试。
+
+【决策】（2026-09-17，[ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md)）Azure 复用 OpenAI 模型实现，增加明确的 L3 到 L3 依赖例外。两个新适配器尚未发布，既有十六个 0.1.2 crate 仍为已发布基线。

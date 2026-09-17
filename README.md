@@ -10,9 +10,11 @@
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#license)
 
-Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI, and any OpenAI-compatible endpoint.
+Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI and OpenAI-compatible endpoints; this checkout also includes unreleased Azure OpenAI and Voyage adapters.
 
 This checkout contains the 0.1.2 release, with [release notes dated 2026-09-16](CHANGELOG.md#012---2026-09-16). It adds model middleware and policy-based tool approval, including execution-boundary and diagnostic safeguards. The schema API migration introduced in 0.1.1 still applies to callers upgrading from 0.1.0; see [ADR 0019](docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md). Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#10-release-012-2026-09-16).
+
+Unreleased development adds Azure OpenAI (`azure`) and Voyage reranking (`voyage`), Google Interactions and Live audio, complete provider-tool roundtrips, and persistent Agent runtime context. These changes are not part of the published 0.1.2 release. See [Azure](docs/providers/azure.md), [Voyage](docs/providers/voyage.md) and the [changelog](CHANGELOG.md). Existing callers should review the [migration notes](docs/02-api/02-api-reference.md#migrating-from-012-to-unreleased-development) for persistent step overrides and new public fields.
 
 ## Features
 
@@ -246,10 +248,12 @@ match generate_text(openai.responses("gpt-5")).prompt("hi").await {
 | --- | --- | --- | --- |
 | OpenAI | `ferrin-openai` / `openai` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | Responses, Chat Completions, Completions, embeddings, images, speech, transcription, speech translation, files, skills, batches, realtime sessions |
 | Anthropic | `ferrin-anthropic` / `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | Messages (tools, structured output, extended thinking, citations), file uploads, skills, batches |
-| Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`, embeddings, images, speech, transcription, video, files, batches, Live API sessions |
+| Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`, Interactions, embeddings, images, speech, transcription, streaming speech translation, video, files, batches, Live API sessions |
 | OpenAI-compatible endpoints | `ferrin-openai-compatible` / `openai-compatible` | Configured in settings | Chat Completions, Completions, embeddings, images |
+| Azure OpenAI (unreleased) | `ferrin-azure` / `azure` | `AZURE_API_KEY`, `AZURE_RESOURCE_NAME` | Responses, Chat Completions, Completions, embeddings, images, speech, non-streaming transcription; API-key or Entra authentication |
+| Voyage (unreleased) | `ferrin-voyage` / `voyage` | `VOYAGE_API_KEY` | Reranking of text and JSON documents |
 
-Full capability matrices, settings, and provider options are in `docs/providers/`: [OpenAI](docs/providers/openai.md), [Anthropic](docs/providers/anthropic.md), [Google](docs/providers/google.md), and [OpenAI-compatible endpoints](docs/providers/openai-compatible.md). To build an adapter, see the [Provider implementation guide](docs/01-architecture/17-provider-implementation-guide.md).
+This table describes the checkout; Google Interactions and Live streaming transcription/translation are unreleased additions. Full capability matrices, settings, and provider options are in `docs/providers/`: [OpenAI](docs/providers/openai.md), [Anthropic](docs/providers/anthropic.md), [Google](docs/providers/google.md), [OpenAI-compatible endpoints](docs/providers/openai-compatible.md), [Azure OpenAI](docs/providers/azure.md), and [Voyage](docs/providers/voyage.md). To build an adapter, see the [Provider implementation guide](docs/01-architecture/17-provider-implementation-guide.md).
 
 ## Cargo features
 
@@ -258,13 +262,13 @@ Features of the `ferrin` facade crate:
 | Feature | Contents | Default |
 | --- | --- | --- |
 | `macros` | `#[ferrin::tool]` attribute macro | Yes |
-| `openai`, `anthropic`, `google`, `openai-compatible` | Corresponding provider crate, also exported under paths such as `ferrin::openai` | No |
+| `openai`, `anthropic`, `google`, `openai-compatible`, `azure`, `voyage` | Corresponding provider crate, also exported under paths such as `ferrin::openai` | No |
 | `mcp` | MCP client, including stdio and OAuth | No |
 | `otel` | OpenTelemetry bridge, `ferrin::otel::OtelTelemetry` | No |
 | `policy`, `policy-rego` | Policy-based tool approval (`ferrin::policy`); `policy-rego` adds the embedded Rego engine | No |
-| `realtime` | Realtime session loop in `ferrin-core` (WebSocket) | No |
+| `realtime` | Realtime session loop and streaming audio for enabled OpenAI/Google providers (WebSocket) | No |
 
-Crates can also be used independently. WebSocket streaming models in `ferrin-openai` (`realtime` transcription and speech translation) require that crate's own `realtime` feature.
+Crates can also be used independently. WebSocket transcription and speech translation in `ferrin-openai` and `ferrin-google` require their own `realtime` features. The facade forwards `realtime` to either provider only when it is enabled. Azure exposes non-streaming transcription regardless of OpenAI feature unification.
 
 ## Examples
 
@@ -304,19 +308,20 @@ crates/
   ferrin-policy            policy-based tool approval (OPA REST, embedded Rego)
   ferrin-testing           mock models, fixture server, contract checks
   providers/ferrin-openai, ferrin-anthropic, ferrin-google, ferrin-openai-compatible
+            ferrin-azure, ferrin-voyage
 examples/                  seven runnable examples
 xtask/                     repository tooling (cargo xtask ...)
 docs/                      design documents, provider docs, API snapshots
 verification/              prototypes behind the pending-verification items (separate workspace)
 ```
 
-Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates use `ferrin-spec`, `ferrin-provider-util`, and shared `ferrin-schema` transforms where needed; applications need only `ferrin`. All crates share a version during the `0.y` series.
+Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates use `ferrin-spec`, `ferrin-provider-util`, and shared `ferrin-schema` transforms where needed. Azure additionally reuses `ferrin-openai` under [ADR 0025](docs/04-decisions/2026-09-17-0025-azure-and-voyage-providers.md); applications need only `ferrin`. All crates share a version during the `0.y` series.
 
 ## Project status
 
-- All 16 crates, `xtask`, and seven examples are implemented (`ferrin-policy` was first published in 0.1.2). All 16 crates are published at version 0.1.2. Version 0.1.0 of every other crate was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
+- The workspace contains 18 crates, `xtask`, and seven examples. The original 16 crates are published at version 0.1.2 (`ferrin-policy` was first published in 0.1.2); Azure and Voyage are unreleased. Version 0.1.0 of the original 15 crates was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
 - The local 2026-09-16 run passed 810 tests and skipped 10 live tests requiring real credentials. All 14 cross-platform CI jobs, coverage and CodeQL passed for the release commit; all 16 docs.rs builds succeeded. See the release record.
-- Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. The official OpenAI, Anthropic, and Google endpoints have not been tested with real credentials. Provider tests currently use handwritten fixtures (pending item PV-031).
+- Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. Official OpenAI, Anthropic, Google, Azure and Voyage services have not been verified with real credentials. Four Responses fixtures were recorded through a third-party proxy on 2026-09-17; remaining fixtures are handwritten (pending item PV-031).
 - Of 32 pending-verification items in the design documents, 31 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).
 
 ## Development

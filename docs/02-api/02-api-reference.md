@@ -263,7 +263,9 @@ let speech = ferrin::generate_speech(openai.speech("gpt-4o-mini-tts"), "Hello fr
 let transcript = ferrin::transcribe(openai.transcription("gpt-4o-transcribe"), audio /* Bytes or Url */)
     .await?;
 
-let ranked = ferrin::rerank(cohere.reranking("rerank-v3.5"), "rust async", documents)
+// feature `voyage` (unreleased)
+let voyage = ferrin::voyage::create_voyage(Default::default())?;
+let ranked = ferrin::rerank(voyage.reranking("rerank-2.5"), "rust async", documents)
     .top_n(3)
     .await?;
 
@@ -355,3 +357,21 @@ assert_eq!(result.text(), "hello");
 - [Fact] Providers are aliased both at root (openai, anthropic, google, openai_compatible) and under providers, consistent with [Crate boundaries](../01-architecture/02-crates.md), section 5. MCP/OTel use matching feature gates. The default-enabled `macros` feature exports `#[ferrin::tool]`, coexisting with the tool module in separate namespaces.
 - [Decision] Prelude includes entry points/results, `Message`/`UserPart`/`AssistantPart`/`MessagesExt`/`ToolApprovalResponse`/`Role`, `Tool`/`ToolSet`/`ToolContext`/`ToolError`/`NeedsApproval`/`Schema`/`JsonSchema`, common specification model traits/references, `ToolChoice`, `ReasoningEffort`, FinishReason/Kind, `Usage`, JSON aliases, `Headers`, `ProviderOptions`, `ImageSize`, `ProviderError`, `StreamPart`, `GenerateResult`, `Content`, `serde` derives, json!, StreamExt, and the `tool` macro. This compiles section 2 with one prelude import. Derives still require direct `serde`/`schemars` dependencies or explicit ferrin crate-path attributes, as documented in rustdoc/README.
 - [Fact] Facade suite tests cover prelude generation/streaming/tool loops using mocks, feature re-exports, macro expansion (async/sync/context/docs/field schema descriptions), and `trybuild` (one pass, seven failures: references, nested references, lifetimes, generics, no input, no return, macro arguments). Initial `trybuild` compiles a separate project; nextest gives it a 180 s slow-test period.
+
+## 15. Runtime state and tool customization (2026-09-17)
+
+[Decision] Generation, streaming and agent builders accept `.runtime_context(json!({...}))` independently of `.tools_context(...)`. `PrepareStepContext::runtime_context` and `ApprovalContext::runtime_context` expose current application state; `.with_runtime_context(...)` on `StepOverrides` replaces it for subsequent steps. `PreparedCall::runtime_context` supports per-call agent preparation. Results expose both context snapshots through `StepResult`; telemetry exports them only when `include_runtime_context` / `include_tools_context` is enabled. See [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md).
+
+[Decision] `Tool::into_builder()` preserves an existing tool's complete definition and callbacks while reopening it as `ToolBuilder<JsonValue>`; use it to attach `.execute(...)` to a provider-defined local tool factory. Parsed calls and all tool outcomes carry optional `tool_metadata` copied from the current definition. Provider routing metadata also survives local execution into response-message provider options.
+
+## Unreleased provider additions (2026-09-17)
+
+[Fact] The facade exports `ferrin::azure` with feature `azure` and `ferrin::voyage` with feature `voyage`; see [Azure](../providers/azure.md) and [Voyage](../providers/voyage.md). The `realtime` feature also enables streaming audio on enabled OpenAI/Google provider dependencies, without enabling either provider by itself. Source: `crates/ferrin/Cargo.toml`.
+
+## Migrating from 0.1.2 to unreleased development
+
+[Decision] State persistence in [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) changes `prepare_step`: message, instruction and both context overrides continue into later steps; model, tool selection and sampling overrides still apply to one step. Prompt compression needs only one replacement. Callbacks requiring the previous behavior must explicitly restore the original instructions or context on the next step; reconstruct the full message history from `initial_messages` plus `response_messages`.
+
+[Fact] Added fields affect downstream Rust struct literals and exact enum patterns: `StepResult` and `StreamEvent::StartStep` gain `runtime_context` / `tools_context`; `ParsedToolCall`, `ToolResult`, `ToolExecutionError` and `ToolOutputDenied` gain `tool_metadata`; `ToolOutputDenied` also gains `provider_metadata`. Step preparation, approval, prepared agent calls and lifecycle events gain `runtime_context`. Supply new fields explicitly (`None` when unused), use `..` in `StartStep` patterns where the fields are irrelevant, and prefer existing builders/constructors. Persisted results lacking the optional fields still deserialize them as `None`. Sources: `crates/ferrin-core/src/generate_text/{step,prepare_step}.rs`, `stream_text/events.rs`, `agent/tool_loop_agent.rs` and `telemetry/events.rs`, 2026-09-17.
+
+[Decision] Application callbacks and results expose contexts; Telemetry excludes both contexts by default. Opt in separately with `TelemetryOptions::include_runtime_context` and `include_tools_context`, using `..Default::default()` for remaining defaults. New provider features are optional and are not enabled automatically. These source changes remain unreleased and do not constitute a new release-version decision.

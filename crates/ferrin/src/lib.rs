@@ -139,22 +139,30 @@ pub use ferrin_core::wrap_provider;
 pub mod providers {
     #[cfg(feature = "anthropic")]
     pub use ferrin_anthropic as anthropic;
+    #[cfg(feature = "azure")]
+    pub use ferrin_azure as azure;
     #[cfg(feature = "google")]
     pub use ferrin_google as google;
     #[cfg(feature = "openai")]
     pub use ferrin_openai as openai;
     #[cfg(feature = "openai-compatible")]
     pub use ferrin_openai_compatible as openai_compatible;
+    #[cfg(feature = "voyage")]
+    pub use ferrin_voyage as voyage;
 }
 
 #[cfg(feature = "anthropic")]
 pub use ferrin_anthropic as anthropic;
+#[cfg(feature = "azure")]
+pub use ferrin_azure as azure;
 #[cfg(feature = "google")]
 pub use ferrin_google as google;
 #[cfg(feature = "openai")]
 pub use ferrin_openai as openai;
 #[cfg(feature = "openai-compatible")]
 pub use ferrin_openai_compatible as openai_compatible;
+#[cfg(feature = "voyage")]
+pub use ferrin_voyage as voyage;
 
 /// The items most programs need: entry points, result types, messages,
 /// tools, common specification types, the serde derives and `json!`, and

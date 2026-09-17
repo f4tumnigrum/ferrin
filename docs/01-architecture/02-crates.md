@@ -19,6 +19,8 @@
 | `ferrin-anthropic` | L3 | Anthropic adapter: Messages, Files, Skills, Batch, provider tools. | Same as above |
 | `ferrin-openai-compatible` | L3 | Generic adapter for OpenAI-compatible Chat, Completion, Embedding, and Image endpoints, used directly or reused by other adapters. | Same as above |
 | `ferrin-google` | L3 | Google Generative AI adapter. | Same as above |
+| `ferrin-azure` | L3 | Azure OpenAI models, API-key/Entra authentication and deployment routing. | `ferrin-openai`, `ferrin-spec`, `ferrin-provider-util` (explicit adapter-reuse exception, ADR 0025) |
+| `ferrin-voyage` | L3 | Voyage reranking models. | `ferrin-spec`, `ferrin-provider-util` |
 | `ferrin-mcp` | L3 | MCP client: Streamable HTTP, SSE, and stdio transports, OAuth, tool bridging, resources, prompts, elicitation. | `ferrin-spec`, `ferrin-schema`, `ferrin-tool`, `ferrin-provider-util` (`ferrin-message` was not needed in the 2026-09-14 implementation; see [MCP integration](15-mcp.md), section 6) |
 | `ferrin-core` | L4 | Prompt normalization/conversion, text generation loop, streaming, structured output, agents, middleware, registry, retries/timeouts, telemetry interfaces, other modalities, core errors. | All L0–L2 crates |
 | `ferrin-otel` | L5 | OpenTelemetry implementation of `Telemetry`, following GenAI semantic conventions. | `ferrin-core`, `ferrin-spec`, `ferrin-tool` (2026-09-14 implementation: `opentelemetry_sdk` is test-only; see [Observability](13-observability.md), section 9) |
@@ -44,6 +46,9 @@ flowchart TD
     schema --> openai
     schema --> compatible
     util --> google[ferrin-google]
+    util --> azure[ferrin-azure]
+    openai --> azure
+    util --> voyage[ferrin-voyage]
     util --> mcp[ferrin-mcp]
     spec --> core[ferrin-core]
     schema --> core
@@ -58,6 +63,8 @@ flowchart TD
     anthropic --> facade
     compatible --> facade
     google --> facade
+    azure --> facade
+    voyage --> facade
     mcp --> facade
     otel --> facade
     policy --> facade
@@ -228,12 +235,13 @@ src/
 | `ferrin-provider-util` | `reqwest` | Provide the default `ReqwestTransport` | On |
 | `ferrin-provider-util` | `platform-verifier` | Depend directly on `rustls-platform-verifier` for system certificate verification (already enabled by default in reqwest 0.13; no `native-tls` feature, see CI documentation, section 3) | Off |
 | `ferrin-tool` | `sandbox` | Compile the `Sandbox` trait and related execution-context fields | Off |
+| `ferrin-openai`, `ferrin-google` | `realtime` | Compile WebSocket streaming transcription and speech translation models | Off |
 | `ferrin-core` | `realtime` | Compile `realtime` session APIs, adding WebSocket dependencies | Off |
 | `ferrin-core` | `video` | Compile `video` generation APIs (polling/webhooks) | On |
 | `ferrin-mcp` | `stdio` | Subprocess `stdio` transport | On |
 | `ferrin-mcp` | `oauth` | OAuth authorization flow | On |
 | `ferrin-policy` | `rego` | `RegoPolicyClient`: in-process Rego evaluation with `regorus` | Off |
-| `ferrin` | `openai`, `anthropic`, `google`, `openai-compatible`, `mcp`, `otel`, `policy`, `policy-rego`, `macros`, `realtime` | Enable corresponding crates and re-export under `ferrin::providers::*` and at the crate root (`ferrin::openai`, etc.); `realtime` forwards `ferrin-core/realtime` (implemented 2026-09-14; see [API reference](../02-api/02-api-reference.md), section 14) | `macros` on; others off |
+| `ferrin` | `openai`, `anthropic`, `google`, `openai-compatible`, `azure`, `voyage`, `mcp`, `otel`, `policy`, `policy-rego`, `macros`, `realtime` | Enable corresponding crates and re-export under `ferrin::providers::*` and at the crate root (`ferrin::openai`, etc.); `realtime` forwards `ferrin-core/realtime` and enabled OpenAI/Google provider `realtime` features without enabling a provider itself (source: `crates/ferrin/Cargo.toml`, 2026-09-17) | `macros` on; others off |
 
 [Decision] Optional features between workspace crates must not change existing public type shapes or signatures; they only add APIs. Cargo feature unification can otherwise create untested combinations. A small, strictly additive feature set lets users trim dependencies without changing contracts.
 
@@ -244,3 +252,5 @@ src/
 - See [Versioning and release](../03-engineering/06-versioning-and-release.md) for coordination rules and process.
 
 [Fact] On 2026-09-15, the OpenAI and OpenAI-compatible request encoders reuse strict transforms from `ferrin-schema`, rejecting unrepresentable dictionary schemas before sending requests (source: the two provider manifests and strict-schema request regression tests).
+
+[Decision] (2026-09-17, [ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md)) Azure reuses OpenAI model implementations, adding one explicit L3-to-L3 dependency. The two new adapters are unreleased; the sixteen published 0.1.2 crates remain the release baseline.

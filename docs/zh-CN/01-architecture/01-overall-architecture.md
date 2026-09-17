@@ -110,3 +110,5 @@ let result = ferrin::generate_text(&model)
 3. 规范层类型全部实现 `Debug + Clone + Serialize + Deserialize`（流与 Future 类型除外）。
 4. 公共 API 中不出现 `reqwest`、`schemars`、`tokio_tungstenite` 以外的第三方类型；出现的第三方类型通过 re-export 暴露并在版本策略中声明。
 5. 任何网络访问必须经过 `ferrin-provider-util::http`，且 URL 来自应用配置或经 `secure_url` 校验。
+
+【决策】（2026-09-17，[ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md)）Azure 适配器是约束 2 的明确例外：依赖 `ferrin-openai` 复用模型协议实现。核心仍不依赖供应商实现。

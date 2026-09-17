@@ -26,6 +26,10 @@
 | [0018](2026-09-14-0018-english-primary-documentation.md) | 英文作为文档主版本 | accepted | 2026-09-14 |
 | [0019](2026-09-15-0019-fallible-schema-transforms.md) | 可失败的供应商 Schema 转换 | accepted | 2026-09-15 |
 | [0020](2026-09-15-0020-policy-based-tool-approval.md) | 策略化工具审批 crate 与内嵌 Rego 引擎 | accepted | 2026-09-15 |
+| [0021](2026-09-17-0021-agent-runtime-context.md) | Agent 运行上下文与持久步骤状态 | proposed | 2026-09-17 |
+| [0022](2026-09-17-0022-provider-tool-roundtrips.md) | 供应商工具往返转换 | proposed | 2026-09-17 |
+| [0023](2026-09-17-0023-google-interactions-and-live-audio.md) | Google Interactions 与 Live 音频 | proposed | 2026-09-17 |
+| [0025](2026-09-17-0025-azure-and-voyage-providers.md) | Azure OpenAI 与 Voyage 供应商 | proposed | 2026-09-17 |
 
 ## 编辑性修订
 

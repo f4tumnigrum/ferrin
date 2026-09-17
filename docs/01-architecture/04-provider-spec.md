@@ -167,7 +167,7 @@ The following table summarizes all specification interfaces and their methods. C
 | `ImageModel` | `max_images_per_call() -> Option<usize>`, `do_generate(ImageOptions{prompt, n, size, aspect_ratio, seed, files?, mask?, ...}) -> ImageResult{images, warnings, response, provider_metadata}` | One call may return multiple images |
 | `SpeechModel` | `do_generate(SpeechOptions{text, voice, output_format, instructions, speed, language, ...}) -> SpeechResult{audio, warnings, request, response, provider_metadata}` | Returns audio bytes and media type |
 | `TranscriptionModel` | `do_generate(TranscriptionOptions{audio, media_type, ...}) -> TranscriptionResult{text, segments, language, duration_in_seconds, ...}`; optional `do_stream` | Streaming transcription is optional |
-| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score, document?}], usage, ...}` | Descending relevance order |
+| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score}], provider_metadata, warnings, response}` | Descending relevance order |
 | `VideoModel` | Synchronous `do_generate`, or asynchronous `do_start`/`do_status`/optional `handle_webhook` | See the decision below |
 | `Files` | `upload_file(UploadFileOptions{data, media_type, filename, provider_options}) -> UploadFileResult{provider_reference, provider_metadata, warnings}`; optional `get_file_metadata`, `download_file`, `delete_file` | Uploads return provider references for file parts |
 | `Skills` | `upload_skill(...) -> {provider_reference, ...}` | Same structure as file uploads |
@@ -179,7 +179,7 @@ The following table summarizes all specification interfaces and their methods. C
 
 ## 5. Provider trait
 
-[Decision] `Provider` requires language, embedding, and image model methods; transcription, speech, reranking, files, and skills are optional. Missing models return `NoSuchModelError`. The three required families are offered by all first-party providers; optional methods default to `None` for the core to check before calling.
+[Decision] `Provider` requires explicit language, embedding and image lookup implementations; implementing a lookup does not imply support, and unsupported kinds return `NoSuchModelError::unsupported_kind`. Other model lookups default to that error; files, skills, realtime and batch service accessors default to `None`. This lets providers such as reranking-only Voyage satisfy one trait without claiming unsupported model families. Sources: `crates/ferrin-spec/src/provider.rs` and [ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md), checked 2026-09-17.
 
 ```rust
 pub trait Provider: Send + Sync + 'static {

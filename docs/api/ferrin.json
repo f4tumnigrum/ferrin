@@ -159,6 +159,11 @@
       "source": "ferrin_anthropic"
     },
     {
+      "path": "ferrin::azure",
+      "kind": "use",
+      "source": "ferrin_azure"
+    },
+    {
       "path": "ferrin::batch",
       "kind": "use",
       "source": "ferrin_core::batch"
@@ -727,6 +732,11 @@
       "source": "ferrin_anthropic"
     },
     {
+      "path": "ferrin::providers::azure",
+      "kind": "use",
+      "source": "ferrin_azure"
+    },
+    {
       "path": "ferrin::providers::google",
       "kind": "use",
       "source": "ferrin_google"
@@ -740,6 +750,11 @@
       "path": "ferrin::providers::openai_compatible",
       "kind": "use",
       "source": "ferrin_openai_compatible"
+    },
+    {
+      "path": "ferrin::providers::voyage",
+      "kind": "use",
+      "source": "ferrin_voyage"
     },
     {
       "path": "ferrin::realtime",
@@ -875,6 +890,11 @@
       "path": "ferrin::video",
       "kind": "use",
       "source": "ferrin_core::video"
+    },
+    {
+      "path": "ferrin::voyage",
+      "kind": "use",
+      "source": "ferrin_voyage"
     },
     {
       "path": "ferrin::wrap_embedding_model",

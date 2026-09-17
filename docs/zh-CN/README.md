@@ -69,5 +69,5 @@
 
 ### 供应商与生成文件
 
-- 供应商能力矩阵、设置与选项：[OpenAI](providers/openai.md)、[Anthropic](providers/anthropic.md)、[Google](providers/google.md)、[OpenAI 兼容端点](providers/openai-compatible.md)
+- 供应商能力矩阵、设置与选项：[OpenAI](providers/openai.md)、[Anthropic](providers/anthropic.md)、[Google](providers/google.md)、[OpenAI 兼容端点](providers/openai-compatible.md)、[Azure OpenAI](providers/azure.md)、[Voyage](providers/voyage.md)
 - [`../api/`](../api/)（两版共用）：`cargo xtask api-snapshot` 生成的各 crate 公共 API 摘要（JSON），CI 校验其与代码一致

@@ -131,3 +131,9 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 【事实】`StreamContractChecker` 在结束事件后仍记住文本、推理和工具输入 ID，拒绝同一次供应商调用内复用 ID；不同调用使用独立检查器时可以复用。回归测试：`closed_part_ids_cannot_be_reused`（2026-09-15，审查 I02）。
 
 【事实】`FixtureServer::mount_times(..., 0)` 不挂载路由，下一条匹配请求会使用后备路由或返回 404。回归测试覆盖零次、一次和多次响应（2026-09-15，审查 I03）。
+
+## 能力补齐验证（2026-09-17）
+
+【事实】本机 macOS 对未发布 Agent/供应商扩展的验证通过 903 个 nextest 测试，跳过 10 个需要凭据的在线测试；14 个 doctest 通过，1 个忽略。`just features` 的 68 组检查、workspace Clippy、警告视为错误的 rustdoc、格式、模块大小、18 个公共 API 快照、依赖审计、未使用依赖、文档链接和拼写均通过。来源：2026-09-17 本机 `just` 运行。覆盖普通/流式/deferred 工具循环与审批重放、持续上下文、Google Interactions/Live 音频、Azure 认证路由和 Voyage 重排。本记录不验证 Windows/Linux 或真实供应商服务可用性，PV-031 保持开放。
+
+【事实】在隔离源码副本中使用原始 crates.io 注册表，以 `--locked --allow-dirty` 为全部 18 个可发布 crate 打包，并从包内源码编译验证通过。本机 `rsproxy-sparse` 来源替换在打包时无法解析未发布 workspace 包；仅在隔离检查中移除该替换后验证通过。未发布任何包。来源：2026-09-17 本机打包验证。

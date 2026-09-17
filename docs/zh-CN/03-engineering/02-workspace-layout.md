@@ -40,6 +40,8 @@ ferrin/
       ferrin-anthropic/
       ferrin-openai-compatible/
       ferrin-google/
+      ferrin-azure/
+      ferrin-voyage/
   xtask/
   examples/                  # 独立示例 crate（不发布），每个示例一个二进制
   docs/                      # 本文档集

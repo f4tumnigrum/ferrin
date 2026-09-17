@@ -40,6 +40,8 @@ ferrin/
       ferrin-anthropic/
       ferrin-openai-compatible/
       ferrin-google/
+      ferrin-azure/
+      ferrin-voyage/
   xtask/
   examples/                  # one unpublished binary crate per example
   docs/                      # primary English documentation; independent Chinese edition in zh-CN/

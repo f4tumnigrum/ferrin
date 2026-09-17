@@ -5,6 +5,20 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Optional `azure` and `voyage` provider features and reexports. The `realtime`
+  feature forwards streaming-audio support to enabled OpenAI/Google providers.
+- Runtime context and persistent Agent step state through core reexports, plus
+  three-step deferred provider-tool integration coverage (ADRs 0021, 0022).
+
+### Changed
+
+- **Breaking:** core event/result struct literals require the new context and
+  tool-metadata fields; step state overrides persist across later steps.
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
 ## [0.1.2] - 2026-09-16
 
 ### Added

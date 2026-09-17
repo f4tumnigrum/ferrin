@@ -167,7 +167,7 @@ pub struct StreamResult {
 | `ImageModel` | `max_images_per_call() -> Option<usize>`、`do_generate(ImageOptions{prompt, n, size, aspect_ratio, seed, files?, mask?, ...}) -> ImageResult{images, warnings, response, provider_metadata}` | 单次调用可返回多张图像 |
 | `SpeechModel` | `do_generate(SpeechOptions{text, voice, output_format, instructions, speed, language, ...}) -> SpeechResult{audio, warnings, request, response, provider_metadata}` | 音频以字节与媒体类型返回 |
 | `TranscriptionModel` | `do_generate(TranscriptionOptions{audio, media_type, ...}) -> TranscriptionResult{text, segments, language, duration_in_seconds, ...}`；可选 `do_stream` | 流式转写可选 |
-| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score, document?}], usage, ...}` | 结果按相关度降序 |
+| `RerankingModel` | `do_rerank(RerankOptions{query, documents, top_n, ...}) -> RerankResult{ranking[{index, relevance_score}], provider_metadata, warnings, response}` | 结果按相关度降序 |
 | `VideoModel` | 同步 `do_generate` 或异步三段式 `do_start`/`do_status`/可选 `handle_webhook` | 两种形态见下文决策 |
 | `Files` | `upload_file(UploadFileOptions{data, media_type, filename, provider_options}) -> UploadFileResult{provider_reference, provider_metadata, warnings}`；可选 `get_file_metadata`、`download_file`、`delete_file` | 上传后返回供应商引用，供文件部件使用 |
 | `Skills` | `upload_skill(...) -> {provider_reference, ...}` | 与文件上传同构 |
@@ -179,7 +179,7 @@ pub struct StreamResult {
 
 ## 5. Provider trait
 
-【决策】`Provider` trait 以必备方法暴露语言、嵌入与图像模型，转写、语音、重排、文件与技能为可选方法；找不到模型时返回 `NoSuchModelError`。依据：三类必备方法对应全部第一方供应商都提供的能力，其余按供应商可选，缺省实现返回 `None`，核心层据此在调用前判断。
+【决策】`Provider` 要求显式实现语言、嵌入与图像模型查询；实现方法不等于支持对应类别，不支持时返回 `NoSuchModelError::unsupported_kind`。其余模型查询默认返回该错误；文件、技能、实时与批处理服务默认返回 `None`。这使仅支持重排的 Voyage 等供应商可以遵循统一 trait，而不声明不存在的模型能力。依据：`crates/ferrin-spec/src/provider.rs` 与 [ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md)，2026-09-17 对照。
 
 ```rust
 pub trait Provider: Send + Sync + 'static {

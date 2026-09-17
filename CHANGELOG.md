@@ -8,8 +8,24 @@ lists releases and cross-crate changes. The format follows
 
 ### Added
 
+- Azure OpenAI and Voyage reranking providers, Google Interactions and Live
+  transcription/translation, and optional facade provider features (ADRs 0023, 0025).
+- Independent Agent runtime context, persistent message/instruction/tool context,
+  and tool metadata propagation (ADR 0021).
+
 - Fixture recording supports explicit JSON-pointer response redaction, including SSE payloads, with redaction provenance in fixture metadata.
 - Recording scenarios can read private endpoints through `base_url_env`; status output omits the endpoint URL.
+
+### Changed
+
+- **Breaking:** new fields on public core/tool event structs and OpenAI configuration
+  require Rust struct literals to be updated; new serialized fields default when
+  reading older JSON. Step message/instruction/context overrides now persist.
+
+### Fixed
+
+- Complete OpenAI advanced provider-tool mapping/replay and OpenAI/Anthropic
+  caller/deferred factory bindings (ADR 0022).
 
 ## [0.1.2] - 2026-09-16
 

@@ -110,3 +110,5 @@ The following invariants apply across all crates:
 3. Specification data types implement `Debug + Clone + Serialize + Deserialize`, except stream and future types.
 4. The public API exposes no third-party types other than those from `reqwest`, `schemars`, and `tokio_tungstenite`; exposed types are re-exported and covered by the versioning policy.
 5. All network access goes through `ferrin-provider-util::http`; URLs come from application configuration or pass `secure_url` validation.
+
+[Decision] (2026-09-17, [ADR 0025](../04-decisions/2026-09-17-0025-azure-and-voyage-providers.md)) The Azure adapter is an explicit exception to invariant 2: it imports `ferrin-openai` to reuse its wire model implementations. The core still imports no provider implementation.
