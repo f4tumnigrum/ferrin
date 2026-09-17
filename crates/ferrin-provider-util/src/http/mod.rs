@@ -9,7 +9,9 @@
 mod body;
 mod handlers;
 mod json_lines;
+mod multipart;
 mod request;
+mod request_body;
 #[cfg(feature = "reqwest")]
 mod reqwest_transport;
 mod transport;
@@ -40,6 +42,8 @@ pub use handlers::status_code_error_response_handler;
 pub use handlers::text_response_handler;
 pub use json_lines::JsonLinesResponseHandler;
 pub use json_lines::json_lines_response_handler;
+pub use multipart::MultipartForm;
+pub use multipart::MultipartPart;
 pub use request::ApiResponse;
 pub use request::delete;
 pub use request::get;
@@ -47,6 +51,7 @@ pub use request::post_bytes;
 pub use request::post_form;
 pub use request::post_json;
 pub use request::send;
+pub use request_body::RequestBody;
 #[cfg(feature = "reqwest")]
 pub use reqwest_transport::ReqwestTransport;
 #[cfg(feature = "reqwest")]
@@ -55,9 +60,6 @@ pub use transport::BodyStream;
 pub use transport::HttpRequest;
 pub use transport::HttpResponse;
 pub use transport::HttpTransport;
-pub use transport::MultipartForm;
-pub use transport::MultipartPart;
-pub use transport::RequestBody;
 pub use transport::ResponseHead;
 pub use transport::SharedTransport;
 pub use transport::TransportError;

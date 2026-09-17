@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use bytes::Bytes;
+use bytes::BytesMut;
 use ferrin_provider_util::HttpRequest;
 use ferrin_provider_util::HttpResponse;
 use ferrin_provider_util::HttpTransport;
@@ -146,10 +147,27 @@ impl RecordedRequest {
 ///
 /// Response bodies are recorded as the caller consumes them, so a stream
 /// that is dropped early is recorded up to the last chunk read.
+/// Streaming request bodies are recorded as the inner transport sends them;
+/// request snapshots contain only the chunks consumed so far.
 pub struct RecordingTransport {
     inner: SharedTransport,
     filter: HeaderFilter,
-    requests: Mutex<Vec<RecordedRequest>>,
+    requests: Mutex<Vec<RecordedExchange>>,
+}
+
+struct RecordedExchange {
+    request: RecordedRequest,
+    streamed_body: Option<Arc<Mutex<BytesMut>>>,
+}
+
+impl RecordedExchange {
+    fn snapshot(&self) -> RecordedRequest {
+        let mut request = self.request.clone();
+        if let Some(body) = &self.streamed_body {
+            request.body = Bytes::copy_from_slice(&lock(body));
+        }
+        request
+    }
 }
 
 impl fmt::Debug for RecordingTransport {
@@ -191,13 +209,16 @@ impl RecordingTransport {
     /// Recorded exchanges, oldest first.
     #[must_use]
     pub fn requests(&self) -> Vec<RecordedRequest> {
-        lock(&self.requests).clone()
+        lock(&self.requests)
+            .iter()
+            .map(RecordedExchange::snapshot)
+            .collect()
     }
 
     /// The most recent exchange.
     #[must_use]
     pub fn last_request(&self) -> Option<RecordedRequest> {
-        lock(&self.requests).last().cloned()
+        lock(&self.requests).last().map(RecordedExchange::snapshot)
     }
 
     /// Number of recorded exchanges.
@@ -225,21 +246,50 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl HttpTransport for RecordingTransport {
-    fn execute(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
+    fn execute(
+        &self,
+        mut request: HttpRequest,
+    ) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
         let content_type = match &request.body {
             RequestBody::Empty => None,
-            RequestBody::Bytes { content_type, .. } => Some(content_type.clone()),
+            RequestBody::Bytes { content_type, .. } | RequestBody::Stream { content_type, .. } => {
+                Some(content_type.clone())
+            }
             RequestBody::Multipart(_) => Some("multipart/form-data".to_owned()),
             _ => None,
         };
+        let (body, streamed_body) = match request.body.to_bytes() {
+            Ok(body) => (body, None),
+            Err(_) => {
+                let content_type = request.body.content_type().unwrap_or_default();
+                let content_length = request.body.content_length();
+                let captured = Arc::new(Mutex::new(BytesMut::new()));
+                let observed = Arc::clone(&captured);
+                let stream = request.body.into_stream().map(move |chunk| {
+                    if let Ok(bytes) = &chunk {
+                        lock(&observed).extend_from_slice(bytes);
+                    }
+                    chunk
+                });
+                request.body = RequestBody::Stream {
+                    content_type,
+                    data: Box::pin(stream),
+                    content_length,
+                };
+                (Bytes::new(), Some(captured))
+            }
+        };
         let response = Arc::new(Mutex::new(RecordedResponse::default()));
-        lock(&self.requests).push(RecordedRequest {
-            method: request.method.clone(),
-            url: request.url.clone(),
-            headers: self.filter.apply(&request.headers),
-            content_type,
-            body: request.body.to_bytes(),
-            response: Arc::clone(&response),
+        lock(&self.requests).push(RecordedExchange {
+            request: RecordedRequest {
+                method: request.method.clone(),
+                url: request.url.clone(),
+                headers: self.filter.apply(&request.headers),
+                content_type,
+                body,
+                response: Arc::clone(&response),
+            },
+            streamed_body,
         });
         let filter = self.filter.clone();
         Box::pin(async move {

@@ -15,10 +15,10 @@ use futures_util::StreamExt;
 use futures_util::future::Either;
 use tokio_util::sync::WaitForCancellationFutureOwned;
 
+use super::request_body::RequestBody;
 use super::transport::HttpRequest;
 use super::transport::HttpResponse;
 use super::transport::HttpTransport;
-use super::transport::RequestBody;
 use super::transport::SharedTransport;
 use super::transport::TransportError;
 use super::transport::TransportErrorKind;
@@ -130,22 +130,34 @@ impl HttpTransport for ReqwestTransport {
                 })?;
                 Self::pinned_client(host, &pinned_addresses)?
             };
+            let content_type = (!headers.contains("content-type"))
+                .then(|| body.content_type())
+                .flatten();
+            let content_length = (!headers.contains("content-length"))
+                .then(|| body.content_length())
+                .flatten();
             let mut builder = client
                 .request(method, url.clone())
                 .headers(headers.into_map());
+            if let Some(content_type) = content_type {
+                builder = builder.header(http::header::CONTENT_TYPE, content_type);
+            }
             if let Some(timeout) = timeout {
                 builder = builder.timeout(timeout);
             }
             match body {
                 RequestBody::Empty => {}
                 RequestBody::Bytes { data, .. } => builder = builder.body(data),
-                RequestBody::Multipart(form) => builder = builder.body(form.encode()),
-                #[allow(unreachable_patterns, reason = "RequestBody is non-exhaustive")]
-                _ => {
-                    return Err(TransportError::new(
-                        TransportErrorKind::InvalidRequest,
-                        "unsupported request body",
-                    ));
+                body @ (RequestBody::Multipart(_) | RequestBody::Stream { .. }) => {
+                    if let Some(length) = content_length {
+                        builder = builder.header(http::header::CONTENT_LENGTH, length);
+                    }
+                    let upload = CancellableBody {
+                        inner: Some(body.into_stream()),
+                        cancelled: Box::pin(cancellation.clone().cancelled_owned()),
+                        finished: false,
+                    };
+                    builder = builder.body(reqwest::Body::wrap_stream(upload));
                 }
             }
             let send = client.execute(builder.build().map_err(map_error)?);
@@ -162,7 +174,7 @@ impl HttpTransport for ReqwestTransport {
             let response_headers = Headers::from_map(response.headers().clone());
             let stream = response.bytes_stream().map(|item| item.map_err(map_error));
             let body = CancellableBody {
-                inner: Box::pin(stream),
+                inner: Some(Box::pin(stream)),
                 cancelled: Box::pin(cancellation.cancelled_owned()),
                 finished: false,
             };
@@ -176,7 +188,7 @@ impl HttpTransport for ReqwestTransport {
 }
 
 struct CancellableBody {
-    inner: Pin<Box<dyn Stream<Item = Result<Bytes, TransportError>> + Send>>,
+    inner: Option<super::transport::BodyStream>,
     cancelled: Pin<Box<WaitForCancellationFutureOwned>>,
     finished: bool,
 }
@@ -190,12 +202,22 @@ impl Stream for CancellableBody {
         }
         if self.cancelled.as_mut().poll(cx).is_ready() {
             self.finished = true;
+            self.inner = None;
             return Poll::Ready(Some(Err(TransportError::cancelled())));
         }
-        match self.inner.as_mut().poll_next(cx) {
+        let Some(inner) = self.inner.as_mut() else {
+            return Poll::Ready(None);
+        };
+        match inner.as_mut().poll_next(cx) {
             Poll::Ready(None) => {
                 self.finished = true;
+                self.inner = None;
                 Poll::Ready(None)
+            }
+            Poll::Ready(Some(Err(error))) => {
+                self.finished = true;
+                self.inner = None;
+                Poll::Ready(Some(Err(error)))
             }
             other => other,
         }
@@ -203,6 +225,17 @@ impl Stream for CancellableBody {
 }
 
 fn map_error(error: reqwest::Error) -> TransportError {
+    let mut source = std::error::Error::source(&error);
+    while let Some(cause) = source {
+        if let Some(upload_error) = cause.downcast_ref::<TransportError>() {
+            if upload_error.is_cancelled() {
+                return TransportError::cancelled();
+            }
+            return TransportError::new(TransportErrorKind::Body, "request body stream failed")
+                .with_cause(error);
+        }
+        source = cause.source();
+    }
     let kind = if error.is_timeout() {
         TransportErrorKind::Timeout
     } else if error.is_connect() {

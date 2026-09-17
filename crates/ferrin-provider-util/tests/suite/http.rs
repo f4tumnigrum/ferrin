@@ -391,7 +391,7 @@ async fn multipart_form_is_encoded() {
             Some("audio/mpeg".to_owned()),
             vec![1, 2, 3].into(),
         );
-    let encoded = String::from_utf8_lossy(&form.encode()).into_owned();
+    let encoded = String::from_utf8_lossy(&form.encode().unwrap()).into_owned();
     assert!(encoded.starts_with(
         "--fixed\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-1\r\n--fixed\r\n"
     ));

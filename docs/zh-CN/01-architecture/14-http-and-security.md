@@ -45,6 +45,8 @@ pub struct ReqwestTransport { client: reqwest::Client }
 - `ReqwestTransport::new()` 可失败（TLS 后端初始化），`builder()` 暴露带默认配置的 `ClientBuilder`，`from_client()` 接受外部客户端；`default_transport()` 返回进程级共享的 `Arc<dyn HttpTransport>`。取消令牌同时作用于请求发送与响应体流（体流被取消时产出 `TransportErrorKind::Cancelled` 项后结束）。
 - reqwest 的 `Error` 按 `is_timeout/is_connect/is_body/is_decode/is_builder/is_request` 映射到上述分类；`is_request` 且错误链文本含 `reset`/`broken pipe`/`connection closed` 时归为 `Reset`。
 
+【决策】自 2026-09-17 起，`RequestBody::Stream` 与 `MultipartForm::file_stream` 承载一次性字节流，不预先收集文件内容。`into_stream` 逐步输出 multipart 头、文件块与分隔符；已知长度设置 `Content-Length`，否则使用 HTTP 流式分帧。取消或丢弃请求会释放等待中的上传流；流错误终止请求体，并校验声明的流长度。请求体和 multipart 表单不再实现 `Clone`；同步 `to_bytes`/`encode` 对流式内容返回错误。录制传输在 HTTP 客户端消费块时旁路记录，不在发送前收集整个流。这通过 ADR 0026 对齐参考 SDK 的已有文件上传路径。
+
 ## 2. 请求辅助
 
 【决策】请求辅助函数（JSON、表单与原始体的 POST，以及 GET）：发送请求、去除值为 `None` 的头、按状态码选择失败处理器或成功处理器、把网络错误包装为 `ApiCallError`（可重试性由错误类型推断）、把空响应体包装为 `EmptyResponseBody` 错误。依据：所有适配器共享同一条请求路径，错误分类与重试判定只需实现一次。

@@ -5,7 +5,15 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Streaming request bodies and multipart files with one-shot ownership,
+  cancellation and checked content lengths (ADR 0026).
+
 ### Changed
+
+- `RequestBody::to_bytes` and multipart `encode` return `Result`; use
+  `into_stream` for streaming transport and handle materialization failures.
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 

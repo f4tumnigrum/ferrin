@@ -92,17 +92,20 @@
       ],
       "methods": [
         "fn boundary(&self) -> &str",
+        "fn content_length(&self) -> Option<u64>",
         "fn content_type(&self) -> String",
-        "fn encode(&self) -> Bytes",
+        "fn encode(&self) -> Result<Bytes, TransportError>",
         "fn field(self, name: impl Into<String>, value: impl Into<String>) -> Self",
         "fn file(self, name: impl Into<String>, filename: Option<String>, media_type: Option<String>, data: Bytes) -> Self",
+        "fn file_stream(self, name: impl Into<String>, filename: Option<String>, media_type: Option<String>, data: BodyStream) -> Self",
+        "fn into_stream(self) -> BodyStream",
         "fn new() -> Self",
+        "fn part(self, part: MultipartPart) -> Self",
         "fn parts(&self) -> &[MultipartPart]",
         "fn values(&self) -> JsonValue",
         "fn with_boundary(boundary: impl Into<String>) -> Self"
       ],
       "traits": [
-        "impl Clone for MultipartForm",
         "impl Debug for MultipartForm",
         "impl Default for MultipartForm"
       ]
@@ -155,15 +158,17 @@
       "variants": [
         "Empty",
         "Bytes { content_type: String, data: Bytes }",
-        "Multipart(MultipartForm)"
+        "Multipart(MultipartForm)",
+        "Stream { content_type: String, data: BodyStream, content_length: Option<u64> }"
       ],
       "methods": [
+        "fn content_length(&self) -> Option<u64>",
         "fn content_type(&self) -> Option<String>",
+        "fn into_stream(self) -> BodyStream",
         "fn json(data: Bytes) -> Self",
-        "fn to_bytes(&self) -> Bytes"
+        "fn to_bytes(&self) -> Result<Bytes, TransportError>"
       ],
       "traits": [
-        "impl Clone for RequestBody",
         "impl Debug for RequestBody"
       ]
     },
@@ -596,23 +601,26 @@
       "path": "ferrin_provider_util::http::MultipartForm",
       "kind": "struct",
       "signature": "struct",
-      "source": "transport::MultipartForm",
+      "source": "multipart::MultipartForm",
       "fields": [
         "/* private fields */"
       ],
       "methods": [
         "fn boundary(&self) -> &str",
+        "fn content_length(&self) -> Option<u64>",
         "fn content_type(&self) -> String",
-        "fn encode(&self) -> Bytes",
+        "fn encode(&self) -> Result<Bytes, TransportError>",
         "fn field(self, name: impl Into<String>, value: impl Into<String>) -> Self",
         "fn file(self, name: impl Into<String>, filename: Option<String>, media_type: Option<String>, data: Bytes) -> Self",
+        "fn file_stream(self, name: impl Into<String>, filename: Option<String>, media_type: Option<String>, data: BodyStream) -> Self",
+        "fn into_stream(self) -> BodyStream",
         "fn new() -> Self",
+        "fn part(self, part: MultipartPart) -> Self",
         "fn parts(&self) -> &[MultipartPart]",
         "fn values(&self) -> JsonValue",
         "fn with_boundary(boundary: impl Into<String>) -> Self"
       ],
       "traits": [
-        "impl Clone for MultipartForm",
         "impl Debug for MultipartForm",
         "impl Default for MultipartForm"
       ]
@@ -621,20 +629,17 @@
       "path": "ferrin_provider_util::http::MultipartPart",
       "kind": "enum",
       "signature": "enum",
-      "source": "transport::MultipartPart",
+      "source": "multipart::MultipartPart",
       "attrs": [
         "non_exhaustive"
       ],
       "variants": [
         "Field { name: String, value: String }",
-        "File { name: String, filename: Option<String>, media_type: Option<String>, data: Bytes }"
+        "File { name: String, filename: Option<String>, media_type: Option<String>, data: Bytes }",
+        "StreamFile { name: String, filename: Option<String>, media_type: Option<String>, data: BodyStream, content_length: Option<u64> }"
       ],
       "traits": [
-        "impl Clone for MultipartPart",
-        "impl Debug for MultipartPart",
-        "impl Eq for MultipartPart",
-        "impl PartialEq for MultipartPart",
-        "impl StructuralPartialEq for MultipartPart"
+        "impl Debug for MultipartPart"
       ]
     },
     {
@@ -657,22 +662,24 @@
       "path": "ferrin_provider_util::http::RequestBody",
       "kind": "enum",
       "signature": "enum",
-      "source": "transport::RequestBody",
+      "source": "request_body::RequestBody",
       "attrs": [
         "non_exhaustive"
       ],
       "variants": [
         "Empty",
         "Bytes { content_type: String, data: Bytes }",
-        "Multipart(MultipartForm)"
+        "Multipart(MultipartForm)",
+        "Stream { content_type: String, data: BodyStream, content_length: Option<u64> }"
       ],
       "methods": [
+        "fn content_length(&self) -> Option<u64>",
         "fn content_type(&self) -> Option<String>",
+        "fn into_stream(self) -> BodyStream",
         "fn json(data: Bytes) -> Self",
-        "fn to_bytes(&self) -> Bytes"
+        "fn to_bytes(&self) -> Result<Bytes, TransportError>"
       ],
       "traits": [
-        "impl Clone for RequestBody",
         "impl Debug for RequestBody"
       ]
     },

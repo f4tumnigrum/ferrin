@@ -9,14 +9,14 @@ use bytes::Bytes;
 use ferrin_spec::BoxFuture;
 use ferrin_spec::BoxStream;
 use ferrin_spec::Headers;
-use ferrin_spec::JsonValue;
 use http::Method;
 use http::StatusCode;
-use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-/// Byte stream of a response body.
+use super::request_body::RequestBody;
+
+/// Byte stream of an incoming or outgoing HTTP body.
 pub type BodyStream = BoxStream<'static, Result<Bytes, TransportError>>;
 
 /// Shared transport handle.
@@ -31,6 +31,9 @@ pub type SharedTransport = Arc<dyn HttpTransport>;
 /// `HttpRequest::pinned_addresses` where the underlying client allows it.
 pub trait HttpTransport: Send + Sync + 'static {
     /// Executes a request, returning the response head and a body stream.
+    ///
+    /// Consume request bodies through [`RequestBody::into_stream`] to support
+    /// uploads without collecting their file contents first.
     fn execute(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>>;
 }
 
@@ -121,233 +124,6 @@ impl HttpRequest {
         self.pinned_addresses = addresses;
         self
     }
-}
-
-/// Body of an outgoing request.
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub enum RequestBody {
-    /// No body.
-    Empty,
-    /// Raw bytes with a content type.
-    Bytes {
-        /// `Content-Type` value.
-        content_type: String,
-        /// Payload.
-        data: Bytes,
-    },
-    /// A multipart form.
-    Multipart(MultipartForm),
-}
-
-impl RequestBody {
-    /// A JSON body.
-    #[must_use]
-    pub fn json(data: Bytes) -> Self {
-        Self::Bytes {
-            content_type: "application/json".to_owned(),
-            data,
-        }
-    }
-
-    /// Returns the `Content-Type` this body requires, if any.
-    #[must_use]
-    pub fn content_type(&self) -> Option<String> {
-        match self {
-            Self::Empty => None,
-            Self::Bytes { content_type, .. } => Some(content_type.clone()),
-            Self::Multipart(form) => Some(form.content_type()),
-        }
-    }
-
-    /// Encodes the body to bytes (empty for [`RequestBody::Empty`]).
-    #[must_use]
-    pub fn to_bytes(&self) -> Bytes {
-        match self {
-            Self::Empty => Bytes::new(),
-            Self::Bytes { data, .. } => data.clone(),
-            Self::Multipart(form) => form.encode(),
-        }
-    }
-}
-
-/// A `multipart/form-data` body.
-#[derive(Debug, Clone)]
-pub struct MultipartForm {
-    parts: Vec<MultipartPart>,
-    boundary: String,
-}
-
-/// One part of a [`MultipartForm`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum MultipartPart {
-    /// A text field.
-    Field {
-        /// Field name.
-        name: String,
-        /// Field value.
-        value: String,
-    },
-    /// A file.
-    File {
-        /// Field name.
-        name: String,
-        /// File name sent in the disposition (`blob` when absent).
-        filename: Option<String>,
-        /// Media type (`application/octet-stream` when absent).
-        media_type: Option<String>,
-        /// File bytes.
-        data: Bytes,
-    },
-}
-
-impl Default for MultipartForm {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MultipartForm {
-    /// Creates an empty form with a random boundary.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            parts: Vec::new(),
-            boundary: format!("ferrin-multipart-{}", crate::ids::generate_id()),
-        }
-    }
-
-    /// Creates an empty form with a fixed boundary (for tests and snapshots).
-    #[must_use]
-    pub fn with_boundary(boundary: impl Into<String>) -> Self {
-        Self {
-            parts: Vec::new(),
-            boundary: boundary.into(),
-        }
-    }
-
-    /// Adds a text field.
-    #[must_use]
-    pub fn field(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.parts.push(MultipartPart::Field {
-            name: name.into(),
-            value: value.into(),
-        });
-        self
-    }
-
-    /// Adds a file.
-    #[must_use]
-    pub fn file(
-        mut self,
-        name: impl Into<String>,
-        filename: Option<String>,
-        media_type: Option<String>,
-        data: Bytes,
-    ) -> Self {
-        self.parts.push(MultipartPart::File {
-            name: name.into(),
-            filename,
-            media_type,
-            data,
-        });
-        self
-    }
-
-    /// The parts.
-    #[must_use]
-    pub fn parts(&self) -> &[MultipartPart] {
-        &self.parts
-    }
-
-    /// The boundary.
-    #[must_use]
-    pub fn boundary(&self) -> &str {
-        &self.boundary
-    }
-
-    /// The `Content-Type` header value.
-    #[must_use]
-    pub fn content_type(&self) -> String {
-        format!("multipart/form-data; boundary={}", self.boundary)
-    }
-
-    /// A JSON summary of the fields (files shown as `<file:name>`), used in
-    /// error reports.
-    #[must_use]
-    pub fn values(&self) -> JsonValue {
-        let mut map = serde_json::Map::new();
-        for part in &self.parts {
-            match part {
-                MultipartPart::Field { name, value } => {
-                    map.insert(name.clone(), json!(value));
-                }
-                MultipartPart::File { name, filename, .. } => {
-                    let label = filename.as_deref().unwrap_or(name);
-                    map.insert(name.clone(), json!(format!("<file:{label}>")));
-                }
-            }
-        }
-        JsonValue::Object(map)
-    }
-
-    /// Encodes the form body.
-    #[must_use]
-    pub fn encode(&self) -> Bytes {
-        let mut out = Vec::new();
-        for part in &self.parts {
-            out.extend_from_slice(b"--");
-            out.extend_from_slice(self.boundary.as_bytes());
-            out.extend_from_slice(b"\r\nContent-Disposition: form-data; name=\"");
-            match part {
-                MultipartPart::Field { name, value } => {
-                    out.extend_from_slice(escape_header_value(name).as_bytes());
-                    out.extend_from_slice(b"\"\r\n\r\n");
-                    out.extend_from_slice(value.as_bytes());
-                    out.extend_from_slice(b"\r\n");
-                }
-                MultipartPart::File {
-                    name,
-                    filename,
-                    media_type,
-                    data,
-                } => {
-                    out.extend_from_slice(escape_header_value(name).as_bytes());
-                    out.extend_from_slice(b"\"; filename=\"");
-                    out.extend_from_slice(
-                        escape_header_value(filename.as_deref().unwrap_or("blob")).as_bytes(),
-                    );
-                    out.extend_from_slice(b"\"\r\nContent-Type: ");
-                    let media_type = media_type.as_deref().unwrap_or("application/octet-stream");
-                    out.extend(
-                        media_type
-                            .bytes()
-                            .filter(|byte| *byte != b'\r' && *byte != b'\n'),
-                    );
-                    out.extend_from_slice(b"\r\n\r\n");
-                    out.extend_from_slice(data);
-                    out.extend_from_slice(b"\r\n");
-                }
-            }
-        }
-        out.extend_from_slice(b"--");
-        out.extend_from_slice(self.boundary.as_bytes());
-        out.extend_from_slice(b"--\r\n");
-        Bytes::from(out)
-    }
-}
-
-fn escape_header_value(value: &str) -> String {
-    value
-        .chars()
-        .filter(|ch| *ch != '\r' && *ch != '\n')
-        .flat_map(|ch| match ch {
-            '\\' => vec!['\\', '\\'],
-            '"' => vec!['\\', '"'],
-            other => vec![other],
-        })
-        .collect()
 }
 
 /// Status and headers of a response.

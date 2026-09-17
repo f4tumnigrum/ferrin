@@ -119,3 +119,52 @@ fn redacts_api_keys_and_bearer_tokens() {
     assert!(contains_secret("sk-abcdefghijklmnop"));
     assert!(!contains_secret("plain text"));
 }
+
+struct EchoUploadTransport;
+
+impl HttpTransport for EchoUploadTransport {
+    fn execute(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, TransportError>> {
+        Box::pin(async move {
+            Ok(HttpResponse::from_stream(
+                StatusCode::OK,
+                Headers::new(),
+                request.body.into_stream(),
+            ))
+        })
+    }
+}
+
+#[tokio::test]
+async fn recording_streamed_uploads_does_not_consume_before_the_inner_transport() {
+    let transport = RecordingTransport::new(Arc::new(EchoUploadTransport));
+    let body = ferrin_provider_util::MultipartForm::with_boundary("recording")
+        .field("purpose", "batch")
+        .file_stream(
+            "file",
+            None,
+            None,
+            Box::pin(stream::iter([
+                Ok(Bytes::from_static(b"first")),
+                Ok(Bytes::from_static(b"second")),
+            ])),
+        );
+    let expected = ferrin_provider_util::MultipartForm::with_boundary("recording")
+        .field("purpose", "batch")
+        .file("file", None, None, Bytes::from_static(b"firstsecond"))
+        .encode()
+        .unwrap();
+    let request = HttpRequest::post(Url::parse("https://example.com/upload").unwrap())
+        .with_body(RequestBody::Multipart(body));
+    let mut response = transport.execute(request).await.unwrap();
+    assert_eq!(transport.last_request().unwrap().body, Bytes::new());
+    let first = response.body.next().await.unwrap().unwrap();
+    assert_eq!(transport.last_request().unwrap().body, first);
+    while let Some(chunk) = response.body.next().await {
+        chunk.unwrap();
+    }
+    let recorded = transport.last_request().unwrap();
+    assert_eq!(
+        (recorded.body, recorded.content_type),
+        (expected, Some("multipart/form-data".into())),
+    );
+}

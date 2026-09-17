@@ -8,5 +8,6 @@ mod secure_url;
 mod settings;
 mod sse;
 mod stream_driver;
+mod upload_stream;
 
 mod json_lines;

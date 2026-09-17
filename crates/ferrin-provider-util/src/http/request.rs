@@ -13,10 +13,10 @@ use url::Url;
 
 use super::handlers::ResponseContext;
 use super::handlers::ResponseHandlers;
+use super::multipart::MultipartForm;
+use super::request_body::RequestBody;
 use super::transport::HttpRequest;
 use super::transport::HttpTransport;
-use super::transport::MultipartForm;
-use super::transport::RequestBody;
 use super::transport::TransportError;
 
 /// A successful, handled response.

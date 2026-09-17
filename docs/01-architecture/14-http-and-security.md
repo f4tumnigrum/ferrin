@@ -45,6 +45,8 @@ Default `ReqwestTransport` configuration: rustls, HTTP/2 preference, pooling, no
 - `ReqwestTransport::new()` can fail during TLS initialization; `builder()` exposes a preconfigured `ClientBuilder`, and `from_client()` accepts an external client. `default_transport()` shares a process-wide `Arc<dyn HttpTransport>`. Cancellation covers sending and response streaming; a cancelled body emits one cancelled error and ends.
 - Map reqwest errors by `is_timeout/is_connect/is_body/is_decode/is_builder/is_request`; request errors whose chain contains `reset`, `broken pipe`, or `connection closed` become `Reset`.
 
+[Decision] Since 2026-09-17, `RequestBody::Stream` and `MultipartForm::file_stream` carry one-shot byte streams without collecting file contents. `into_stream` emits multipart headers, file chunks and delimiters incrementally; known lengths set `Content-Length`, otherwise the transport streams with HTTP framing. Cancellation and request drop release pending upload streams. Stream errors terminate the body, and declared stream lengths are checked. Request bodies and multipart forms are no longer `Clone`; synchronous `to_bytes`/`encode` return an error for streaming bodies. Recording transports observe chunks as the HTTP client consumes them instead of collecting them before sending. This aligns the existing file-upload path with the reference SDK under ADR 0026.
+
 ## 2. Request helpers
 
 [Decision] Helpers for JSON/form/raw POST and GET send requests, omit `None` headers, select success/failure handlers by status, wrap network errors as `ApiCallError` with classified retryability, and report empty bodies as `EmptyResponseBody`. One shared path centralizes classification.

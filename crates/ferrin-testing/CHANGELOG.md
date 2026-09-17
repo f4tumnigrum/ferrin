@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- Record streaming uploads as transport consumes chunks, preserving cancellation
+  and partial-body behavior without eagerly buffering requests (ADR 0026).
+
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
 ## [0.1.2] - 2026-09-16
