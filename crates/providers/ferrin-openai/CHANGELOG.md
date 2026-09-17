@@ -7,7 +7,7 @@ All notable changes to this crate are documented here. The format follows
 
 ### Added
 
-- Reproducible anonymous Responses recording scenarios for text, SSE, function calls and structured output; private endpoints are supplied through the environment.
+- Four anonymous Responses API recordings for text, SSE, function calls and structured output, with redaction provenance in metadata.
 
 ## [0.1.2] - 2026-09-16
 

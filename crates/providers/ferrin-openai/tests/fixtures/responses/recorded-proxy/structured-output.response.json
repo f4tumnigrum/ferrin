@@ -1,0 +1,163 @@
+{
+  "id": "resp_00aeb4dd6f492452016aaba0d70c4c87d1924e6f3252891bfe",
+  "object": "response",
+  "created_at": 1789632727,
+  "status": "completed",
+  "background": false,
+  "completed_at": 1789632727,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": "[REDACTED]",
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-5.6-sol",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_00aeb4dd6f492452016aaba0d7d4f487d1abe803a8fdea93d7",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"city\":\"Paris\",\"country\":\"France\"}"
+        }
+      ],
+      "internal_chat_message_metadata_passthrough": {
+        "create_time": 1789632727.249125,
+        "turn_id": "01a0ae6c-46d7-701c-a4a5-84bad95f7b71"
+      },
+      "phase": "final_answer",
+      "role": "assistant",
+      "metadata": {
+        "turn_id": "01a0ae6c-46d7-701c-a4a5-84bad95f7b71"
+      }
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": "[REDACTED]",
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": "detailed"
+  },
+  "safety_identifier": "[REDACTED]",
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "capital",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city",
+          "country"
+        ],
+        "type": "object"
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "attribution": {
+      "items": {
+        "msg_00aeb4dd6f492452016aaba0d715f087d1b84b50487e659b58": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 14,
+              "output_tokens": 0
+            }
+          ],
+          "input_tokens": 14,
+          "output_tokens": 0
+        },
+        "msg_00aeb4dd6f492452016aaba0d7d4f487d1abe803a8fdea93d7": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 2,
+              "output_tokens": 16
+            }
+          ],
+          "input_tokens": 2,
+          "output_tokens": 16
+        }
+      },
+      "request_fields": {
+        "text.format": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "input_tokens": 28,
+          "output_tokens": 0
+        },
+        "instructions": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "input_tokens": 4382,
+          "output_tokens": 0
+        }
+      }
+    },
+    "input_tokens": 4426,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 16,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 4442
+  },
+  "user": null,
+  "metadata": {}
+}

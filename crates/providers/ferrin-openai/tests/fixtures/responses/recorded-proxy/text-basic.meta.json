@@ -1,0 +1,19 @@
+{
+  "status": 200,
+  "headers": {
+    "content-type": "application/json; charset=utf-8",
+    "x-request-id": "d593a9f5-a231-4175-93bf-13da6f963a31"
+  },
+  "recorded_at": "2026-09-17T08:11:35Z",
+  "provider": "openai",
+  "case": "responses/recorded-proxy/text-basic",
+  "model": "gpt-5.6-sol",
+  "redacted_response_fields": [
+    "/instructions",
+    "/safety_identifier",
+    "/prompt_cache_key",
+    "/response/instructions",
+    "/response/safety_identifier",
+    "/response/prompt_cache_key"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "model": "gpt-5.6-sol",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Return the capital of France as city and country."
+        }
+      ]
+    }
+  ],
+  "max_output_tokens": 512,
+  "store": false,
+  "include": [
+    "reasoning.encrypted_content"
+  ],
+  "reasoning": {
+    "effort": "low",
+    "summary": "detailed"
+  },
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "capital",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "city",
+          "country"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
