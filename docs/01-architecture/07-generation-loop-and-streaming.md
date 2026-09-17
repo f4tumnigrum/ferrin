@@ -39,7 +39,7 @@ impl StepResult {
 
 [Decision] Each step of `generate_text`:
 
-1. Calls `prepare_step` with the `model`, completed steps, step number, `messages`, and runtime context. It may override `model`, `tool_choice`, `active_tools`, `system`, `messages`, `runtime_context`, and sampling parameters; other settings inherit outer values.
+1. Calls `prepare_step` with the `model`, completed steps, step number, current and initial `messages`, complete response history, tool context and runtime context. Message, instruction and context overrides persist into subsequent steps; model, tool selection/order and sampling overrides apply only to the current step (ADR 0021).
 2. Converts messages into specification prompts, downloading URLs, and prepares tools and tool choice.
 3. Calls `do_generate` under the retry policy and step timeout.
 4. Parses tool calls, including repair, invalid flags, and tool-choice violations. `on_language_model_call_end` runs after parsing and before execution.
@@ -280,3 +280,11 @@ The event processor alone owns mutable aggregation state: it accumulates step co
 [Decision] Both generation loops run the same required/named tool-choice completion check before executing queued tools, including when a provider returns text only or refuses the request.
 
 [Decision] Smoothing stores metadata with the buffered delta and emits it on that delta’s first resegmented chunk. A later metadata-bearing delta first flushes the preceding buffer with its own metadata; metadata-only deltas remain observable even when there is no text.
+
+## 7. Implementation record (2026-09-17)
+
+[Decision] [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) defines persistent per-invocation state in `generate_text/inputs.rs::StepState`, shared by generation and streaming. `PrepareStepContext` exposes the evolving messages, instructions, `tools_context` and `runtime_context`; `initial_messages` and `response_messages` remain complete originals. A message replacement receives only new response messages on later steps. Model, tool choice/order/active set and sampling overrides retain their single-step behavior.
+
+[Decision] `runtime_context(JsonValue)` is application lifecycle state separate from validated tool context; it reaches approval policies and lifecycle hooks but is never passed to model options or tool executors. `StepOverrides::with_runtime_context` replaces it; no override retains the previous value, while JSON `null` is an explicit value. `StepResult` and `StreamEvent::StartStep` capture both contexts with optional serde defaults. Application hooks see these snapshots; telemetry copies include runtime context only with `TelemetryOptions::include_runtime_context` and tool context only with `include_tools_context` (both false by default). Approval replay uses initial invocation contexts before `prepare_step`.
+
+[Fact] Deterministic coverage is in `crates/ferrin-core/tests/suite/runtime_context.rs`: three-step compression and continued instructions/context in both loops, separate execution/approval contexts, per-call agent isolation, explicit null replacement, hook visibility, telemetry filtering and historical result deserialization. This does not verify live provider behavior.

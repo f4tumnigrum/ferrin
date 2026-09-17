@@ -68,7 +68,8 @@ pub trait PolicyClient: Send + Sync + 'static {
   "tool": { "name": "..", "tool_call_id": "..", "dynamic": false, "provider_executed": false, "invalid": false },
   "input": <解析后的工具输入>,
   "messages": [<本步骤的消息>],
-  "tools_context": <工具上下文或 null>
+  "tools_context": <工具上下文或 null>,
+  "runtime_context": <应用运行上下文或 null>
 }
 ```
 
@@ -118,3 +119,5 @@ decision := {"decision": "requires-approval"} if {
 - 【事实】门面在 `policy` 下把该 crate re-export 为 `ferrin::policy`；`policy-rego` 转发 `ferrin-policy/rego`。
 
 【决策】 能力过滤通过 core 中间件工具约束同时约束执行和工具选择校验。诊断信息不输出决策原因、错误载荷或服务器 URL 凭据；显式决策回调仍是应用自行控制的审计接口。
+
+【决策】自 2026-09-17 起，默认审批策略输入包含当前生成步骤的独立 `runtime_context`（未设置时为 JSON `null`）。选择策略客户端即允许向该客户端传递上下文；`PolicyApproval::to_input` 可移除或重塑该字段。策略输入独立于遥测记录开关（ADR 0021）。

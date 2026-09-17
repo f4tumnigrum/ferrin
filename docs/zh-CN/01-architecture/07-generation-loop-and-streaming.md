@@ -39,7 +39,7 @@ impl StepResult {
 
 【决策】`generate_text` 主循环的每一步：
 
-1. 调用 `prepare_step`（入参为模型、已完成步骤、步骤序号、消息与运行时上下文），允许覆盖 `model`、`tool_choice`、`active_tools`、`system`、`messages`、`runtime_context` 以及采样参数；未覆盖的项沿用外层。
+1. 调用 `prepare_step`，传入模型、已完成步骤、步骤序号、当前与初始消息、完整响应历史、工具上下文和运行上下文。消息、指令及上下文的覆盖延续到后续步骤；模型、工具选择及顺序、采样参数的覆盖仅作用于当前步骤（ADR 0021）。
 2. 将当前消息转换为规范层 Prompt（下载 URL），准备工具与 `tool_choice`。
 3. 在重试策略内调用 `do_generate`，同时应用步骤超时。
 4. 解析每个工具调用（含修复、无效标记、`tool_choice` 违规）；`on_language_model_call_end` 回调在解析后、执行前触发。
@@ -280,3 +280,11 @@ pub enum Chunking {
 【决策】 两种生成循环在执行已排队工具之前，使用同一项必选或指定名称工具选择的完成校验；仅返回文本或拒答时同样适用。
 
 【决策】 流平滑将元数据与缓冲的增量一起保存，并在该增量重新分段后的首个片段上发送。后续带元数据的增量到达时，先用原有元数据刷新前面的缓冲；即使没有文本，也保留仅携带元数据的增量。
+
+## 7. 实现记录（2026-09-17）
+
+【决策】[ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) 规定 `generate_text/inputs.rs::StepState` 按调用维护持久化状态，供生成与流式循环共用。`PrepareStepContext` 提供演进后的消息、指令、`tools_context` 与 `runtime_context`；`initial_messages` 和 `response_messages` 保留完整原始记录。替换消息后，后续步骤只追加新响应。模型、工具选择及顺序和活跃集、采样覆盖仍保持单步行为。
+
+【决策】`runtime_context(JsonValue)` 是独立于验证后工具上下文的应用生命周期状态，传至审批策略及生命周期钩子，不进入模型参数或工具执行器。`StepOverrides::with_runtime_context` 替换运行上下文；不覆盖时保留原值，JSON `null` 是显式值。`StepResult` 和 `StreamEvent::StartStep` 记录两类上下文，新字段使用可选 serde 默认值。应用钩子可读取快照；遥测副本仅在 `TelemetryOptions::include_runtime_context` 开启时保留运行上下文，仅在 `include_tools_context` 开启时保留工具上下文，两者默认均关闭。审批重放发生于 `prepare_step` 之前，使用调用初始上下文。
+
+【事实】确定性测试位于 `crates/ferrin-core/tests/suite/runtime_context.rs`：覆盖两种循环的三步压缩、指令与上下文延续、独立执行及审批上下文、Agent 调用隔离、显式 null 替换、钩子可见性、遥测过滤和旧结果反序列化。这些测试不验证真实供应商行为。

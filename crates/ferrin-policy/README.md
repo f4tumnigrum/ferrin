@@ -32,7 +32,7 @@ fn approval() -> Result<impl ferrin_core::generate_text::ApprovalPolicy, ferrin_
 ```
 
 The policy receives `{ "tool": { "name", "tool_call_id", .. }, "input",
-"messages", "tools_context" }` and answers with
+"messages", "tools_context", "runtime_context" }` and answers with
 `{ "decision": "allow" | "deny" | "requires-approval" | "not-applicable", "reason"? }`,
 a legacy `{ "allow": bool }` or a bare boolean. A `null` result (an undefined
 rule) is not applicable and falls through to the tool's own `needs_approval`;

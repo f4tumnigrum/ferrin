@@ -47,10 +47,14 @@ pub(crate) async fn prepare_tools(input: PrepareToolsInput<'_>) -> Result<Prepar
         let tool_context = tool
             .validate_context(name, input.tools_context.cloned())
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
+        let ctx = tool_context.map_or_else(
+            DescriptionContext::default,
+            DescriptionContext::with_tool_context,
+        );
+        #[cfg(feature = "sandbox")]
         let ctx = DescriptionContext {
-            tool_context,
-            #[cfg(feature = "sandbox")]
             sandbox: input.sandbox.clone(),
+            ..ctx
         };
         let description = tool.resolve_description(ctx).await;
         definitions.push(tool.definition(name.clone(), description));

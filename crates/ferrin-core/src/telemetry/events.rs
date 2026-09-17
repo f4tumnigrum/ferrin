@@ -56,6 +56,8 @@ pub struct RecordedInputs {
 /// A call started.
 #[derive(Debug, Clone)]
 pub struct StartEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Function id from the telemetry options.
@@ -71,6 +73,8 @@ pub struct StartEvent {
 /// A step started.
 #[derive(Debug, Clone)]
 pub struct StepStartEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Zero-based step index.
@@ -84,6 +88,8 @@ pub struct StepStartEvent {
 /// A model call is about to be made.
 #[derive(Debug, Clone)]
 pub struct ModelCallStartEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Zero-based step index.
@@ -97,6 +103,8 @@ pub struct ModelCallStartEvent {
 /// A model call finished and its tool calls were parsed.
 #[derive(Debug, Clone)]
 pub struct ModelCallEndEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Zero-based step index.
@@ -120,6 +128,8 @@ pub struct ModelCallEndEvent {
 /// A tool execution is about to start.
 #[derive(Debug, Clone)]
 pub struct ToolExecutionStartEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Tool call id.
@@ -133,6 +143,8 @@ pub struct ToolExecutionStartEvent {
 /// A tool execution finished.
 #[derive(Debug, Clone)]
 pub struct ToolExecutionEndEvent {
+    /// Application runtime state (available to hooks; telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// Tool call id.
@@ -166,6 +178,8 @@ pub struct StepEndEvent {
 /// A call finished.
 #[derive(Debug, Clone)]
 pub struct EndEvent {
+    /// Application runtime state of the final step (telemetry requires `include_runtime_context`).
+    pub runtime_context: Option<JsonValue>,
     /// Call id.
     pub call_id: String,
     /// All steps.

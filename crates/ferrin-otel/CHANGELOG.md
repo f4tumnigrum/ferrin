@@ -5,6 +5,13 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Update telemetry integration regression fixtures for the core's optional runtime
+  context event field (ADR 0021).
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed

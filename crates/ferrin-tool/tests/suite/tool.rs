@@ -46,6 +46,86 @@ fn weather_tool() -> Tool {
 }
 
 #[tokio::test]
+async fn reopening_a_tool_preserves_schema_options_and_behavior() {
+    let metadata = json!({"mcp":{"server":"catalog"}})
+        .as_object()
+        .unwrap()
+        .clone();
+    let options = [(
+        "provider".to_owned(),
+        json!({"flag":true}).as_object().unwrap().clone(),
+    )]
+    .into_iter()
+    .collect();
+    let tool = Tool::provider_executed("provider.program", metadata.clone())
+        .input_schema(Schema::empty_object())
+        .output_schema(Schema::from_json_schema(json!({"type":"string"})))
+        .context_schema(Schema::from_json_schema(json!({"type":"string"})))
+        .description_fn(|ctx| async move { ctx.tool_context.unwrap().as_str().unwrap().to_owned() })
+        .title("program")
+        .strict(true)
+        .needs_approval(NeedsApproval::Always)
+        .metadata(metadata)
+        .provider_options(options)
+        .input_example(serde_json::Map::new())
+        .supports_deferred_results(true)
+        .caller(ferrin_tool::ToolCallerDefinition::provider(|options| {
+            options.unwrap_or_default()
+        }))
+        .on_input_start(|_| async {})
+        .on_input_delta(|_, _| async {})
+        .on_input_available(|_, _| async {})
+        .to_model_output(|_| {
+            ferrin_spec::language_model::prompt::ToolResultOutput::text("converted")
+        })
+        .execute(|_: serde_json::Value, _| async { Ok::<_, ToolError>("executed") })
+        .build();
+    let rebuilt = tool.clone().into_builder().build();
+    assert_eq!(format!("{rebuilt:?}"), format!("{tool:?}"));
+    assert_eq!(
+        rebuilt.definition("program".into(), None),
+        tool.definition("program".into(), None)
+    );
+    assert!(Arc::ptr_eq(
+        rebuilt.executor().unwrap(),
+        tool.executor().unwrap()
+    ));
+    assert!(Arc::ptr_eq(
+        rebuilt.hooks().on_input_start.as_ref().unwrap(),
+        tool.hooks().on_input_start.as_ref().unwrap()
+    ));
+    assert!(Arc::ptr_eq(
+        rebuilt.hooks().on_input_delta.as_ref().unwrap(),
+        tool.hooks().on_input_delta.as_ref().unwrap()
+    ));
+    assert!(Arc::ptr_eq(
+        rebuilt.hooks().on_input_available.as_ref().unwrap(),
+        tool.hooks().on_input_available.as_ref().unwrap()
+    ));
+    assert!(Arc::ptr_eq(
+        rebuilt.to_model_output().unwrap(),
+        tool.to_model_output().unwrap()
+    ));
+    assert_eq!(
+        rebuilt
+            .resolve_description(DescriptionContext::with_tool_context(json!("context")))
+            .await,
+        Some("context".into())
+    );
+    assert_eq!(
+        execute_to_completion(
+            rebuilt
+                .execute(json!({}), ToolContext::new("call"))
+                .unwrap(),
+            |_| {}
+        )
+        .await
+        .unwrap(),
+        json!("executed")
+    );
+}
+
+#[tokio::test]
 async fn function_tool_derives_schema_and_executes() {
     let tool = weather_tool();
     assert_eq!(tool.kind(), &ToolKind::Function);

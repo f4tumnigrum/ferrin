@@ -161,3 +161,7 @@ let result = ferrin::generate_text(&model)
 [Decision] When either content-recording flag is disabled, telemetry warning copies retain categories and feature/setting names but omit opaque messages/details, which can contain prompt or reasoning text. Unconditional warning tracing always omits these descriptions, independent of recording flags; application warning values remain complete.
 
 [Fact] Embedding telemetry uses a unique request `call_id` for every chunk and retry attempt. The ID retains the logical parent call prefix as `<parent>/chunk/<index>/attempt/<attempt>`; every actual request emits a matching end or error event, so concurrent chunks cannot overwrite each other in integrations (2026-09-15, core embedding and OpenTelemetry metrics regression tests).
+
+## Runtime context recording (2026-09-17)
+
+[Decision] Application start, step, model-call and tool-execution hooks and the end hook receive runtime state. Telemetry integration copies omit it unless `include_runtime_context` is enabled. Step snapshots independently retain tool context only with `include_tools_context`; both options default to false and are independent of input/output recording. See [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md).

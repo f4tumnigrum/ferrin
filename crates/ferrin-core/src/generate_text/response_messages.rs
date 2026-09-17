@@ -159,7 +159,7 @@ pub(crate) fn to_response_messages(content: &[StepContent], tools: &ToolSet) -> 
                             tool_call_id: response.tool_call.tool_call_id.clone(),
                             tool_name: response.tool_call.tool_name.clone(),
                             output: ToolResultOutput::execution_denied(response.reason.clone()),
-                            provider_options: None,
+                            provider_options: response.tool_call.provider_metadata.clone(),
                         }),
                     ));
                 }
@@ -200,7 +200,7 @@ pub(crate) fn to_response_messages(content: &[StepContent], tools: &ToolSet) -> 
                         tool_call_id: denied.tool_call_id.clone(),
                         tool_name: denied.tool_name.clone(),
                         output: ToolResultOutput::execution_denied(denied.reason.clone()),
-                        provider_options: None,
+                        provider_options: denied.provider_metadata.clone(),
                     }),
                 ));
             }

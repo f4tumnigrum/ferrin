@@ -385,6 +385,8 @@ impl Attempt {
         emitter
             .send(StreamEvent::StartStep {
                 step_number: self.inputs.step_number,
+                runtime_context: self.inputs.runtime_context.clone(),
+                tools_context: self.inputs.tools_context.clone(),
                 model: self.inputs.identity.clone(),
                 request: self.step_request(),
                 warnings: self.state.warnings.clone(),
@@ -619,6 +621,7 @@ impl Attempt {
         }
 
         let event = Arc::new(ModelCallEndEvent {
+            runtime_context: self.inputs.runtime_context.clone(),
             call_id: self.ctx.call_id.clone(),
             step_number: self.inputs.step_number,
             model: self.inputs.identity.clone(),

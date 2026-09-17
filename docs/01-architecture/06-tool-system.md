@@ -15,7 +15,7 @@ Tool definitions live in `ferrin-tool`; parsing, approval, execution, and repair
 | Provider-defined | Defined by provider, executed locally | Client | Provider crate, such as Anthropic computer use |
 | Provider-executed | Defined and executed by provider; optional deferred results | Provider server | Provider crate |
 
-[Decision] Tool fields: `description` (string or function receiving `{context, sandbox}`), `input_schema`, `output_schema`, `context_schema`, `execute`, `needs_approval`, `strict`, `input_examples`, `metadata` (sent to the provider), `provider_options`, `on_input_start`/`on_input_delta`/`on_input_available`, and `to_model_output`.
+[Decision] Tool fields: `description` (string or function receiving `{context, sandbox}`), `input_schema`, `output_schema`, `context_schema`, `execute`, `needs_approval`, `strict`, `input_examples`, `metadata` (application metadata propagated to tool calls and outcomes), `provider_options` (sent to the provider), `on_input_start`/`on_input_delta`/`on_input_available`, and `to_model_output`.
 
 ```rust
 pub struct Tool {
@@ -117,6 +117,8 @@ Single-value executors adapt through `From` to a stream yielding one `Final`, al
 [Decision] Capture tool failures as nonfatal `tool-error` step content, then send `error-text`/`error-json` to the model. Handle cancellation separately. Models can often repair arguments from error text; terminating would lose this recovery path.
 
 ## 3. Tool-call parsing and repair
+
+[Decision] Tool metadata is copied from the effective tool definition into `ParsedToolCall::tool_metadata`, including known tools whose input is invalid. Successful repairs use the repaired tool's metadata; unknown dynamic provider calls have no definition metadata. Results, execution errors, preliminary stream results, and denied replay outputs carry the same optional JSON object independently of provider response metadata. Approval replay restores metadata from the current tool definition, because message history does not carry trusted tool definitions. These additive serialized fields default to absent for historical records (2026-09-17; see the core tool metadata tests).
 
 [Decision] Parsing rules:
 
@@ -252,8 +254,12 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 
 [Decision] Approval replay validates the current context for every approved executable client tool before starting any execution. Context construction propagates validation failures as `InvalidArgument` for `tools_context`; it never substitutes a missing context after validation fails.
 
+[Decision] Provider routing metadata follows all approval outcomes into response-message provider options, including automatic denials, replayed denials, replayed successes and replayed errors. `ToolOutputDenied::provider_metadata` stores the original call's provider options independently of tool-definition metadata; historical serialized denials default this field to absent. Parallel tool wrapper identity must survive denial so the provider can receive one complete grouped outcome (2026-09-17; ADR 0021).
+
 [Decision] Strict schema transforms return an error for arbitrary-key dictionaries instead of closing them or returning an unsupported schema; see [ADR 0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md). `apply`, `applied`, `to_openai_strict`, and `Schema::transformed` return `Result`; failed in-place transformations leave their input unchanged.
 
 [Decision] Local sandbox cancellation is checked before process creation and remains active for file and process output streams. Each spawned process has a `JoinSet`-owned supervisor that kills and reaps it on cancellation even when the application has not called `wait`; dropping the process aborts that supervisor and kills its owned child. Cancelled reads return one `Interrupted` error and end.
 
 [Fact] 2026-09-15: `ferrin-policy` builds `policy_approval`, `shadow`, `with_default` and `capability_middleware` on this contract without changes to the core; its coverage is listed in [Policy-based tool approval](18-policy-approval.md), section 7.
+
+[Decision] `Tool::into_builder()` reopens a tool as `ToolBuilder<JsonValue>` while moving its complete definition, schemas, options, metadata, executor, caller binding and hooks unchanged; callers may then attach or replace execution behavior without reconstructing provider factories.

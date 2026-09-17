@@ -20,6 +20,7 @@ use super::ToolErrorInfo;
 use super::ToolExecutionError;
 use super::ToolResult;
 use super::config::CallConfig;
+use super::inputs::StepState;
 use super::inputs::complete_response_metadata;
 use super::inputs::emit_model_call_start;
 use super::inputs::prepare_step_inputs;
@@ -177,6 +178,7 @@ impl LoopContext {
             messages: Arc::from(self.initial_messages.clone()),
         });
         let event = Arc::new(StartEvent {
+            runtime_context: self.config.runtime_context.clone(),
             call_id: self.call_id.clone(),
             function_id: self.function_id().map(str::to_owned),
             model: self.identity.clone(),
@@ -190,6 +192,7 @@ impl LoopContext {
     /// Emits the end event.
     pub(crate) async fn emit_end(&self, steps: &[StepResult], total_usage: &Usage) {
         let event = Arc::new(EndEvent {
+            runtime_context: steps.last().and_then(|step| step.runtime_context.clone()),
             call_id: self.call_id.clone(),
             steps: Arc::from(steps.to_vec()),
             total_usage: total_usage.clone(),
@@ -254,6 +257,7 @@ impl LoopContext {
         cancellation: &CallCancellation,
     ) -> Result<ToolTask, Error> {
         Ok(ToolTask {
+            runtime_context: None,
             telemetry: self.telemetry.clone(),
             hooks: Arc::clone(&self.hooks),
             call_id: self.call_id.clone(),
@@ -299,6 +303,7 @@ async fn run_inner<O: 'static>(
     let mut steps: Vec<StepResult> = Vec::new();
     let mut pending_deferred: HashSet<ToolCallId> = HashSet::new();
     let stop_conditions = ctx.stop_conditions();
+    let mut step_state = StepState::new(ctx);
 
     loop {
         let step_cancellation = ctx.cancellation.child();
@@ -311,6 +316,7 @@ async fn run_inner<O: 'static>(
                     ctx,
                     &steps,
                     &response_messages,
+                    &mut step_state,
                     &mut pending_deferred,
                     &step_cancellation,
                 )
@@ -378,11 +384,13 @@ async fn run_step(
     ctx: &LoopContext,
     steps: &[StepResult],
     response_messages: &[Message],
+    step_state: &mut StepState,
     pending_deferred: &mut HashSet<ToolCallId>,
     cancellation: &CallCancellation,
 ) -> Result<(StepResult, LoopState), Error> {
     let step_started = Instant::now();
-    let mut inputs = prepare_step_inputs(ctx, steps, response_messages, cancellation).await?;
+    let mut inputs =
+        prepare_step_inputs(ctx, steps, response_messages, step_state, cancellation).await?;
     emit_model_call_start(ctx, &inputs).await;
 
     let call_ctx = ModelCallContext {
@@ -460,6 +468,7 @@ async fn run_step(
         ..StepPerformance::default()
     };
     let call_end = Arc::new(ModelCallEndEvent {
+        runtime_context: inputs.runtime_context.clone(),
         call_id: ctx.call_id.clone(),
         step_number: inputs.step_number,
         model: inputs.identity.clone(),
@@ -480,6 +489,7 @@ async fn run_step(
         &tool_calls,
         &step_messages,
         inputs.tools_context.as_ref(),
+        inputs.runtime_context.as_ref(),
         cancellation,
     )
     .await?;
@@ -505,6 +515,7 @@ async fn run_step(
                 to_execute,
                 Arc::clone(&step_messages),
                 inputs.tools_context.clone(),
+                inputs.runtime_context.clone(),
                 cancellation,
             )
             .await?,
@@ -550,6 +561,8 @@ async fn run_step(
     let include = ctx.config.include;
     let step = StepResult {
         step_number: inputs.step_number,
+        runtime_context: inputs.runtime_context,
+        tools_context: inputs.tools_context,
         model: inputs.identity,
         content,
         finish_reason: result.finish_reason,
@@ -644,6 +657,15 @@ pub(crate) async fn convert_content(
                 converted.push(StepContent::ToolCall(parsed));
             }
             Content::ToolResult(result) => {
+                let tool_metadata = calls
+                    .iter()
+                    .find(|call| call.tool_call_id == result.tool_call_id)
+                    .and_then(|call| call.tool_metadata.clone())
+                    .or_else(|| {
+                        tools
+                            .get(result.tool_name.as_str())
+                            .and_then(|tool| tool.metadata().cloned())
+                    });
                 let input = calls
                     .iter()
                     .find(|call| call.tool_call_id == result.tool_call_id)
@@ -662,6 +684,7 @@ pub(crate) async fn convert_content(
                         },
                         provider_executed: true,
                         dynamic,
+                        tool_metadata,
                         provider_metadata: result.provider_metadata.clone(),
                     }));
                 } else {
@@ -674,6 +697,7 @@ pub(crate) async fn convert_content(
                         dynamic,
                         preliminary: result.preliminary,
                         execution_ms: None,
+                        tool_metadata,
                         provider_metadata: result.provider_metadata.clone(),
                     }));
                 }

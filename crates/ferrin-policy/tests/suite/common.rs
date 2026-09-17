@@ -61,6 +61,7 @@ pub(crate) fn delete_call() -> ParsedToolCall {
 
 pub(crate) fn empty_context() -> ApprovalContext<'static> {
     ApprovalContext {
+        runtime_context: None,
         messages: &[],
         tools_context: None,
     }

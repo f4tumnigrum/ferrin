@@ -182,6 +182,7 @@ pub(crate) fn model_call_end(
     time_to_first_output: Option<Duration>,
 ) -> ModelCallEndEvent {
     ModelCallEndEvent {
+        runtime_context: None,
         call_id: "call-1".to_owned(),
         step_number,
         model: model(),

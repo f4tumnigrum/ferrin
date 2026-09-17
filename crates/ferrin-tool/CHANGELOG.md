@@ -5,6 +5,15 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `Tool::into_builder` preserves a factory-created tool's schema, caller binding,
+  options, metadata and callbacks while allowing local execution to be attached.
+
+### Changed
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed

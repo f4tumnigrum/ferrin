@@ -36,11 +36,10 @@ pub async fn realtime_tool_definitions(
         let tool_context = tool
             .validate_context(name, tools_context.cloned())
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
-        let ctx = DescriptionContext {
-            tool_context,
-            #[cfg(feature = "sandbox")]
-            sandbox: None,
-        };
+        let ctx = tool_context.map_or_else(
+            DescriptionContext::default,
+            DescriptionContext::with_tool_context,
+        );
         let description = tool.resolve_description(ctx).await;
         definitions.push(RealtimeToolDefinition {
             name: name.as_str().to_owned(),

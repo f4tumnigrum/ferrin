@@ -97,6 +97,8 @@ pub struct ApprovalContext<'a> {
     pub messages: &'a [Message],
     /// The tools context of the call.
     pub tools_context: Option<&'a JsonValue>,
+    /// Application state for this step, separate from tool execution context.
+    pub runtime_context: Option<&'a JsonValue>,
 }
 
 /// Decides whether a tool call needs approval.

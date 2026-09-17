@@ -15,7 +15,7 @@
 | 供应商定义工具 | 供应商定义、客户端执行 | 客户端 | 供应商 crate 定义（如 Anthropic 计算机操作） |
 | 供应商执行工具 | 供应商定义、供应商服务端执行，可选支持延迟结果 | 供应商服务端 | 供应商 crate 定义 |
 
-【决策】工具字段：`description`（字符串或接受 `{context, sandbox}` 的函数）、`input_schema`、`output_schema`、`context_schema`、`execute`、`needs_approval`、`strict`、`input_examples`、`metadata`（发送给供应商的元数据）、`provider_options`、`on_input_start`/`on_input_delta`/`on_input_available`、`to_model_output`。
+【决策】工具字段：`description`（字符串或接受 `{context, sandbox}` 的函数）、`input_schema`、`output_schema`、`context_schema`、`execute`、`needs_approval`、`strict`、`input_examples`、`metadata`（传播至工具调用及结果的应用元数据）、`provider_options`（发送给供应商）、`on_input_start`/`on_input_delta`/`on_input_available`、`to_model_output`。
 
 ```rust
 pub struct Tool {
@@ -117,6 +117,8 @@ pub struct ToolContext {
 【决策】工具错误被捕获并作为 `tool-error` 内容（非致命）纳入步骤结果，随后作为 `error-text`/`error-json` 发回模型；只有被取消时按取消处理。依据：模型通常能够根据错误文本调整参数重试，直接终止调用会丢失这一恢复机会。
 
 ## 3. 工具调用解析与修复
+
+【决策】将生效工具定义的 metadata 复制到 `ParsedToolCall::tool_metadata`，包括输入无效的已知工具调用。修复成功后使用修复目标工具的元数据；没有工具定义的动态供应商调用不包含工具元数据。结果、执行错误、流式中间结果和审批重放的拒绝输出携带同一可选 JSON 对象，并与供应商响应元数据分开。审批重放从当前工具定义恢复元数据，因为消息历史不携带可信工具定义。新增序列化字段在历史记录中默认缺省（2026-09-17；参见 core 工具元数据测试）。
 
 【决策】工具调用解析规则：
 
@@ -257,3 +259,7 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 【决策】本地 sandbox 在创建进程前检查取消，并在文件和进程输出流的生命周期内持续响应取消。每个创建的进程由 `JoinSet` 持有的监督任务管理，即使应用尚未调用 `wait`，取消也会终止并回收进程；丢弃进程对象会中止监督任务并终止其持有的子进程。取消的读取返回一次 `Interrupted` 错误后结束。
 
 【事实】2026-09-15：`ferrin-policy` 在该契约之上实现 `policy_approval`、`shadow`、`with_default` 与 `capability_middleware`，核心层无需改动；其覆盖清单见[策略化工具审批](18-policy-approval.md)第 7 节。
+
+【决策】`Tool::into_builder()` 将工具重新开放为 `ToolBuilder<JsonValue>`，完整保留定义、schema、参数、元数据、执行器、调用者绑定及钩子；调用方可附加或替换执行行为，无需重建供应商工厂。
+
+【决策】供应商路由元数据随所有审批结果传播至响应消息的供应商参数，包括自动拒绝、重放拒绝、重放成功及重放错误。`ToolOutputDenied::provider_metadata` 保存原始调用的供应商参数，独立于工具定义元数据；旧序列化拒绝结果缺失此字段时默认为无。拒绝也必须保留并行工具包装器标识，供应商才能接收完整的分组结果（2026-09-17；ADR 0021）。

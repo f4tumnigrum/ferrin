@@ -38,7 +38,8 @@ pub type ToInputFn = Arc<dyn Fn(&ParsedToolCall, &ApprovalContext<'_>) -> JsonVa
 ///             "provider_executed": false, "invalid": false },
 ///   "input": <tool input>,
 ///   "messages": [<messages of this step>],
-///   "tools_context": <tools context or null>
+///   "tools_context": <tools context or null>,
+///   "runtime_context": <application runtime context or null>
 /// }
 /// ```
 #[must_use]
@@ -54,6 +55,7 @@ pub fn default_input(call: &ParsedToolCall, ctx: &ApprovalContext<'_>) -> JsonVa
         "input": call.input,
         "messages": serde_json::to_value(ctx.messages).unwrap_or(JsonValue::Null),
         "tools_context": ctx.tools_context.cloned().unwrap_or(JsonValue::Null),
+        "runtime_context": ctx.runtime_context.cloned().unwrap_or(JsonValue::Null),
     })
 }
 

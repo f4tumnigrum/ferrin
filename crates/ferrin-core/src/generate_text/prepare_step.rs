@@ -22,20 +22,22 @@ pub struct PrepareStepContext<'a> {
     pub step_number: u32,
     /// The model configured for the call.
     pub model: &'a ModelIdentity,
-    /// Instructions as configured on the call.
+    /// Instructions retained from the preceding step, initially configured on the call.
     pub instructions: Option<&'a Instructions>,
-    /// Messages that will be sent (initial messages plus response messages).
+    /// Current messages, including new responses since the latest message override.
     pub messages: &'a [Message],
     /// The initial messages of the call.
     pub initial_messages: &'a [Message],
     /// Response messages accumulated so far.
     pub response_messages: &'a [Message],
-    /// The tools context of the call.
+    /// The tools context retained from the preceding step.
     pub tools_context: Option<&'a JsonValue>,
+    /// Application state retained from the preceding step.
+    pub runtime_context: Option<&'a JsonValue>,
 }
 
 /// Overrides returned by a [`PrepareStep`] callback. Unset fields keep the
-/// call-level configuration.
+/// prior state for messages, instructions and contexts; other fields keep call defaults.
 #[derive(Debug, Default)]
 pub struct StepOverrides {
     /// Model for this step.
@@ -46,12 +48,14 @@ pub struct StepOverrides {
     pub active_tools: Option<Vec<ToolName>>,
     /// Tool order for this step.
     pub tool_order: Option<Vec<ToolName>>,
-    /// Instructions for this step.
+    /// Instructions for this and subsequent steps.
     pub instructions: Option<Instructions>,
-    /// Messages for this step (replaces initial plus response messages).
+    /// Messages for this and subsequent steps (new responses are appended).
     pub messages: Option<Vec<Message>>,
-    /// Tools context for this step.
+    /// Tools context for this and subsequent steps.
     pub tools_context: Option<JsonValue>,
+    /// Application state for this and subsequent steps (`None` preserves the prior value).
+    pub runtime_context: Option<JsonValue>,
     /// Sampling settings overlaid on the call settings.
     pub settings: Option<CallSettings>,
 }
@@ -112,6 +116,13 @@ impl StepOverrides {
     #[must_use]
     pub fn with_tools_context(mut self, context: JsonValue) -> Self {
         self.tools_context = Some(context);
+        self
+    }
+
+    /// Replaces application state for this and subsequent steps.
+    #[must_use]
+    pub fn with_runtime_context(mut self, context: JsonValue) -> Self {
+        self.runtime_context = Some(context);
         self
     }
 

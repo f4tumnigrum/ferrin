@@ -68,7 +68,8 @@ pub trait PolicyClient: Send + Sync + 'static {
   "tool": { "name": "..", "tool_call_id": "..", "dynamic": false, "provider_executed": false, "invalid": false },
   "input": <parsed tool input>,
   "messages": [<messages of this step>],
-  "tools_context": <tools context or null>
+  "tools_context": <tools context or null>,
+  "runtime_context": <application runtime context or null>
 }
 ```
 
@@ -118,3 +119,5 @@ decision := {"decision": "requires-approval"} if {
 - [Fact] The facade re-exports the crate as `ferrin::policy` behind `policy`; `policy-rego` forwards `ferrin-policy/rego`.
 
 [Decision] Capability filtering constrains execution and tool-choice validation through the core middleware tool contract. Diagnostics omit decision reasons, error payloads and server URL credentials; the explicit decision callback remains the application-controlled audit interface.
+
+[Decision] Since 2026-09-17, the default approval policy input contains independent `runtime_context` from the current generation step (or JSON `null` when unset). Selecting a policy client authorizes passing this context to that client; `PolicyApproval::to_input` can omit or reshape it. This policy input is independent of telemetry recording controls (ADR 0021).

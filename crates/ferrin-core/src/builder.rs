@@ -165,6 +165,14 @@ macro_rules! impl_call_builder {
                 self
             }
 
+            /// Sets application state for step preparation, approval and lifecycle hooks.
+            /// This value is separate from tool execution context and is never sent to models.
+            #[must_use]
+            pub fn runtime_context(mut self, context: ::ferrin_spec::JsonValue) -> Self {
+                self.config.runtime_context = Some(context);
+                self
+            }
+
             /// Sets the call-level approval policy.
             #[must_use]
             pub fn tool_approval(

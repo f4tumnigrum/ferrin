@@ -83,6 +83,7 @@ pub(crate) struct CallConfig {
     pub(crate) active_tools: Option<Vec<ToolName>>,
     pub(crate) tool_order: Vec<ToolName>,
     pub(crate) tools_context: Option<JsonValue>,
+    pub(crate) runtime_context: Option<JsonValue>,
     pub(crate) tool_approval: Option<Arc<dyn ApprovalPolicy>>,
     pub(crate) tool_approval_secret: Option<Arc<SecretBox<[u8]>>>,
     pub(crate) tool_callers: ToolCallers,
@@ -118,6 +119,7 @@ impl CallConfig {
             active_tools: None,
             tool_order: Vec::new(),
             tools_context: None,
+            runtime_context: None,
             tool_approval: None,
             tool_approval_secret: None,
             tool_callers: ToolCallers::new(),
@@ -155,6 +157,7 @@ impl fmt::Debug for CallConfig {
             .field("active_tools", &self.active_tools)
             .field("tool_order", &self.tool_order)
             .field("tools_context", &self.tools_context)
+            .field("runtime_context", &self.runtime_context.is_some())
             .field("tool_approval", &self.tool_approval.is_some())
             .field("tool_approval_secret", &self.tool_approval_secret.is_some())
             .field("tool_callers", &self.tool_callers)

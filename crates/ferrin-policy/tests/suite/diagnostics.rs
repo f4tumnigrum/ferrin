@@ -46,6 +46,7 @@ async fn policy_reasons_and_errors_are_not_logged() {
         .resolve(
             &call,
             ApprovalContext {
+                runtime_context: None,
                 messages: &[],
                 tools_context: None,
             },
@@ -58,6 +59,7 @@ async fn policy_reasons_and_errors_are_not_logged() {
         .resolve(
             &call,
             ApprovalContext {
+                runtime_context: None,
                 messages: &[],
                 tools_context: None,
             },
@@ -75,6 +77,7 @@ async fn policy_reasons_and_errors_are_not_logged() {
         .resolve(
             &call,
             ApprovalContext {
+                runtime_context: None,
                 messages: &[],
                 tools_context: None,
             },

@@ -47,6 +47,23 @@ macro_rules! dispatch {
     };
 }
 
+macro_rules! dispatch_with_context {
+    ($name:ident, $event:ty) => {
+        pub(crate) fn $name(&self, event: &$event) {
+            if !self.options.enabled {
+                return;
+            }
+            let mut recorded = event.clone();
+            if !self.options.include_runtime_context {
+                recorded.runtime_context = None;
+            }
+            for integration in &self.options.integrations {
+                integration.$name(&recorded);
+            }
+        }
+    };
+}
+
 impl TelemetryDispatcher {
     pub(crate) fn new(options: TelemetryOptions) -> Self {
         Self {
@@ -62,16 +79,19 @@ impl TelemetryDispatcher {
         self.options.enabled && self.options.record_outputs
     }
 
-    dispatch!(on_start, StartEvent);
-    dispatch!(on_step_start, StepStartEvent);
-    dispatch!(on_language_model_call_start, ModelCallStartEvent);
+    dispatch_with_context!(on_start, StartEvent);
+    dispatch_with_context!(on_step_start, StepStartEvent);
+    dispatch_with_context!(on_language_model_call_start, ModelCallStartEvent);
 
-    dispatch!(on_tool_execution_start, ToolExecutionStartEvent);
+    dispatch_with_context!(on_tool_execution_start, ToolExecutionStartEvent);
     pub(crate) fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {
         if !self.options.enabled {
             return;
         }
         let mut recorded = event.clone();
+        if !self.options.include_runtime_context {
+            recorded.runtime_context = None;
+        }
         if !self.record_outputs() {
             recorded.output = None;
             recorded.error = recorded
@@ -90,6 +110,9 @@ impl TelemetryDispatcher {
             return;
         }
         let mut recorded = event.clone();
+        if !self.options.include_runtime_context {
+            recorded.runtime_context = None;
+        }
         if !(self.record_inputs() && self.record_outputs()) {
             recorded.warnings = super::redact::warnings(&recorded.warnings);
         }
@@ -120,6 +143,11 @@ impl TelemetryDispatcher {
             return;
         }
         let recorded = EndEvent {
+            runtime_context: self
+                .options
+                .include_runtime_context
+                .then(|| event.runtime_context.clone())
+                .flatten(),
             call_id: event.call_id.clone(),
             steps: event
                 .steps
@@ -143,6 +171,12 @@ impl TelemetryDispatcher {
         step: &crate::generate_text::StepResult,
     ) -> crate::generate_text::StepResult {
         let mut recorded = step.clone();
+        if !self.options.include_runtime_context {
+            recorded.runtime_context = None;
+        }
+        if !self.options.include_tools_context {
+            recorded.tools_context = None;
+        }
         if !(self.record_inputs() && self.record_outputs()) {
             recorded.warnings = super::redact::warnings(&recorded.warnings);
         }

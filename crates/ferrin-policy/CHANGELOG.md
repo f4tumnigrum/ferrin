@@ -5,6 +5,15 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Include the generation step's independent `runtime_context` in default approval
+  policy input, alongside `tools_context` (ADR 0021).
+
+### Changed
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
 ## [0.1.2] - 2026-09-16
 
 ### Fixed

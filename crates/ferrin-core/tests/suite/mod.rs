@@ -1,5 +1,6 @@
 mod agent;
 mod approval;
+mod approval_provider_metadata;
 mod cancel_timeout;
 mod common;
 mod download;
@@ -14,8 +15,10 @@ mod prepare_step;
 mod realtime;
 mod registry;
 mod retry;
+mod runtime_context;
 mod stream;
 mod stream_metadata;
 mod telemetry_content;
 mod telemetry_errors;
+mod tool_metadata;
 mod tool_restrictions;

@@ -254,6 +254,7 @@
         "fn hooks(&self) -> &ToolHooks",
         "fn input_examples(&self) -> &[JsonObject]",
         "fn input_schema(&self) -> &Schema<JsonValue>",
+        "fn into_builder(self) -> ToolBuilder<JsonValue>",
         "fn is_executable(&self) -> bool",
         "fn kind(&self) -> &ToolKind",
         "fn metadata(&self) -> Option<&JsonObject>",

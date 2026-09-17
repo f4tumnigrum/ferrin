@@ -161,3 +161,7 @@ let result = ferrin::generate_text(&model)
 【决策】 任一内容记录开关关闭时，遥测警告副本保留类别与功能或设置名称，但省略可能含提示或推理全文的不透明消息和详情。无条件警告 tracing 始终省略这些描述，不受记录开关影响；应用警告值保持完整。
 
 【事实】 Embedding 遥测为每个分块及重试请求分配唯一 `call_id`，格式为 `<parent>/chunk/<index>/attempt/<attempt>`，保留逻辑父调用前缀。每次实际请求产生配对的结束或错误事件，防止并发分块在集成中互相覆盖（2026-09-15，核心 embedding 和 OpenTelemetry 指标回归测试）。
+
+## 运行上下文记录（2026-09-17）
+
+【决策】应用开始、步骤、模型调用、工具执行和结束钩子接收运行状态。遥测集成副本仅在 `include_runtime_context` 启用时保留它。步骤快照的工具上下文独立受 `include_tools_context` 控制；两项默认均关闭，且独立于输入、输出记录选项。参见 [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md)。

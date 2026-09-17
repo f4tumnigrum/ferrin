@@ -63,6 +63,32 @@ fn base(kind: ToolKind, input_schema: Schema<JsonValue>) -> Tool {
 }
 
 impl Tool {
+    /// Reopens this tool for configuration, preserving its definition and callbacks.
+    ///
+    /// The builder's execute closure receives JSON input; the existing input schema
+    /// and executor are retained until explicitly replaced.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ferrin_tool::{Tool, ToolError};
+    /// use ferrin_spec::JsonObject;
+    /// let tool = Tool::provider_defined("provider.search", JsonObject::new()).build();
+    /// let executable = tool.into_builder()
+    ///     .execute(|input: serde_json::Value, _| async move {
+    ///         Ok::<_, ToolError>(input)
+    ///     })
+    ///     .build();
+    /// assert!(executable.is_executable());
+    /// ```
+    #[must_use]
+    pub fn into_builder(self) -> ToolBuilder<JsonValue> {
+        ToolBuilder {
+            tool: self,
+            _input: PhantomData,
+        }
+    }
+
     /// A function tool whose input schema is derived from `I`
     /// (draft-07, `additionalProperties: false` on objects).
     #[must_use]

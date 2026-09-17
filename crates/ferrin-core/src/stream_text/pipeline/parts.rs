@@ -199,6 +199,18 @@ impl Attempt {
             }]),
             StreamPart::ToolCall(call) => self.map_tool_call(&call).await,
             StreamPart::ToolResult(result) => {
+                let tool_metadata = self
+                    .state
+                    .tool_calls
+                    .iter()
+                    .find(|call| call.tool_call_id == result.tool_call_id)
+                    .and_then(|call| call.tool_metadata.clone())
+                    .or_else(|| {
+                        self.ctx
+                            .execution_tools
+                            .get(result.tool_name.as_str())
+                            .and_then(|tool| tool.metadata().cloned())
+                    });
                 let input = self
                     .state
                     .tool_calls
@@ -222,6 +234,7 @@ impl Attempt {
                         },
                         provider_executed: true,
                         dynamic,
+                        tool_metadata,
                         provider_metadata: result.provider_metadata,
                     };
                     self.state
@@ -238,6 +251,7 @@ impl Attempt {
                         dynamic,
                         preliminary: result.preliminary,
                         execution_ms: None,
+                        tool_metadata,
                         provider_metadata: result.provider_metadata,
                     };
                     self.state
@@ -368,7 +382,8 @@ impl Attempt {
                     error: ToolErrorInfo::text(parsed.error.clone().unwrap_or_default()),
                     provider_executed: false,
                     dynamic: true,
-                    provider_metadata: None,
+                    tool_metadata: parsed.tool_metadata.clone(),
+                    provider_metadata: parsed.provider_metadata.clone(),
                 }));
             }
             return Ok(events);
@@ -395,6 +410,7 @@ impl Attempt {
             &parsed,
             &self.step_messages,
             self.inputs.tools_context.as_ref(),
+            self.inputs.runtime_context.as_ref(),
             &self.cancellation,
         )
         .await?

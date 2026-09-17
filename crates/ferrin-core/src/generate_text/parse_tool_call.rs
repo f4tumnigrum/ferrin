@@ -104,7 +104,7 @@ pub(crate) struct ParseContext<'a> {
 pub(crate) async fn parse_tool_call(call: &ToolCall, ctx: &ParseContext<'_>) -> ParsedToolCall {
     match try_parse(call, ctx).await {
         Ok(parsed) => parsed,
-        Err(error) => invalid_call(call, &error),
+        Err(error) => invalid_call(call, &error, ctx.tools),
     }
 }
 
@@ -125,6 +125,7 @@ pub(crate) async fn try_parse(
                 invalid: false,
                 error: None,
                 title: None,
+                tool_metadata: None,
                 provider_metadata: call.provider_metadata.clone(),
             });
         }
@@ -194,6 +195,7 @@ async fn do_parse(call: &ToolCall, ctx: &ParseContext<'_>) -> Result<ParsedToolC
         invalid: false,
         error: None,
         title: tool.title().map(str::to_owned),
+        tool_metadata: tool.metadata().cloned(),
         provider_metadata: call.provider_metadata.clone(),
     })
 }
@@ -207,7 +209,7 @@ fn parse_raw_input(call: &ToolCall) -> Result<JsonValue, Error> {
     })
 }
 
-fn invalid_call(call: &ToolCall, error: &Error) -> ParsedToolCall {
+fn invalid_call(call: &ToolCall, error: &Error, tools: &ToolSet) -> ParsedToolCall {
     let input = serde_json::from_str::<JsonValue>(&call.input)
         .unwrap_or_else(|_| JsonValue::String(call.input.clone()));
     ParsedToolCall {
@@ -219,6 +221,9 @@ fn invalid_call(call: &ToolCall, error: &Error) -> ParsedToolCall {
         invalid: true,
         error: Some(error.to_string()),
         title: None,
+        tool_metadata: tools
+            .get(call.tool_name.as_str())
+            .and_then(|tool| tool.metadata().cloned()),
         provider_metadata: call.provider_metadata.clone(),
     }
 }

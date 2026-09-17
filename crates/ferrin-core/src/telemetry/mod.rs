@@ -149,6 +149,8 @@ pub struct TelemetryOptions {
     pub function_id: Option<String>,
     /// Free-form metadata attached to the start event.
     pub metadata: BTreeMap<String, JsonValue>,
+    /// Whether application runtime context is included in telemetry events and steps.
+    pub include_runtime_context: bool,
     /// Whether the tools context is attached to tool events.
     pub include_tools_context: bool,
     /// Integrations that receive the events.
@@ -181,6 +183,7 @@ impl fmt::Debug for TelemetryOptions {
             .field("record_outputs", &self.record_outputs)
             .field("function_id", &self.function_id)
             .field("metadata", &self.metadata)
+            .field("include_runtime_context", &self.include_runtime_context)
             .field("include_tools_context", &self.include_tools_context)
             .field("integrations", &self.integrations.len())
             .finish()

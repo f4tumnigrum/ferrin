@@ -113,3 +113,7 @@ let result = agent
 - 【决策】（ADR 0013 第 2 项）`PrepareCall<Opt>` trait 的 `prepare_call(&self, PrepareCallInput<Opt> { options, defaults: PreparedCall }) -> BoxFuture<'_, Result<PreparedCall, Error>>`；`defaults` 为 Agent 设置与调用参数合并后的有效值（`instructions`、`model`、`tools`、`tool_choice`、`active_tools`、`tool_order`、`tools_context`、`settings: CallSettings`、`stop_conditions`、`timeout`、`retry_policy`、`include`、`max_tool_concurrency`、`telemetry`），字段置 `None` 即移除。返回 `Future<Output = Result<PreparedCall, Error>> + Send + 'static` 的闭包通过 blanket impl 实现该 trait。
 - 【决策】未配置 `stop_when` 时默认 `step_count(20)`；调用级 `timeout` 整体替换 Agent 级 `timeout`（不按字段合并）；调用级 `Hooks` 追加在 Agent 级之后执行（`Hooks::merged`）；`telemetry.function_id` 为空时取 Agent `id`。依据：20 步足以覆盖多数工具循环而不致失控；Agent 级回调先执行使通用日志先于调用特定逻辑；超时整体替换避免两级配置的字段级合并歧义。
 - 【事实】`AgentCall<O>` 提供 `new/prompt/messages`（`AgentCall<()>`）、`options<P>()`（切换选项类型）、`cancellation`、`timeout`、`hooks`、`on_step_end`、`on_end`、`streaming() -> AgentStreamCall<O>`；`AgentStreamCall<O>` 增加 `transform`、`include_raw_chunks`、`stream_retries`、`on_error`、`on_chunk`、`on_abort`。请求头追加 `ferrin-agent/tool-loop` 后缀后再由核心层追加 `ferrin/<version>`。
+
+## 7. 实现记录（2026-09-17）
+
+【决策】共享构建器支持 `runtime_context(JsonValue)`；`PreparedCall::runtime_context` 允许 `prepare_call` 独立于 `tools_context` 设置或清除调用状态。每次调用复制 Agent 配置，步骤覆盖只修改该次调用的演进状态。生成与流式路径遵循 [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) 的相同延续语义。

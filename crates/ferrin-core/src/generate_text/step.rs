@@ -10,6 +10,7 @@ use ferrin_spec::CustomKind;
 use ferrin_spec::FileData;
 use ferrin_spec::FinishReason;
 use ferrin_spec::Headers;
+use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_spec::MediaType;
 use ferrin_spec::ModelId;
@@ -31,6 +32,12 @@ use crate::telemetry::ModelIdentity;
 pub struct StepResult {
     /// Zero-based step index.
     pub step_number: u32,
+    /// Application state used for this step (never sent to the provider).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_context: Option<JsonValue>,
+    /// Shared tool context used for this step, before per-tool validation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools_context: Option<JsonValue>,
     /// Model that produced the step.
     pub model: ModelIdentity,
     /// Content parts in order.
@@ -428,6 +435,9 @@ pub struct ParsedToolCall {
     /// Display title of the tool, if defined.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// Metadata from the tool definition, such as its MCP origin.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_metadata: Option<JsonObject>,
     /// Provider-specific metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider_metadata: Option<ProviderMetadata>,
@@ -450,6 +460,7 @@ impl ParsedToolCall {
             invalid: false,
             error: None,
             title: None,
+            tool_metadata: None,
             provider_metadata: None,
         }
     }
@@ -478,6 +489,9 @@ pub struct ToolResult {
     /// Execution time in milliseconds (client-executed tools).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution_ms: Option<u64>,
+    /// Metadata from the tool definition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_metadata: Option<JsonObject>,
     /// Provider-specific metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider_metadata: Option<ProviderMetadata>,
@@ -500,6 +514,9 @@ pub struct ToolExecutionError {
     /// Whether the tool is dynamic.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub dynamic: bool,
+    /// Metadata from the tool definition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_metadata: Option<JsonObject>,
     /// Provider-specific metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider_metadata: Option<ProviderMetadata>,
@@ -623,4 +640,10 @@ pub struct ToolOutputDenied {
     /// Whether the tool is dynamic.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub dynamic: bool,
+    /// Metadata from the current tool definition when approval was replayed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_metadata: Option<JsonObject>,
+    /// Provider routing metadata from the original tool call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_metadata: Option<ProviderMetadata>,
 }

@@ -5,6 +5,32 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Separate JSON runtime context for generation and agent builders, prepared calls,
+  step preparation, approval policies, lifecycle hooks and serialized step results.
+- Tool-definition metadata on parsed calls, preliminary and final results, errors,
+  provider outcomes and replayed approval outcomes, distinct from provider metadata.
+
+### Changed
+
+- Retain message, instruction, tool context and runtime context overrides across
+  generation steps, including streaming and compacted histories (ADR 0021).
+  Model, tool-selection and sampling overrides remain local to each step.
+- Capture tool context on step results; telemetry requires explicit
+  `include_runtime_context` / `include_tools_context` for the respective context. New optional result fields deserialize
+  older data, but downstream Rust struct literals must include the added fields.
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
+### Fixed
+
+- Preserve provider routing metadata on local tool outcomes and approval replay,
+  including programmatic callers, parallel tool wrappers, automatic denials and
+  replayed approval successes, errors and denials.
+- Construct description contexts without relying on another crate's feature shape,
+  so enabling `ferrin-tool/sandbox` independently does not break the core build.
+
 ## [0.1.2] - 2026-09-16
 
 ### Fixed

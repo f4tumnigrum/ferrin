@@ -51,7 +51,8 @@ pub(crate) fn invalid_tool_errors(calls: &[ParsedToolCall]) -> Vec<StepContent> 
                 error: ToolErrorInfo::text(call.error.clone().unwrap_or_default()),
                 provider_executed: false,
                 dynamic: true,
-                provider_metadata: None,
+                tool_metadata: call.tool_metadata.clone(),
+                provider_metadata: call.provider_metadata.clone(),
             })
         })
         .collect()
@@ -103,6 +104,7 @@ pub(crate) async fn resolve_call_approval(
     call: &ParsedToolCall,
     messages: &Arc<[Message]>,
     tools_context: Option<&JsonValue>,
+    runtime_context: Option<&JsonValue>,
     cancellation: &CallCancellation,
 ) -> Result<Option<CallApproval>, Error> {
     if call.invalid {
@@ -111,6 +113,7 @@ pub(crate) async fn resolve_call_approval(
     let approval_ctx = ApprovalContext {
         messages,
         tools_context,
+        runtime_context,
     };
     let tool = ctx.execution_tools.get(call.tool_name.as_str());
     let tool_context = match tool {
@@ -193,12 +196,20 @@ pub(crate) async fn resolve_approvals(
     calls: &[ParsedToolCall],
     messages: &Arc<[Message]>,
     tools_context: Option<&JsonValue>,
+    runtime_context: Option<&JsonValue>,
     cancellation: &CallCancellation,
 ) -> Result<StepApprovals, Error> {
     let mut approvals = StepApprovals::default();
     for call in calls {
-        let Some(approval) =
-            resolve_call_approval(ctx, call, messages, tools_context, cancellation).await?
+        let Some(approval) = resolve_call_approval(
+            ctx,
+            call,
+            messages,
+            tools_context,
+            runtime_context,
+            cancellation,
+        )
+        .await?
         else {
             continue;
         };
@@ -213,6 +224,7 @@ pub(crate) async fn resolve_approvals(
 
 /// Per-task plumbing of one tool execution.
 pub(crate) struct ToolTask {
+    pub(crate) runtime_context: Option<JsonValue>,
     pub(crate) telemetry: TelemetryDispatcher,
     pub(crate) hooks: Arc<Hooks>,
     pub(crate) call_id: String,
@@ -242,6 +254,7 @@ pub(crate) async fn execute_tools(
     calls: Vec<ParsedToolCall>,
     messages: Arc<[Message]>,
     tools_context: Option<JsonValue>,
+    runtime_context: Option<JsonValue>,
     cancellation: &CallCancellation,
 ) -> Result<Vec<StepContent>, Error> {
     let mut results: Vec<Option<StepContent>> = (0..calls.len()).map(|_| None).collect();
@@ -257,13 +270,14 @@ pub(crate) async fn execute_tools(
             let Some((index, call, tool)) = pending.next() else {
                 return Ok(false);
             };
-            let task = ctx.tool_task(
+            let mut task = ctx.tool_task(
                 &tool,
                 &call,
                 &messages,
                 tools_context.as_ref(),
                 cancellation,
             )?;
+            task.runtime_context = runtime_context.clone();
             let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
             tasks.spawn(
                 async move {
@@ -308,6 +322,7 @@ pub(crate) async fn run_tool_call(
     let record_inputs = task.telemetry.record_inputs();
     let record_outputs = task.telemetry.record_outputs();
     let start = Arc::new(ToolExecutionStartEvent {
+        runtime_context: task.runtime_context.clone(),
         call_id: task.call_id.clone(),
         tool_call_id: call.tool_call_id.clone(),
         tool_name: call.tool_name.clone(),
@@ -332,7 +347,8 @@ pub(crate) async fn run_tool_call(
         dynamic: call.dynamic,
         preliminary: true,
         execution_ms: None,
-        provider_metadata: None,
+        tool_metadata: call.tool_metadata.clone(),
+        provider_metadata: call.provider_metadata.clone(),
     };
     let started = Instant::now();
     let outcome = task
@@ -379,7 +395,8 @@ pub(crate) async fn run_tool_call(
                 dynamic: call.dynamic,
                 preliminary: false,
                 execution_ms: Some(duration_ms),
-                provider_metadata: None,
+                tool_metadata: call.tool_metadata.clone(),
+                provider_metadata: call.provider_metadata.clone(),
             })),
             record_outputs.then_some(ToolOutcome { output }),
             None,
@@ -399,7 +416,8 @@ pub(crate) async fn run_tool_call(
                     error: info.clone(),
                     provider_executed: false,
                     dynamic: call.dynamic,
-                    provider_metadata: None,
+                    tool_metadata: call.tool_metadata.clone(),
+                    provider_metadata: call.provider_metadata.clone(),
                 })),
                 None,
                 Some(info),
@@ -407,6 +425,7 @@ pub(crate) async fn run_tool_call(
         }
     };
     let end = Arc::new(ToolExecutionEndEvent {
+        runtime_context: task.runtime_context,
         call_id: task.call_id,
         tool_call_id: call.tool_call_id,
         tool_name: call.tool_name,

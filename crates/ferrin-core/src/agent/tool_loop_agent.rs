@@ -65,6 +65,8 @@ pub struct PreparedCall {
     pub tool_order: Vec<ToolName>,
     /// Shared tool context.
     pub tools_context: Option<JsonValue>,
+    /// Application state for the generation lifecycle, separate from tool context.
+    pub runtime_context: Option<JsonValue>,
     /// Sampling settings, headers and provider options.
     pub settings: CallSettings,
     /// Stop conditions (default: twenty steps).
@@ -93,6 +95,7 @@ impl fmt::Debug for PreparedCall {
             .field("active_tools", &self.active_tools)
             .field("tool_order", &self.tool_order)
             .field("tools_context", &self.tools_context)
+            .field("runtime_context", &self.runtime_context.is_some())
             .field("settings", &self.settings)
             .field("stop_conditions", &self.stop_conditions.len())
             .field("timeout", &self.timeout)
@@ -195,6 +198,7 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
             active_tools: config.active_tools.clone(),
             tool_order: config.tool_order.clone(),
             tools_context: config.tools_context.clone(),
+            runtime_context: config.runtime_context.clone(),
             settings: config.settings.clone(),
             stop_conditions: if config.stop_conditions.is_empty() {
                 vec![Arc::new(step_count(DEFAULT_MAX_STEPS))]
@@ -250,6 +254,7 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
         config.active_tools = prepared.active_tools;
         config.tool_order = prepared.tool_order;
         config.tools_context = prepared.tools_context;
+        config.runtime_context = prepared.runtime_context;
         config.settings = prepared.settings;
         config.settings.headers = config
             .settings

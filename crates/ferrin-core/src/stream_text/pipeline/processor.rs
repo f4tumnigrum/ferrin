@@ -54,6 +54,8 @@ pub(super) struct Processor<O> {
 
 /// Content of the step in progress.
 struct StepAccumulator {
+    runtime_context: Option<ferrin_spec::JsonValue>,
+    tools_context: Option<ferrin_spec::JsonValue>,
     model: ModelIdentity,
     request: StepRequest,
     warnings: Vec<Warning>,
@@ -179,11 +181,15 @@ impl<O: Send + 'static> Processor<O> {
         match event {
             StreamEvent::StartStep {
                 model,
+                runtime_context,
+                tools_context,
                 request,
                 warnings,
                 ..
             } => {
                 self.current = Some(StepAccumulator {
+                    runtime_context: runtime_context.clone(),
+                    tools_context: tools_context.clone(),
                     model: model.clone(),
                     request: request.clone(),
                     warnings: warnings.clone(),
@@ -306,6 +312,8 @@ impl<O: Send + 'static> Processor<O> {
                 }
                 let result = StepResult {
                     step_number: *step_number,
+                    runtime_context: step.runtime_context,
+                    tools_context: step.tools_context,
                     model: step.model,
                     content: step.content,
                     finish_reason: finish_reason.clone(),

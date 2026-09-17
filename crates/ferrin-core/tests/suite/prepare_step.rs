@@ -75,7 +75,10 @@ async fn overrides_apply_per_step() {
     ));
     assert_eq!(tool_names(&calls[1].tools), vec!["other", "get_weather"]);
     assert_eq!(calls[1].tool_choice, Some(ToolChoice::None));
-    assert!(!matches!(&calls[1].prompt[0], PromptMessage::System { .. }));
+    assert!(matches!(
+        &calls[1].prompt[0],
+        PromptMessage::System { content, .. } if content == "Step zero."
+    ));
 }
 
 #[tokio::test]

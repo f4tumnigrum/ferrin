@@ -55,6 +55,7 @@ pub(crate) async fn replay_approvals(
     let messages_arc: Arc<[Message]> = Arc::from(messages.to_vec());
     let tools_context = ctx.config.tools_context.clone();
     let approval_ctx = ApprovalContext {
+        runtime_context: ctx.config.runtime_context.as_ref(),
         messages,
         tools_context: tools_context.as_ref(),
     };
@@ -99,6 +100,9 @@ pub(crate) async fn replay_approvals(
             approval.tool_call.input.clone(),
         );
         call.dynamic = tool.is_some_and(|tool| tool.kind().is_dynamic());
+        call.provider_metadata
+            .clone_from(&approval.tool_call.provider_options);
+        call.tool_metadata = tool.and_then(|tool| tool.metadata().cloned());
         if let Some(tool) = tool
             && tool.is_executable()
         {
@@ -117,7 +121,8 @@ pub(crate) async fn replay_approvals(
                         error: ToolErrorInfo::text(error.to_string()),
                         provider_executed: false,
                         dynamic: call.dynamic,
-                        provider_metadata: None,
+                        tool_metadata: call.tool_metadata,
+                        provider_metadata: call.provider_metadata,
                     }));
                     continue;
                 }
@@ -153,16 +158,26 @@ pub(crate) async fn replay_approvals(
         to_execute.push(call);
     }
 
-    outputs
-        .extend(execute_tools(ctx, to_execute, messages_arc, tools_context, cancellation).await?);
+    outputs.extend(
+        execute_tools(
+            ctx,
+            to_execute,
+            messages_arc,
+            tools_context,
+            ctx.config.runtime_context.clone(),
+            cancellation,
+        )
+        .await?,
+    );
     for approval in denied
         .into_iter()
         .filter(|approval| approval.existing_result.is_none())
     {
-        let dynamic = ctx
+        let tool = ctx
             .execution_tools
-            .get(approval.tool_call.tool_name.as_str())
-            .is_some_and(|tool| tool.kind().is_dynamic());
+            .get(approval.tool_call.tool_name.as_str());
+        let dynamic = tool.is_some_and(|tool| tool.kind().is_dynamic());
+        let tool_metadata = tool.and_then(|tool| tool.metadata().cloned());
         outputs.push(StepContent::ToolOutputDenied(ToolOutputDenied {
             tool_call_id: approval.tool_call.tool_call_id,
             tool_name: approval.tool_call.tool_name,
@@ -170,6 +185,8 @@ pub(crate) async fn replay_approvals(
             reason: approval.response.reason,
             provider_executed: approval.tool_call.provider_executed,
             dynamic,
+            tool_metadata,
+            provider_metadata: approval.tool_call.provider_options,
         }));
     }
     Ok(outputs)
@@ -191,19 +208,19 @@ pub(crate) fn replay_tool_message(outputs: &[StepContent], tools: &ToolSet) -> O
                         &result.output,
                         ErrorMode::None,
                     ),
-                    provider_options: None,
+                    provider_options: result.provider_metadata.clone(),
                 },
                 StepContent::ToolError(error) => ToolResultPart {
                     tool_call_id: error.tool_call_id.clone(),
                     tool_name: error.tool_name.clone(),
                     output: tool_error_output(&error.error),
-                    provider_options: None,
+                    provider_options: error.provider_metadata.clone(),
                 },
                 StepContent::ToolOutputDenied(denied) => ToolResultPart {
                     tool_call_id: denied.tool_call_id.clone(),
                     tool_name: denied.tool_name.clone(),
                     output: ToolResultOutput::execution_denied(denied.reason.clone()),
-                    provider_options: None,
+                    provider_options: denied.provider_metadata.clone(),
                 },
                 _ => return None,
             };

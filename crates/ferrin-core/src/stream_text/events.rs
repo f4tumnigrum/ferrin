@@ -46,6 +46,12 @@ pub enum StreamEvent {
     StartStep {
         /// Zero-based step index.
         step_number: u32,
+        /// Application state used for this step.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        runtime_context: Option<JsonValue>,
+        /// Shared tool context used for this step.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tools_context: Option<JsonValue>,
         /// The model handling the step.
         model: ModelIdentity,
         /// Request metadata.

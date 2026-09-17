@@ -247,6 +247,7 @@
         "fn refine_tool_input(self, name: impl Into<ToolName>, refine: impl Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>> + Send + Sync + 'static) -> Self",
         "fn repair_tool_call(self, repair: impl ToolCallRepair + 'static) -> Self",
         "fn retry_policy(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn seed(self, seed: u64) -> Self",
         "fn settings(self, settings: CallSettings) -> Self",
@@ -554,6 +555,8 @@
       "source": "generate_text::StepResult",
       "fields": [
         "step_number: u32",
+        "runtime_context: Option<JsonValue>",
+        "tools_context: Option<JsonValue>",
         "model: ModelIdentity",
         "content: Vec<StepContent>",
         "finish_reason: FinishReason",
@@ -597,7 +600,7 @@
       ],
       "variants": [
         "Start { call_id: String }",
-        "StartStep { step_number: u32, model: ModelIdentity, request: StepRequest, warnings: Vec<Warning> }",
+        "StartStep { step_number: u32, runtime_context: Option<JsonValue>, tools_context: Option<JsonValue>, model: ModelIdentity, request: StepRequest, warnings: Vec<Warning> }",
         "TextStart { id: PartId, provider_metadata: Option<ProviderMetadata> }",
         "TextDelta { id: PartId, text: String, provider_metadata: Option<ProviderMetadata> }",
         "TextEnd { id: PartId, provider_metadata: Option<ProviderMetadata> }",
@@ -681,6 +684,7 @@
         "fn refine_tool_input(self, name: impl Into<ToolName>, refine: impl Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>> + Send + Sync + 'static) -> Self",
         "fn repair_tool_call(self, repair: impl ToolCallRepair + 'static) -> Self",
         "fn retry_policy(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn seed(self, seed: u64) -> Self",
         "fn settings(self, settings: CallSettings) -> Self",
@@ -763,6 +767,7 @@
         "record_outputs: bool",
         "function_id: Option<String>",
         "metadata: BTreeMap<String, JsonValue>",
+        "include_runtime_context: bool",
         "include_tools_context: bool",
         "integrations: Vec<Arc<dyn Telemetry>>"
       ],
@@ -956,6 +961,7 @@
         "active_tools: Option<Vec<ToolName>>",
         "tool_order: Vec<ToolName>",
         "tools_context: Option<JsonValue>",
+        "runtime_context: Option<JsonValue>",
         "settings: CallSettings",
         "stop_conditions: Vec<Arc<dyn StopCondition>>",
         "timeout: Timeout",
@@ -1031,6 +1037,7 @@
         "fn refine_tool_input(self, name: impl Into<ToolName>, refine: impl Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>> + Send + Sync + 'static) -> Self",
         "fn repair_tool_call(self, repair: impl ToolCallRepair + 'static) -> Self",
         "fn retry_policy(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn seed(self, seed: u64) -> Self",
         "fn settings(self, settings: CallSettings) -> Self",
@@ -2071,7 +2078,8 @@
       "source": "approval::ApprovalContext",
       "fields": [
         "messages: &'a [Message]",
-        "tools_context: Option<&'a JsonValue>"
+        "tools_context: Option<&'a JsonValue>",
+        "runtime_context: Option<&'a JsonValue>"
       ],
       "traits": [
         "impl<'a> Clone for ApprovalContext<'a>",
@@ -2200,6 +2208,7 @@
         "fn refine_tool_input(self, name: impl Into<ToolName>, refine: impl Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>> + Send + Sync + 'static) -> Self",
         "fn repair_tool_call(self, repair: impl ToolCallRepair + 'static) -> Self",
         "fn retry_policy(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn seed(self, seed: u64) -> Self",
         "fn settings(self, settings: CallSettings) -> Self",
@@ -2347,6 +2356,7 @@
         "invalid: bool",
         "error: Option<String>",
         "title: Option<String>",
+        "tool_metadata: Option<JsonObject>",
         "provider_metadata: Option<ProviderMetadata>"
       ],
       "methods": [
@@ -2383,7 +2393,8 @@
         "messages: &'a [Message]",
         "initial_messages: &'a [Message]",
         "response_messages: &'a [Message]",
-        "tools_context: Option<&'a JsonValue>"
+        "tools_context: Option<&'a JsonValue>",
+        "runtime_context: Option<&'a JsonValue>"
       ],
       "traits": [
         "impl<'a> Debug for PrepareStepContext<'a>"
@@ -2505,6 +2516,7 @@
         "instructions: Option<Instructions>",
         "messages: Option<Vec<Message>>",
         "tools_context: Option<JsonValue>",
+        "runtime_context: Option<JsonValue>",
         "settings: Option<CallSettings>"
       ],
       "methods": [
@@ -2513,6 +2525,7 @@
         "fn with_instructions(self, instructions: impl Into<Instructions>) -> Self",
         "fn with_messages(self, messages: impl IntoIterator<Item = Message>) -> Self",
         "fn with_model(self, model: impl Into<LanguageModelRef>) -> Self",
+        "fn with_runtime_context(self, context: JsonValue) -> Self",
         "fn with_settings(self, settings: CallSettings) -> Self",
         "fn with_tool_choice(self, tool_choice: ToolChoice) -> Self",
         "fn with_tool_order(self, names: impl IntoIterator<Item = impl Into<ToolName>>) -> Self",
@@ -2600,6 +2613,8 @@
       "source": "step::StepResult",
       "fields": [
         "step_number: u32",
+        "runtime_context: Option<JsonValue>",
+        "tools_context: Option<JsonValue>",
         "model: ModelIdentity",
         "content: Vec<StepContent>",
         "finish_reason: FinishReason",
@@ -2734,6 +2749,7 @@
         "error: ToolErrorInfo",
         "provider_executed: bool",
         "dynamic: bool",
+        "tool_metadata: Option<JsonObject>",
         "provider_metadata: Option<ProviderMetadata>"
       ],
       "traits": [
@@ -2756,7 +2772,9 @@
         "input: JsonValue",
         "reason: Option<String>",
         "provider_executed: bool",
-        "dynamic: bool"
+        "dynamic: bool",
+        "tool_metadata: Option<JsonObject>",
+        "provider_metadata: Option<ProviderMetadata>"
       ],
       "traits": [
         "impl Clone for ToolOutputDenied",
@@ -2781,6 +2799,7 @@
         "dynamic: bool",
         "preliminary: bool",
         "execution_ms: Option<u64>",
+        "tool_metadata: Option<JsonObject>",
         "provider_metadata: Option<ProviderMetadata>"
       ],
       "traits": [
@@ -4643,7 +4662,7 @@
       ],
       "variants": [
         "Start { call_id: String }",
-        "StartStep { step_number: u32, model: ModelIdentity, request: StepRequest, warnings: Vec<Warning> }",
+        "StartStep { step_number: u32, runtime_context: Option<JsonValue>, tools_context: Option<JsonValue>, model: ModelIdentity, request: StepRequest, warnings: Vec<Warning> }",
         "TextStart { id: PartId, provider_metadata: Option<ProviderMetadata> }",
         "TextDelta { id: PartId, text: String, provider_metadata: Option<ProviderMetadata> }",
         "TextEnd { id: PartId, provider_metadata: Option<ProviderMetadata> }",
@@ -4727,6 +4746,7 @@
         "fn refine_tool_input(self, name: impl Into<ToolName>, refine: impl Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>> + Send + Sync + 'static) -> Self",
         "fn repair_tool_call(self, repair: impl ToolCallRepair + 'static) -> Self",
         "fn retry_policy(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn seed(self, seed: u64) -> Self",
         "fn settings(self, settings: CallSettings) -> Self",
@@ -4985,6 +5005,7 @@
       "signature": "struct",
       "source": "events::EndEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "steps: Arc<[StepResult]>",
         "total_usage: Usage",
@@ -5056,6 +5077,7 @@
       "signature": "struct",
       "source": "events::ModelCallEndEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "step_number: u32",
         "model: ModelIdentity",
@@ -5092,6 +5114,7 @@
       "signature": "struct",
       "source": "events::ModelCallStartEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "step_number: u32",
         "model: ModelIdentity",
@@ -5177,6 +5200,7 @@
       "signature": "struct",
       "source": "events::StartEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "function_id: Option<String>",
         "model: ModelIdentity",
@@ -5208,6 +5232,7 @@
       "signature": "struct",
       "source": "events::StepStartEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "step_number: u32",
         "model: ModelIdentity",
@@ -5251,6 +5276,7 @@
         "record_outputs: bool",
         "function_id: Option<String>",
         "metadata: BTreeMap<String, JsonValue>",
+        "include_runtime_context: bool",
         "include_tools_context: bool",
         "integrations: Vec<Arc<dyn Telemetry>>"
       ],
@@ -5285,6 +5311,7 @@
       "signature": "struct",
       "source": "events::ToolExecutionEndEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "tool_call_id: ToolCallId",
         "tool_name: ToolName",
@@ -5303,6 +5330,7 @@
       "signature": "struct",
       "source": "events::ToolExecutionStartEvent",
       "fields": [
+        "runtime_context: Option<JsonValue>",
         "call_id: String",
         "tool_call_id: ToolCallId",
         "tool_name: ToolName",

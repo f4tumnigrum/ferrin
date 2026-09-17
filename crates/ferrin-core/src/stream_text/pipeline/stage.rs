@@ -23,6 +23,7 @@ use crate::generate_text::ParsedToolCall;
 use crate::generate_text::StepContent;
 use crate::generate_text::StepResponse;
 use crate::generate_text::StepResult;
+use crate::generate_text::inputs::StepState;
 use crate::generate_text::inputs::emit_model_call_start;
 use crate::generate_text::inputs::prepare_step_inputs;
 use crate::generate_text::is_stop_condition_met;
@@ -88,6 +89,7 @@ impl Emitter {
 }
 
 struct Stage {
+    step_state: StepState,
     ctx: Arc<LoopContext>,
     stream: Arc<StreamConfig>,
     emitter: Emitter,
@@ -112,6 +114,7 @@ pub(super) async fn run(ctx: Arc<LoopContext>, stream: Arc<StreamConfig>, channe
         outcome,
     } = channels;
     let mut stage = Stage {
+        step_state: StepState::new(&ctx),
         ctx,
         stream,
         emitter: Emitter {
@@ -222,6 +225,7 @@ impl Stage {
             &self.ctx,
             &self.steps,
             &self.response_messages,
+            &mut self.step_state,
             cancellation,
         )
         .await?;
@@ -324,13 +328,14 @@ impl Stage {
                 *progress_tx = None;
                 return Ok(false);
             };
-            let task = ctx.tool_task(
+            let mut task = ctx.tool_task(
                 &tool,
                 &call,
                 &messages,
                 tools_context.as_ref(),
                 cancellation,
             )?;
+            task.runtime_context = attempt.inputs.runtime_context.clone();
             let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
             let progress = progress_tx.clone();
             tasks.spawn(run_tool_call(call, tool, task, progress).instrument(span));

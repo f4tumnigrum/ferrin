@@ -37,7 +37,9 @@ async fn sends_the_default_input_and_maps_the_decision() {
     let policy = policy_approval(Arc::clone(&client), "ferrin/tools/decision");
     let messages = vec![Message::user("delete it")];
     let tools_context = json!({ "tenant": "acme" });
+    let runtime_context = json!({ "phase": "cleanup" });
     let ctx = ApprovalContext {
+        runtime_context: Some(&runtime_context),
         messages: &messages,
         tools_context: Some(&tools_context),
     };
@@ -60,6 +62,7 @@ async fn sends_the_default_input_and_maps_the_decision() {
             "input": { "path": "/tmp/x" },
             "messages": serde_json::to_value(&messages).unwrap(),
             "tools_context": { "tenant": "acme" },
+            "runtime_context": { "phase": "cleanup" },
         })
     );
     assert_eq!(calls[0].1, default_input(&delete_call(), &ctx));
