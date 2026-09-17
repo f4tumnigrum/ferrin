@@ -173,3 +173,133 @@ fn provider_tool_options_preserve_opaque_dictionary_keys() {
         })])
     );
 }
+
+#[test]
+fn programmatic_factory_binds_callees_and_defers_results() {
+    use ferrin_tool::ToolCaller;
+    use ferrin_tool::ToolSet;
+    use ferrin_tool::callers::prepare_tools_for_callers;
+    use ferrin_tool::callers::validate_tool_callers;
+    let program = OpenAiTools::new().programmatic_tool_calling();
+    assert!(matches!(
+        program.kind(),
+        ToolKind::ProviderExecuted {
+            supports_deferred_results: true,
+            ..
+        }
+    ));
+    assert!(
+        program
+            .validate_input(
+                &"program".into(),
+                json!({"code":"return 1", "fingerprint":"fp"})
+            )
+            .is_ok()
+    );
+    assert!(
+        program
+            .validate_input(&"program".into(), json!({"code":"return 1"}))
+            .is_err()
+    );
+    let callee = Tool::function::<serde_json::Value>()
+        .provider_options(super::common::openai_options(
+            json!({"allowedCallers":["direct","programmatic"],"deferLoading":true}),
+        ))
+        .build();
+    let tools = ToolSet::new()
+        .insert("program", program)
+        .unwrap()
+        .insert("weather", callee)
+        .unwrap();
+    let callers = [("weather".into(), vec![ToolCaller::Tool("program".into())])].into();
+    validate_tool_callers(&tools, &callers).unwrap();
+    let prepared = prepare_tools_for_callers(&tools, &callers);
+    assert_eq!(
+        prepared
+            .model_tools
+            .get("weather")
+            .unwrap()
+            .provider_options(),
+        Some(&super::common::openai_options(
+            json!({"allowedCallers":["direct","programmatic"],"deferLoading":true})
+        ))
+    );
+}
+
+#[tokio::test]
+async fn client_search_factory_accepts_an_executor_without_losing_its_schema() {
+    use ferrin_openai::tools::ToolSearchArgs;
+    use ferrin_tool::ToolContext;
+    use ferrin_tool::ToolOutput;
+    use futures_util::StreamExt;
+    let tool = OpenAiTools::new()
+        .tool_search(ToolSearchArgs {
+            execution: Some("client".into()),
+            ..ToolSearchArgs::default()
+        })
+        .into_builder()
+        .execute(|input, _| async move {
+            Ok(json!({"tools":[{"type":"function","name":input["arguments"]["name"]}]}))
+        })
+        .build();
+    let input = tool
+        .validate_input(
+            &"search".into(),
+            json!({"arguments":{"name":"weather"},"call_id":"search_1"}),
+        )
+        .unwrap();
+    let output: Vec<_> = tool
+        .execute(input, ToolContext::new("search_1"))
+        .unwrap()
+        .collect()
+        .await;
+    assert_eq!(
+        output.into_iter().collect::<Result<Vec<_>, _>>().unwrap(),
+        vec![ToolOutput::Final(
+            json!({"tools":[{"type":"function","name":"weather"}]})
+        )]
+    );
+    assert_eq!(
+        tool.definition("search".into(), None),
+        ToolDefinition::Provider {
+            id: "openai.tool_search".into(),
+            name: "search".into(),
+            args: serde_json::from_value(json!({"execution":"client"})).unwrap()
+        }
+    );
+    assert!(
+        tool.output_schema()
+            .unwrap()
+            .validate(json!({"tools":[]}))
+            .is_ok()
+    );
+}
+
+#[test]
+fn hosted_shell_environment_uses_wire_types_and_preserves_secret_names() {
+    use ferrin_openai::tools::ShellArgs;
+    for (input, expected) in [
+        (
+            json!({"type":"containerReference","containerId":"container_1"}),
+            json!({"type":"container_reference","container_id":"container_1"}),
+        ),
+        (
+            json!({"type":"containerAuto","fileIds":["file_1"],"networkPolicy":{"type":"allowlist","allowedDomains":["example.com"],"domainSecrets":[{"domain":"example.com","name":"X-Api-Key","value":"test-value"}]}}),
+            json!({"type":"container_auto","file_ids":["file_1"],"network_policy":{"type":"allowlist","allowed_domains":["example.com"],"domain_secrets":[{"domain":"example.com","name":"X-Api-Key","value":"test-value"}]}}),
+        ),
+    ] {
+        let tools = vec![
+            OpenAiTools::new()
+                .shell(ShellArgs {
+                    environment: Some(input),
+                })
+                .definition("terminal".into(), None),
+        ];
+        let mapping = tool_name_mapping(&tools);
+        let converted = convert_tools(&tools, None, &mapping, true, "openai").unwrap();
+        assert_eq!(
+            converted.tools,
+            Some(vec![json!({"type":"shell","environment":expected})])
+        );
+    }
+}

@@ -6,6 +6,9 @@ pub mod convert_tool_results;
 pub mod convert_tools;
 pub mod options;
 pub mod output;
+mod output_advanced;
+mod parallel;
+mod replay_advanced;
 pub mod request;
 pub mod stream;
 
@@ -193,6 +196,7 @@ impl LanguageModel for OpenAiResponsesLanguageModel {
             prepared.tool_name_mapping.clone(),
             prepared.web_search_tool_name.clone(),
         );
+        mapper.configure_tools(&options.tools);
         mapper.approval_tool_call_ids = approval_ids_from_prompt(&options.prompt, &key);
         let mut content = Vec::new();
         for item in output {
@@ -266,6 +270,7 @@ impl LanguageModel for OpenAiResponsesLanguageModel {
             prepared.tool_name_mapping,
             prepared.web_search_tool_name,
         );
+        mapper.configure_tools(&options.tools);
         mapper.approval_tool_call_ids = approval_ids_from_prompt(&options.prompt, &key);
         let state = ResponsesStreamState::new(mapper, prepared.store, collect_logprobs);
         let stream = drive_stream(

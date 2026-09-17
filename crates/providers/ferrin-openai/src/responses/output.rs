@@ -2,8 +2,12 @@
 //!
 //! Shared by the non-streaming model, the streaming model (item added/done
 //! events) and the batch service.
+//!
+//! Advanced tool behavior adapted from the Vercel AI SDK (Apache-2.0); see NOTICE.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use ferrin_provider_util::tool_name_mapping::ToolNameMapping;
 use ferrin_spec::JsonObject;
@@ -239,6 +243,9 @@ pub struct OutputMapper {
     pub has_function_call: bool,
     /// Collected logprobs of text parts.
     pub logprobs: Vec<JsonValue>,
+    pub(crate) function_names: HashSet<String>,
+    pub(crate) hosted_shell: bool,
+    pub(crate) hosted_search_ids: VecDeque<String>,
 }
 
 impl OutputMapper {
@@ -256,20 +263,23 @@ impl OutputMapper {
             approval_tool_call_ids: HashMap::new(),
             has_function_call: false,
             logprobs: Vec::new(),
+            function_names: HashSet::new(),
+            hosted_shell: false,
+            hosted_search_ids: VecDeque::new(),
         }
     }
 
-    fn key(&self) -> &str {
+    pub(super) fn key(&self) -> &str {
         &self.config.provider_options_key
     }
 
-    fn custom_name(&self, provider_name: &str) -> String {
+    pub(super) fn custom_name(&self, provider_name: &str) -> String {
         self.tool_name_mapping
             .to_custom_tool_name(provider_name)
             .to_owned()
     }
 
-    fn item_metadata(&self, item: &OutputItem) -> ProviderMetadata {
+    pub(super) fn item_metadata(&self, item: &OutputItem) -> ProviderMetadata {
         let mut meta = JsonObject::new();
         meta.insert(
             "itemId".to_owned(),
@@ -404,6 +414,10 @@ impl OutputMapper {
             "message" => self.message_parts(item, collect_logprobs),
             "function_call" => {
                 self.has_function_call = true;
+                if let Some(calls) = super::parallel::expand(item, &self.function_names, self.key())
+                {
+                    return calls;
+                }
                 let mut meta = JsonObject::new();
                 meta.insert("itemId".to_owned(), JsonValue::from(id));
                 for (field, key) in [("async", "async"), ("namespace", "namespace")] {
@@ -566,7 +580,7 @@ impl OutputMapper {
                 vec![Content::ToolCall(call)]
             }
             "shell_call" => {
-                self.has_function_call = true;
+                self.has_function_call |= !self.hosted_shell;
                 let action = item.get("action").cloned().unwrap_or(JsonValue::Null);
                 let input = json!({"action": {
                     "commands": action.get("commands"),
@@ -579,8 +593,11 @@ impl OutputMapper {
                     input.to_string(),
                 );
                 call.provider_metadata = Some(self.item_metadata(item));
+                call.provider_executed = self.hosted_shell;
                 vec![Content::ToolCall(call)]
             }
+            "program" | "program_output" | "tool_search_call" | "tool_search_output"
+            | "shell_call_output" => self.advanced_item(item),
             "computer_call" => {
                 self.has_function_call = true;
                 let input = json!({

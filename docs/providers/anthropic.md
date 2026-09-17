@@ -57,6 +57,8 @@ CamelCase keys; unknown keys/invalid enum values return InvalidArgument. See `sr
 
 ## Known limitations and warnings
 
+[Decision] `code_execution_20250825` and `code_execution_20260120` bind provider callers and support deferred results, preserving existing `allowedCallers` entries when adding their own type. Source: [ADR 0022](../04-decisions/2026-09-17-0022-provider-tool-roundtrips.md); deterministic caller-preparation regression, with live API verification still covered by PV-031.
+
 - [Fact] Drop penalties/`seed` with warnings; clamp `temperature` to 0–1, drop `topP` when `temperature` also set, and drop `temperature`/`topK`/`topP` for thinking or nonsampling models.
 - [Fact] Output defaults: Sonnet 4.x/Haiku 4.5 64000, Opus 4.x 32000, Sonnet/Opus 4.6+ 128000, Claude 3 Haiku/older 4096. Add thinking budget then clip with warning. Unknown claude IDs use latest capabilities with warnings; non-Claude IDs use 4096/no structured output.
 - [Fact] Images accept bytes/URL/references; PDF/plain text also accept inline text; others unsupported. Reference keys must match `name`; containerUpload requires references. Assistant files/reasoning files/custom parts warn and are skipped.
@@ -92,3 +94,5 @@ Insta snapshots in tests/suite/snapshots cover requests, prompts, tool wire shap
 [Fact] The four cache-breakpoint limit is shared by all prompt parts and tool definitions in one request; excess breakpoints are removed with warnings. Regression: `tests/suite/messages_request.rs::cache_breakpoint_limit_is_shared_across_prompt_and_tools` (2026-09-15).
 
 [Fact] Batch result URLs are validated using `url_policy`: HTTPS/public addresses by default, resolved addresses pinned, redirects rejected, and streaming response bytes bounded by `max_body_bytes`. Credentials and caller headers are sent only to the configured origin or explicit `credentialed_origins`. Local test endpoints require explicit `allow_http().trust_origin(...)`. Sources: `src/batch/`, `tests/suite/security.rs` (2026-09-15).
+
+[Fact] Modern code-execution factories validate programmatic, bash and text-editor inputs plus their result variants; the 20260120 factory also accepts encrypted execution output. Source: `src/tools/code_execution.rs` and `tests/suite/tools.rs` (2026-09-17); deterministic schema/caller tests only.

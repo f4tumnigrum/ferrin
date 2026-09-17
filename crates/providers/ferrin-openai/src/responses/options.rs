@@ -149,6 +149,15 @@ pub struct ResponsesProviderOptions {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PartOptions {
+    /// Caller identity of a programmatic function call.
+    #[serde(default)]
+    pub caller: Option<JsonValue>,
+    /// Whether a function is asynchronous.
+    #[serde(default)]
+    pub r#async: Option<bool>,
+    /// Function namespace.
+    #[serde(default)]
+    pub namespace: Option<String>,
     /// Item id of the part in the stored conversation.
     #[serde(default)]
     pub item_id: Option<String>,

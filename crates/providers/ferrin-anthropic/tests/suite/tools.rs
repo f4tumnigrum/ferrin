@@ -317,3 +317,66 @@ async fn provider_tool_aliases_roundtrip_through_choices_and_calls() {
         assert_eq!(names, vec!["shell", "shell"]);
     }
 }
+
+#[test]
+fn code_execution_factories_bind_callees_and_defer_results() {
+    use ferrin_tool::ToolCaller;
+    use ferrin_tool::ToolKind;
+    use ferrin_tool::ToolSet;
+    use ferrin_tool::callers::prepare_tools_for_callers;
+    use ferrin_tool::callers::validate_tool_callers;
+    let factories = AnthropicTools::new();
+    for (kind, tool) in [
+        (
+            "code_execution_20250825",
+            factories.code_execution_20250825(),
+        ),
+        (
+            "code_execution_20260120",
+            factories.code_execution_20260120(),
+        ),
+    ] {
+        assert!(matches!(
+            tool.kind(),
+            ToolKind::ProviderExecuted {
+                supports_deferred_results: true,
+                ..
+            }
+        ));
+        for input in [
+            json!({"type":"programmatic-tool-call","code":"print(1)"}),
+            json!({"type":"bash_code_execution","command":"pwd"}),
+            json!({"type":"text_editor_code_execution","command":"view","path":"/work/file"}),
+        ] {
+            assert!(tool.validate_input(&"code".into(), input).is_ok());
+        }
+        assert!(
+            tool.validate_input(&"code".into(), json!({"type":"programmatic-tool-call"}))
+                .is_err()
+        );
+        assert!(tool.output_schema().unwrap().validate(json!({"type":"code_execution_result","stdout":"1","stderr":"","return_code":0,"content":[]})).is_ok());
+        let options = serde_json::from_value(json!({"anthropic":{"allowedCallers":["direct",kind],"deferLoading":true},"other":{"keep":true}})).unwrap();
+        let callee = Tool::function::<serde_json::Value>()
+            .provider_options(options)
+            .build();
+        let tools = ToolSet::new()
+            .insert("code", tool)
+            .unwrap()
+            .insert("weather", callee)
+            .unwrap();
+        let callers = [("weather".into(), vec![ToolCaller::Tool("code".into())])].into();
+        validate_tool_callers(&tools, &callers).unwrap();
+        let prepared = prepare_tools_for_callers(&tools, &callers);
+        assert_eq!(
+            serde_json::to_value(
+                prepared
+                    .model_tools
+                    .get("weather")
+                    .unwrap()
+                    .provider_options()
+            )
+            .unwrap(),
+            json!({"anthropic":{"allowedCallers":["direct",kind],"deferLoading":true},"other":{"keep":true}})
+        );
+    }
+}

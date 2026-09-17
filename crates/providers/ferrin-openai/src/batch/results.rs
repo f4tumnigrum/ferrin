@@ -124,6 +124,8 @@ fn convert_body(config: &SharedConfig, id: String, body: JsonValue) -> BatchItem
         ToolNameMapping::new(&[], &HashMap::new()),
         None,
     );
+    // A batch result has no request definition; paired output proves hosted execution.
+    mapper.hosted_shell = output.iter().any(|item| item.kind == "shell_call_output");
     let mut content = Vec::new();
     for item in output {
         content.extend(mapper.map_item(item, true));

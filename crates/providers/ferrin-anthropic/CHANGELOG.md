@@ -5,6 +5,14 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
+### Fixed
+
+- Bind modern code-execution tools as provider callers and enable deferred results while preserving existing caller options.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed

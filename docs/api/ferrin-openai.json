@@ -68,6 +68,7 @@
         "name: String",
         "base_url: Url",
         "api_key: Option<SecretString>",
+        "authentication: Authentication",
         "organization: Option<String>",
         "project: Option<String>",
         "headers: Headers",
@@ -86,6 +87,7 @@
         "fn provider_id(&self, family: &str) -> ProviderId",
         "fn url(&self, path: &str) -> Url",
         "fn websocket_url(&self, path: &str, query: &[(&str, &str)]) -> Url",
+        "fn with_external_authentication(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self",
         "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
       ],
       "traits": [
@@ -1151,6 +1153,27 @@
       "signature": "const: &str"
     },
     {
+      "path": "ferrin_openai::config::Authentication",
+      "kind": "enum",
+      "signature": "enum",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "OpenAi",
+        "External"
+      ],
+      "traits": [
+        "impl Clone for Authentication",
+        "impl Copy for Authentication",
+        "impl Debug for Authentication",
+        "impl Default for Authentication",
+        "impl Eq for Authentication",
+        "impl PartialEq for Authentication",
+        "impl StructuralPartialEq for Authentication"
+      ]
+    },
+    {
       "path": "ferrin_openai::config::BASE_URL_ENV",
       "kind": "constant",
       "signature": "const: &str"
@@ -1173,6 +1196,7 @@
         "name: String",
         "base_url: Url",
         "api_key: Option<SecretString>",
+        "authentication: Authentication",
         "organization: Option<String>",
         "project: Option<String>",
         "headers: Headers",
@@ -1191,6 +1215,7 @@
         "fn provider_id(&self, family: &str) -> ProviderId",
         "fn url(&self, path: &str) -> Url",
         "fn websocket_url(&self, path: &str, query: &[(&str, &str)]) -> Url",
+        "fn with_external_authentication(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self",
         "fn with_transport(name: impl Into<String>, base_url: Url, transport: SharedTransport) -> Self"
       ],
       "traits": [
@@ -1827,6 +1852,8 @@
       "kind": "struct",
       "signature": "struct",
       "fields": [
+        "tool_search: bool",
+        "programmatic: bool",
         "apply_patch: bool",
         "local_shell: bool",
         "shell: bool",
@@ -1990,6 +2017,9 @@
       "kind": "struct",
       "signature": "struct",
       "fields": [
+        "caller: Option<JsonValue>",
+        "async: Option<bool>",
+        "namespace: Option<String>",
         "item_id: Option<String>",
         "reasoning_encrypted_content: Option<String>",
         "phase: Option<String>",
@@ -2085,7 +2115,8 @@
         "web_search_tool_name: Option<String>",
         "approval_tool_call_ids: HashMap<String, String>",
         "has_function_call: bool",
-        "logprobs: Vec<JsonValue>"
+        "logprobs: Vec<JsonValue>",
+        "/* private fields */"
       ],
       "methods": [
         "fn map_item(&mut self, item: &OutputItem, collect_logprobs: bool) -> Vec<Content>",

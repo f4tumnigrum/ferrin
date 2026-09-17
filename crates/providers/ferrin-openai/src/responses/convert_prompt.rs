@@ -2,6 +2,8 @@
 //!
 //! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
 //! translated from TypeScript to Rust and modified; see `NOTICE`.
+//!
+//! Advanced tool behavior adapted from the Vercel AI SDK (Apache-2.0); see NOTICE.
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -33,6 +35,10 @@ use crate::capabilities::SystemMessageMode;
 /// and results are converted.
 #[derive(Debug, Clone, Default)]
 pub struct ProviderToolSet {
+    /// `openai.tool_search` is declared.
+    pub tool_search: bool,
+    /// `openai.programmatic_tool_calling` is declared.
+    pub programmatic: bool,
     /// `openai.apply_patch` is declared.
     pub apply_patch: bool,
     /// `openai.local_shell` is declared.
@@ -120,6 +126,7 @@ pub(crate) fn convert_prompt_for_provider(
     ctx: &ConversionContext<'_>,
     provider_name: &str,
 ) -> Result<ConvertedInput, ProviderError> {
+    super::replay_advanced::validate_program_denials(prompt, ctx.provider_options_key)?;
     let mut out = ConvertedInput::default();
     for message in prompt {
         match message {
@@ -154,6 +161,7 @@ pub(crate) fn convert_prompt_for_provider(
             _ => {}
         }
     }
+    super::parallel::regroup(prompt, ctx, &mut out);
     Ok(out)
 }
 
@@ -311,6 +319,9 @@ fn convert_assistant_message(
                 {
                     continue;
                 }
+                if super::replay_advanced::assistant_result(result, ctx, out)? {
+                    continue;
+                }
                 if ctx.store {
                     let options = part_options(result.provider_options.as_ref(), key)?;
                     let id = options
@@ -385,6 +396,9 @@ fn convert_assistant_tool_call(
 ) -> Result<(), ProviderError> {
     let options = part_options(call.provider_options.as_ref(), ctx.provider_options_key)?;
     let item_id = options.item_id.as_deref();
+    if super::replay_advanced::assistant_call(call, &options, ctx, out)? {
+        return Ok(());
+    }
     if call.provider_executed {
         if ctx.store
             && let Some(id) = item_id
@@ -458,6 +472,7 @@ fn convert_assistant_tool_call(
     {
         object.insert("id".to_owned(), JsonValue::from(id));
     }
+    super::replay_advanced::add_function_options(&mut item, &options);
     out.input.push(item);
     Ok(())
 }

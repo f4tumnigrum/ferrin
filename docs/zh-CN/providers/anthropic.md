@@ -92,3 +92,7 @@ fixture 位于 `crates/providers/ferrin-anthropic/tests/fixtures/<area>/`，由 
 【事实】 每个请求的所有提示部件与工具定义共享四个缓存断点的上限，超出部分被移除并产生警告。回归：`tests/suite/messages_request.rs::cache_breakpoint_limit_is_shared_across_prompt_and_tools`（2026-09-15）。
 
 【事实】 批次结果 URL 经过 `url_policy` 校验：默认只允许 HTTPS 与公网地址，固定解析后的地址，拒绝重定向，流式响应字节数受 `max_body_bytes` 限制。凭据与调用方头仅发送到配置的同源地址或明确的 `credentialed_origins`。本地测试端点需要显式 `allow_http().trust_origin(...)`。来源：`src/batch/`、`tests/suite/security.rs`（2026-09-15）。
+
+【决策】`code_execution_20250825` 与 `code_execution_20260120` 绑定供应商调用者并支持延迟结果，追加自身类型时保留已有 `allowedCallers`。来源：[ADR 0022](../04-decisions/2026-09-17-0022-provider-tool-roundtrips.md)；调用者准备回归，实时 API 验证仍属于 PV-031。
+
+【事实】新版代码执行工厂校验程序化、bash 和文本编辑输入及相应结果变体；20260120 工厂还接受加密执行输出。来源：`src/tools/code_execution.rs` 与 `tests/suite/tools.rs`（2026-09-17）；仅进行确定性 Schema/调用者测试。

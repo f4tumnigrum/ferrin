@@ -128,6 +128,8 @@ just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & t
 
 ## Additional implementation records
 
+[Decision] Responses advanced-tool roundtrips follow [ADR 0022](../04-decisions/2026-09-17-0022-provider-tool-roundtrips.md): hosted program, search and shell items retain their IDs and replay fields; client search outputs retain their protocol type; provider caller bindings permit deferred program results. Undeclared parallel wrappers expand only for declared function recipients and preserve ordered replay metadata. Verification is deterministic and does not close PV-031.
+
 [Fact] Live verification on 2026-09-14: default `store` true sends previous assistant/provider-tool items as `item_reference`. A third-party proxy returned 502 for references but accepted full items. Use {"openai":{"`store`":false}} for endpoints not storing items; convert_prompt then sends complete content. This run did not test the official OpenAI endpoint.
 
 [Decision] A configured Responses `conversation` does not imply that local tool results have been uploaded: tool messages always send their function/custom/provider-defined outputs. Source: `responses/convert_tool_results.rs`; regression `conversation_sends_new_local_tool_results` (2026-09-15).
@@ -147,3 +149,7 @@ just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & t
 [Fact] Chat generation and streaming retain the complete upstream `usage` object in `Usage.raw`, including audio counters and fields not modeled by normalized usage. Source: `chat/mod.rs`, `chat/stream.rs`; regression `raw_usage_preserves_unmodeled_fields_in_generate_and_stream` (2026-09-15).
 
 [Decision] Every Responses/Chat function input and structured-output schema uses `SchemaTransform::OpenAiStrict` when its effective strict flag is true (default). Function `strict` overrides `strictJsonSchema`; false retains the normalized schema. Strict conversion closes objects, requires every property and makes optional constrained values nullable; unsupported dictionaries fail before HTTP (ADR [0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)). Source: `strict_schema` regressions (2026-09-15), request-shape verification only.
+
+[Fact] Advanced-tool regressions (`responses_advanced.rs`, `responses_parallel.rs`, `tools.rs`, 2026-09-17) cover generation/stream equivalence, hosted shell classification, client search results, program caller identity, no-storage replay, ordered complete parallel groups and batch mapping. Batch results lack request function declarations, so internal parallel wrappers remain unexpanded there. Programmatic execution-denied results are rejected before HTTP. These are synthetic fixture checks, not live provider verification.
+
+[Fact] Hosted shell environment kinds map `containerAuto`/`containerReference` to `container_auto`/`container_reference`; network-policy keys are converted while secret entries remain opaque. Source: `hosted_shell_environment_uses_wire_types_and_preserves_secret_names` (2026-09-17), request-shape test only.

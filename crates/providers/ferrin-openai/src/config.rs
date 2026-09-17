@@ -31,6 +31,17 @@ pub const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 /// Prefixes that identify uploaded file ids inside string file data.
 pub const FILE_ID_PREFIXES: &[&str] = &["file-"];
 
+/// Who supplies authentication for an OpenAI-compatible request.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Authentication {
+    /// Load and send an OpenAI bearer API key.
+    #[default]
+    OpenAi,
+    /// The explicitly configured transport supplies authentication.
+    External,
+}
+
 /// Configuration shared by the models and services of one provider instance.
 ///
 /// Built by [`crate::create_openai`]; exposed so that compatible endpoints can
@@ -42,6 +53,8 @@ pub struct OpenAiConfig {
     pub base_url: Url,
     /// API key; loaded lazily from [`API_KEY_ENV`] when `None`.
     pub api_key: Option<SecretString>,
+    /// Authentication source; defaults to OpenAI API-key authentication.
+    pub authentication: Authentication,
     /// `OpenAI-Organization` header value.
     pub organization: Option<String>,
     /// `OpenAI-Project` header value.
@@ -70,6 +83,7 @@ impl fmt::Debug for OpenAiConfig {
             .field("name", &self.name)
             .field("base_url", &self.base_url)
             .field("api_key", &self.api_key.as_ref().map(|_| "***"))
+            .field("authentication", &self.authentication)
             .field("organization", &self.organization)
             .field("project", &self.project)
             .field("headers", &self.headers)
@@ -111,6 +125,7 @@ impl OpenAiConfig {
             name: name.into(),
             base_url,
             api_key: None,
+            authentication: Authentication::OpenAi,
             organization: None,
             project: None,
             headers: Headers::new(),
@@ -121,6 +136,21 @@ impl OpenAiConfig {
             supports_web_search_sources_include: true,
             file_id_prefixes: FILE_ID_PREFIXES.iter().map(|p| (*p).to_owned()).collect(),
         }
+    }
+
+    /// Creates a configuration whose transport supplies authentication.
+    ///
+    /// No OpenAI API key is loaded or sent. This is intended for provider
+    /// adapters with a dedicated credential-aware transport.
+    #[must_use]
+    pub fn with_external_authentication(
+        name: impl Into<String>,
+        base_url: Url,
+        transport: SharedTransport,
+    ) -> Self {
+        let mut config = Self::with_transport(name, base_url, transport);
+        config.authentication = Authentication::External;
+        config
     }
 
     /// Provider id of an API family (`<name>.<family>`).
@@ -159,12 +189,14 @@ impl OpenAiConfig {
     /// a valid header.
     pub fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError> {
         let mut headers = Headers::new();
-        let key = self.api_key()?;
-        insert(
-            &mut headers,
-            "authorization",
-            &format!("Bearer {}", key.expose_secret()),
-        )?;
+        if self.authentication == Authentication::OpenAi {
+            let key = self.api_key()?;
+            insert(
+                &mut headers,
+                "authorization",
+                &format!("Bearer {}", key.expose_secret()),
+            )?;
+        }
         if let Some(organization) = &self.organization {
             insert(&mut headers, "openai-organization", organization)?;
         }

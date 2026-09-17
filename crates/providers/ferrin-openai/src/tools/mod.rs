@@ -5,6 +5,8 @@
 //! model converts the arguments (camelCase, as documented here) to the wire
 //! format.
 
+mod advanced;
+
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_tool::Schema;
@@ -343,13 +345,13 @@ impl OpenAiTools {
     /// `openai.tool_search` (provider-executed by default).
     #[must_use]
     pub fn tool_search(&self, arguments: ToolSearchArgs) -> Tool {
-        Self::executed("openai.tool_search", args(&arguments))
+        advanced::search(args(&arguments))
     }
 
     /// `openai.programmatic_tool_calling` (provider-executed).
     #[must_use]
     pub fn programmatic_tool_calling(&self) -> Tool {
-        Self::executed("openai.programmatic_tool_calling", JsonObject::new())
+        advanced::programmatic()
     }
 
     /// `openai.apply_patch` (client-executed).
@@ -367,7 +369,7 @@ impl OpenAiTools {
     /// `openai.shell` (client-executed unless a container environment is set).
     #[must_use]
     pub fn shell(&self, arguments: ShellArgs) -> Tool {
-        Self::defined("openai.shell", args(&arguments))
+        advanced::shell(args(&arguments))
     }
 
     /// `openai.computer` (client-executed).

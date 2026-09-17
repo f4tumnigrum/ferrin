@@ -7,7 +7,21 @@ All notable changes to this crate are documented here. The format follows
 
 ### Added
 
+- Explicit externally authenticated configuration for dedicated provider adapters,
+  allowing Azure credentials without OpenAI key resolution (ADR 0025).
+
 - Four Responses API recordings from a third-party proxy using `gpt-5.6-sol`: text, SSE, function calling and strict structured output, with offline request/output/usage comparisons and stream contract checks. Seven Responses live tests passed; official OpenAI and other provider fixtures remain unverified (PV-031).
+
+### Changed
+
+- **Breaking:** `OpenAiConfig` adds `authentication`; use its constructors when
+  migrating struct literals.
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
+### Fixed
+
+- Complete hosted program/search/shell mapping, caller bindings, deferred results and replay; expand internal parallel wrappers only for declared functions.
 
 ## [0.1.2] - 2026-09-16
 

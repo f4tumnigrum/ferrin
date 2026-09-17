@@ -165,6 +165,8 @@ pub fn convert_tools(
                     continue;
                 };
                 match provider_type {
+                    "tool_search" => out.provider_tools.tool_search = true,
+                    "programmatic_tool_calling" => out.provider_tools.programmatic = true,
                     "apply_patch" => out.provider_tools.apply_patch = true,
                     "local_shell" => out.provider_tools.local_shell = true,
                     "shell" => out.provider_tools.shell = true,
@@ -247,6 +249,7 @@ fn snake_case_keys(value: &JsonValue) -> JsonValue {
                         "fileIds" => "file_ids",
                         "memoryLimit" => "memory_limit",
                         "networkPolicy" => "network_policy",
+                        "domainSecrets" => "domain_secrets",
                         "displayWidth" => "display_width",
                         "displayHeight" => "display_height",
                         "displayNumber" => "display_number",
@@ -344,7 +347,18 @@ fn provider_tool_item(provider_type: &str, name: &str, args: &JsonObject) -> Jso
         }
         "shell" => {
             if let Some(environment) = args.get("environment") {
-                item.insert("environment".to_owned(), snake_case_keys(environment));
+                let mut environment = snake_case_keys(environment);
+                if let Some(object) = environment.as_object_mut() {
+                    let kind = match object.get("type").and_then(JsonValue::as_str) {
+                        Some("containerAuto") => Some("container_auto"),
+                        Some("containerReference") => Some("container_reference"),
+                        _ => None,
+                    };
+                    if let Some(kind) = kind {
+                        object.insert("type".into(), kind.into());
+                    }
+                }
+                item.insert("environment".to_owned(), environment);
             }
         }
         _ => {

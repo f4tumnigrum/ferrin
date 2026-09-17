@@ -11,7 +11,9 @@ mod provider;
 mod realtime;
 #[cfg(feature = "realtime")]
 mod realtime_ws;
+mod responses_advanced;
 mod responses_generate;
+mod responses_parallel;
 mod responses_recorded;
 mod responses_request;
 mod responses_stream;

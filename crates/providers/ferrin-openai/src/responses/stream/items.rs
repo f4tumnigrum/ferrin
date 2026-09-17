@@ -1,4 +1,6 @@
 //! Handling of `response.output_item.added` / `.done` events.
+//!
+//! Advanced tool behavior adapted from the Vercel AI SDK (Apache-2.0); see NOTICE.
 
 use std::collections::BTreeMap;
 
@@ -34,6 +36,11 @@ impl ResponsesStreamState {
         let id = item.id_str().to_owned();
         match item.kind.as_str() {
             "function_call" => {
+                if item.get_str("name") == Some("parallel")
+                    && !self.mapper.function_names.contains("parallel")
+                {
+                    return;
+                }
                 let call_id = item.get_str("call_id").unwrap_or_default().to_owned();
                 let name = self.custom_name(item.get_str("name").unwrap_or_default());
                 self.ongoing_tool_calls.insert(
@@ -246,6 +253,33 @@ impl ResponsesStreamState {
                 self.active_item_ids.remove(&output_index);
             }
             "function_call" => {
+                if let Some(calls) = crate::responses::parallel::expand(
+                    item,
+                    &self.mapper.function_names,
+                    self.key(),
+                ) {
+                    self.mapper.has_function_call = true;
+                    for content in calls {
+                        if let Content::ToolCall(call) = content {
+                            parts.push(tool_input_start(
+                                call.tool_call_id.as_str(),
+                                call.tool_name.as_str(),
+                                false,
+                            ));
+                            parts.push(StreamPart::ToolInputDelta {
+                                id: call.tool_call_id.as_str().into(),
+                                delta: call.input.clone(),
+                                provider_metadata: None,
+                            });
+                            parts.push(StreamPart::ToolInputEnd {
+                                id: call.tool_call_id.as_str().into(),
+                                provider_metadata: None,
+                            });
+                            parts.push(StreamPart::ToolCall(call));
+                        }
+                    }
+                    return;
+                }
                 let ongoing = self.ongoing_tool_calls.remove(&output_index);
                 self.mapper.has_function_call = true;
                 let call_id = item.get_str("call_id").unwrap_or_default().to_owned();
@@ -479,13 +513,17 @@ impl ResponsesStreamState {
                 }
                 self.ongoing_tool_calls.remove(&output_index);
             }
-            "local_shell_call" | "shell_call" => {
+            "local_shell_call" | "shell_call" | "program" | "tool_search_call" => {
                 self.ongoing_tool_calls.remove(&output_index);
                 let mapped = self.mapper.map_item(item, false);
                 for content in mapped {
                     if let Content::ToolCall(call) = content {
                         let id = call.tool_call_id.as_str().to_owned();
-                        parts.push(tool_input_start(&id, call.tool_name.as_str(), false));
+                        parts.push(tool_input_start(
+                            &id,
+                            call.tool_name.as_str(),
+                            call.provider_executed,
+                        ));
                         parts.push(StreamPart::ToolInputDelta {
                             id: id.as_str().into(),
                             delta: call.input.clone(),
@@ -499,37 +537,8 @@ impl ResponsesStreamState {
                     }
                 }
             }
-            "shell_call_output" => {
-                let name = self.custom_name("shell");
-                let output = item
-                    .get("output")
-                    .and_then(JsonValue::as_array)
-                    .map(|list| {
-                        list.iter()
-                            .map(|entry| {
-                                let outcome =
-                                    entry.get("outcome").cloned().unwrap_or(JsonValue::Null);
-                                let mapped = if outcome.get("type").and_then(JsonValue::as_str)
-                                    == Some("exit")
-                                {
-                                    json!({"type": "exit", "exitCode": outcome.get("exit_code")})
-                                } else {
-                                    json!({"type": "timeout"})
-                                };
-                                json!({
-                                    "stdout": entry.get("stdout"),
-                                    "stderr": entry.get("stderr"),
-                                    "outcome": mapped,
-                                })
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                parts.push(StreamPart::ToolResult(provider_result(
-                    item.get_str("call_id").unwrap_or_default(),
-                    &name,
-                    json!({"output": output}),
-                )));
+            "shell_call_output" | "program_output" | "tool_search_output" => {
+                parts.extend(content_to_parts(self.mapper.map_item(item, false)));
             }
             "reasoning" => {
                 let item_id = self.resolve_item_id(&id, Some(output_index));

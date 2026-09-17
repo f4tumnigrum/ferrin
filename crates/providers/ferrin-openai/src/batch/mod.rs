@@ -70,6 +70,9 @@ const MIN_INPUT_FILE_EXPIRES_AFTER: u64 = 3_600;
 const MAX_INPUT_FILE_EXPIRES_AFTER: u64 = 2_592_000;
 /// Provider tools whose output the result conversion understands.
 const CONVERTIBLE_PROVIDER_TOOLS: &[&str] = &[
+    "openai.programmatic_tool_calling",
+    "openai.tool_search",
+    "openai.shell",
     "openai.code_interpreter",
     "openai.custom",
     "openai.file_search",
@@ -78,6 +81,12 @@ const CONVERTIBLE_PROVIDER_TOOLS: &[&str] = &[
 ];
 /// Output item types the result conversion understands.
 const CONVERTIBLE_OUTPUT_TYPES: &[&str] = &[
+    "program",
+    "program_output",
+    "tool_search_call",
+    "tool_search_output",
+    "shell_call",
+    "shell_call_output",
     "reasoning",
     "message",
     "function_call",

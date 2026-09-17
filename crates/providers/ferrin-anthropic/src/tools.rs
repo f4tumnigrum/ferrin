@@ -5,10 +5,13 @@
 //! preparation converts the arguments (camelCase, as documented here) to the
 //! wire format and adds the beta flags the tool needs.
 
+mod code_execution;
+
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
 use ferrin_tool::Schema;
 use ferrin_tool::Tool;
+
 use serde::Serialize;
 
 fn args<T: Serialize>(value: &T) -> JsonObject {
@@ -281,13 +284,13 @@ impl AnthropicTools {
     /// `anthropic.code_execution_20250825` (provider executed).
     #[must_use]
     pub fn code_execution_20250825(&self) -> Tool {
-        executed("anthropic.code_execution_20250825", &NoArgs {})
+        code_execution::tool("code_execution_20250825")
     }
 
     /// `anthropic.code_execution_20260120` (provider executed).
     #[must_use]
     pub fn code_execution_20260120(&self) -> Tool {
-        executed("anthropic.code_execution_20260120", &NoArgs {})
+        code_execution::tool("code_execution_20260120")
     }
 
     /// `anthropic.tool_search_regex_20251119` (provider executed).

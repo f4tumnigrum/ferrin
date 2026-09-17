@@ -1,5 +1,7 @@
 //! Conversion of tool messages (results and approval responses) to
 //! Responses API input items.
+//!
+//! Advanced tool behavior adapted from the Vercel AI SDK (Apache-2.0); see NOTICE.
 
 use std::collections::HashSet;
 
@@ -167,17 +169,47 @@ fn convert_tool_result(
         }));
         return Ok(());
     }
+    if ctx.provider_tools.tool_search
+        && provider_name == "tool_search"
+        && let ToolResultOutput::Json { value, .. } = &result.output
+    {
+        out.input.push(json!({"type": "tool_search_output", "execution": "client", "call_id": call_id, "status": "completed", "tools": value.get("tools")}));
+        return Ok(());
+    }
+    let options = part_options(result.provider_options.as_ref(), ctx.provider_options_key)?;
+    if matches!(result.output, ToolResultOutput::ExecutionDenied { .. })
+        && options
+            .caller
+            .as_ref()
+            .and_then(|caller| caller.get("type"))
+            .and_then(JsonValue::as_str)
+            == Some("program")
+    {
+        return Err(UnsupportedFunctionalityError::new(
+            "execution-denied results for programmatic tool calls",
+        )
+        .into());
+    }
     let output = convert_output(&result.output, ctx, out)?;
     let item_type = if ctx.provider_tools.custom_tool_names.contains(provider_name) {
         "custom_tool_call_output"
     } else {
         "function_call_output"
     };
-    out.input.push(json!({
+    let mut item = json!({
         "type": item_type,
         "call_id": call_id,
         "output": output,
-    }));
+    });
+    if let Some(caller) = &options.caller
+        && let Some(object) = item.as_object_mut()
+    {
+        object.insert(
+            "caller".into(),
+            super::replay_advanced::caller_to_wire(caller),
+        );
+    }
+    out.input.push(item);
     Ok(())
 }
 

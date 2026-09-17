@@ -147,3 +147,9 @@ just test --run-ignored only -E "'(package(ferrin) | package(ferrin-openai)) & t
 【事实】Chat 非流式和流式生成均在 `Usage.raw` 保留上游完整 `usage` 对象，包括音频计数及未纳入归一化用量类型的字段。来源：`chat/mod.rs`、`chat/stream.rs`；回归测试 `raw_usage_preserves_unmodeled_fields_in_generate_and_stream`（2026-09-15）。
 
 【决策】Responses/Chat 的函数输入和结构化输出 Schema 在最终 strict 为 true（默认）时使用 `SchemaTransform::OpenAiStrict`。函数 `strict` 覆盖 `strictJsonSchema`；false 保留归一化后的 Schema。严格转换关闭对象、将全部属性设为必需，并使可选受约束值允许 null；无法表示的字典在 HTTP 请求前报错（ADR [0019](../04-decisions/2026-09-15-0019-fallible-schema-transforms.md)）。来源：`strict_schema` 回归测试（2026-09-15），仅验证请求形态。
+
+【决策】Responses 高级工具往返遵循 [ADR 0022](../04-decisions/2026-09-17-0022-provider-tool-roundtrips.md)：托管程序、搜索和 shell 保留 ID 与回放字段；客户端搜索结果保留协议类型；供应商调用者绑定支持延迟程序结果。未声明的 parallel 包装仅展开已声明函数接收者，并保留有序回放元数据。确定性验证不关闭 PV-031。
+
+【事实】高级工具回归（`responses_advanced.rs`、`responses_parallel.rs`、`tools.rs`，2026-09-17）覆盖生成与流式等价、托管 shell 分类、客户端搜索结果、程序调用者身份、无存储回放、有序完整 parallel 结果组和批处理映射。批处理结果缺少请求函数声明，因此其中的内部 parallel 包装保持未展开。程序化调用的执行拒绝结果在 HTTP 前被拒绝。这些是合成 fixture 检查，不属于供应商实时验证。
+
+【事实】托管 shell 环境类型将 `containerAuto`/`containerReference` 转换为 `container_auto`/`container_reference`；转换网络策略键时保留秘密条目原文。来源：`hosted_shell_environment_uses_wire_types_and_preserves_secret_names`（2026-09-17），仅验证请求形态。
