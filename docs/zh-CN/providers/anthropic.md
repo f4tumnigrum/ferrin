@@ -39,7 +39,7 @@
 
 ## 供应商选项（`provider_options["anthropic"]`）
 
-选项键为 camelCase，未知键或非法枚举值返回 `ProviderError::InvalidArgument`。完整 schema 见 `src/options.rs`。
+【决策】选项键为 camelCase，未知键按参考 Zod 对象解析规则忽略，已知字段的非法值和非法枚举值返回 `ProviderError::InvalidArgument`。完整 schema 见 `src/options.rs`。来源：本地 AI SDK `6c6c221` 的 `anthropic-language-model-options.ts`。
 
 【事实】语言模型：`sendReasoning`、`structuredOutputMode`（`outputFormat`/`jsonTool`/`auto`）、`thinking {type: adaptive | enabled | disabled, budgetTokens, display: omitted | summarized | updates, blockBinding {prefixMismatchBehavior: error | drop_block}}`、`disableParallelToolUse`、`cacheControl {type: ephemeral, ttl: 5m | 1h}`、`metadata {userId}`、`mcpServers [{type: url, name, url, authorizationToken, toolConfiguration {enabled, allowedTools}}]`、`container {id, skills [{type: anthropic, skillId, version} | {type: custom, providerReference, version}]}`、`toolStreaming`、`effort`（`low`/`medium`/`high`/`xhigh`/`max`）、`taskBudget {type: tokens, total ≥ 20000, remaining}`、`speed`（`fast`/`standard`）、`serviceTier`（`auto`/`standard_only`）、`inferenceGeo`（`us`/`global`）、`fallbacks`（`"default"` 或模型对象数组）、`anthropicBeta [..]`、`contextManagement {edits: [clear_tool_uses_20250919 | clear_thinking_20251015 | compact_20260112]}`。
 
@@ -54,6 +54,10 @@
 【事实】部件级：文本部件 `citations`（Web 引用原文）；推理部件 `signature` 或 `redactedData`；工具调用部件 `caller {type, toolId}`，MCP 调用 `{type: mcp-tool-use, serverName}`；来源 `citedText`、`encryptedIndex`（Web 引用）、`startPageNumber`/`endPageNumber` 或 `startCharIndex`/`endCharIndex`（文档引用）、`pageAge`（Web 搜索结果）；压缩块映射为带 `{type: compaction}` 的文本部件；`container_upload` 块映射为 `anthropic.container_upload` 自定义部件。
 
 【事实】用量：`input.total = input_tokens + cache_creation_input_tokens + cache_read_input_tokens`，`input.no_cache = input_tokens`，`output.reasoning` 取自 `output_tokens_details.thinking_tokens`；响应含 `iterations` 时按轮次汇总（压缩轮次计入，advisor 轮次不计入，fallback 轮次替代原轮次）。批处理状态 `requestCounts`、`archivedAt`、`cancelInitiatedAt`、`endedAt`、`resultsUrl`；失败项 `requestId`。文件 `filename`、`mimeType`、`sizeBytes`、`createdAt`、`downloadable`；技能 `source`、`createdAt`、`updatedAt`。
+
+【决策】已有工具工厂校验完整的参考输入/输出 schema，包括动作变体、必需字段、元组长度和默认值。对象输入遵循参考解析器：未知字段被移除，显式字典/透传策略保留的字段除外；严格对象拒绝未知字段。供应商配置参数在请求转换前校验。来源：本地 `6c6c221` 的 `packages/anthropic/src/tool` schema、[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
+
+【决策】`UploadData::Stream` 经共享传输进行流式 multipart 上传，不在 HTTP 前把文件收集进内存。取消或丢弃请求释放输入流；源流失败使用脱敏的请求体错误。来源：`src/files.rs` 及参考文件上传实现；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，2026-09-17。
 
 ## 已知限制与警告
 

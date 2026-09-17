@@ -1,0 +1,83 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.computer_20250124",
+  "input": {
+    "value": {
+      "action": "key",
+      "coordinate": [
+        1,
+        1
+      ],
+      "duration": 1,
+      "scroll_amount": 1,
+      "scroll_direction": "up",
+      "start_coordinate": [
+        1,
+        1
+      ],
+      "text": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": "key",
+      "coordinate": [
+        1,
+        1
+      ],
+      "duration": 1,
+      "scroll_amount": 1,
+      "scroll_direction": "up",
+      "start_coordinate": [
+        1,
+        1
+      ],
+      "text": "value"
+    },
+    "invalid": [
+      {
+        "action": null,
+        "coordinate": [
+          1,
+          1
+        ],
+        "duration": 1,
+        "scroll_amount": 1,
+        "scroll_direction": "up",
+        "start_coordinate": [
+          1,
+          1
+        ],
+        "text": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "coordinate": [
+          1,
+          1
+        ],
+        "duration": 1,
+        "scroll_amount": 1,
+        "scroll_direction": "up",
+        "start_coordinate": [
+          1,
+          1
+        ],
+        "text": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "action": "key",
+        "coordinate": null,
+        "duration": 1,
+        "scroll_amount": 1,
+        "scroll_direction": "up",
+        "start_coordinate": [
+          1,
+          1
+        ],
+        "text": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

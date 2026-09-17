@@ -1,0 +1,60 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.code_execution_20250522",
+  "input": {
+    "value": {
+      "code": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "code": "value"
+    },
+    "invalid": [
+      {
+        "code": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "type": "code_execution_result",
+      "stdout": "value",
+      "stderr": "value",
+      "return_code": 1,
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "code_execution_result",
+      "stdout": "value",
+      "stderr": "value",
+      "return_code": 1,
+      "content": []
+    },
+    "invalid": [
+      {
+        "type": null,
+        "stdout": "value",
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "stdout": "value",
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "type": "code_execution_result",
+        "stdout": null,
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

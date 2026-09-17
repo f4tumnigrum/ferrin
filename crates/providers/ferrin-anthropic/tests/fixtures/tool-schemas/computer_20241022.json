@@ -1,0 +1,44 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.computer_20241022",
+  "input": {
+    "value": {
+      "action": "key",
+      "coordinate": [
+        1
+      ],
+      "text": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "action": "key",
+      "coordinate": [
+        1
+      ],
+      "text": "value"
+    },
+    "invalid": [
+      {
+        "action": null,
+        "coordinate": [
+          1
+        ],
+        "text": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "coordinate": [
+          1
+        ],
+        "text": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "action": "key",
+        "coordinate": null,
+        "text": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

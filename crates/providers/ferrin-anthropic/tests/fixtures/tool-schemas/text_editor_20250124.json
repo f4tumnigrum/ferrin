@@ -1,0 +1,71 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.text_editor_20250124",
+  "input": {
+    "value": {
+      "command": "view",
+      "path": "value",
+      "file_text": "value",
+      "insert_line": 1,
+      "new_str": "value",
+      "insert_text": "value",
+      "old_str": "value",
+      "view_range": [
+        1
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "command": "view",
+      "path": "value",
+      "file_text": "value",
+      "insert_line": 1,
+      "new_str": "value",
+      "insert_text": "value",
+      "old_str": "value",
+      "view_range": [
+        1
+      ]
+    },
+    "invalid": [
+      {
+        "command": null,
+        "path": "value",
+        "file_text": "value",
+        "insert_line": 1,
+        "new_str": "value",
+        "insert_text": "value",
+        "old_str": "value",
+        "view_range": [
+          1
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "path": "value",
+        "file_text": "value",
+        "insert_line": 1,
+        "new_str": "value",
+        "insert_text": "value",
+        "old_str": "value",
+        "view_range": [
+          1
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "command": "view",
+        "path": null,
+        "file_text": "value",
+        "insert_line": 1,
+        "new_str": "value",
+        "insert_text": "value",
+        "old_str": "value",
+        "view_range": [
+          1
+        ],
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

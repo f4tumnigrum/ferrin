@@ -11,6 +11,13 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Ignore unknown provider-option keys as the reference object schemas do, while
+  continuing to validate known option fields.
+- Match the reference schemas for all twenty existing provider tools, including
+  union variants, defaults, object parsing and request argument validation.
+- Stream multipart file uploads with cancellation and propagate input-stream
+  failures without buffering the complete upload.
+
 - Bind modern code-execution tools as provider callers and enable deferred results while preserving existing caller options.
 
 ## [0.1.2] - 2026-09-16

@@ -1,0 +1,49 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.tool_search_bm25_20251119",
+  "input": {
+    "value": {
+      "query": "value",
+      "limit": 1,
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "query": "value",
+      "limit": 1
+    },
+    "invalid": [
+      {
+        "query": null,
+        "limit": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "limit": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "query": "value",
+        "limit": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": [
+      {
+        "type": "tool_reference",
+        "toolName": "value",
+        "extra_field": "strip this"
+      }
+    ],
+    "expected": [
+      {
+        "type": "tool_reference",
+        "toolName": "value"
+      }
+    ],
+    "invalid": [
+      42
+    ]
+  }
+}

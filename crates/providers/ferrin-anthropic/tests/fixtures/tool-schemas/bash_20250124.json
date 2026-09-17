@@ -1,0 +1,31 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.bash_20250124",
+  "input": {
+    "value": {
+      "command": "value",
+      "restart": true,
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "command": "value",
+      "restart": true
+    },
+    "invalid": [
+      {
+        "command": null,
+        "restart": true,
+        "extra_field": "strip this"
+      },
+      {
+        "restart": true,
+        "extra_field": "strip this"
+      },
+      {
+        "command": "value",
+        "restart": null,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

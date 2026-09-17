@@ -480,10 +480,16 @@ pub fn prepare_request(
         betas.insert("thinking-binding-controls-2026-08-01".to_owned());
     }
 
+    let mut normalized_tools = options.tools.clone();
+    for tool in &mut normalized_tools {
+        if let ToolDefinition::Provider { id, args, .. } = tool {
+            *args = crate::tools::schemas::arguments(id, args)?;
+        }
+    }
     let default_eager = stream && anthropic.tool_streaming.unwrap_or(true);
     let prepared_tools = match &json_response_tool {
         Some(json_tool) => {
-            let mut tools = options.tools.clone();
+            let mut tools = normalized_tools.clone();
             tools.push(json_tool.clone());
             prepare_tools(
                 config,
@@ -500,7 +506,7 @@ pub fn prepare_request(
         }
         None => prepare_tools(
             config,
-            &options.tools,
+            &normalized_tools,
             options.tool_choice.as_ref(),
             PrepareToolsSettings {
                 disable_parallel_tool_use: anthropic.disable_parallel_tool_use.unwrap_or(false),

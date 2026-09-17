@@ -1,0 +1,104 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.advisor_20260301",
+  "input": {
+    "value": {},
+    "expected": {},
+    "invalid": [
+      42
+    ]
+  },
+  "output": {
+    "value": {
+      "type": "advisor_result",
+      "text": "value",
+      "stopReason": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "advisor_result",
+      "text": "value",
+      "stopReason": "value"
+    },
+    "invalid": [
+      {
+        "type": null,
+        "text": "value",
+        "stopReason": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "text": "value",
+        "stopReason": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "type": "advisor_result",
+        "text": null,
+        "stopReason": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "model": "value",
+      "maxUses": 1,
+      "maxTokens": 1024,
+      "caching": {
+        "type": "ephemeral",
+        "ttl": "5m",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "advisor_20260301",
+        "name": "advisor",
+        "model": "value",
+        "max_uses": 1,
+        "max_tokens": 1024,
+        "caching": {
+          "type": "ephemeral",
+          "ttl": "5m"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "model": null,
+        "maxUses": 1,
+        "maxTokens": 1024,
+        "caching": {
+          "type": "ephemeral",
+          "ttl": "5m",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "model": "value",
+        "maxUses": null,
+        "maxTokens": 1024,
+        "caching": {
+          "type": "ephemeral",
+          "ttl": "5m",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "model": "value",
+        "maxUses": 1,
+        "maxTokens": null,
+        "caching": {
+          "type": "ephemeral",
+          "ttl": "5m",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

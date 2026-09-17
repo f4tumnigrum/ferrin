@@ -1,0 +1,203 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.web_fetch_20250910",
+  "input": {
+    "value": {
+      "url": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "url": "value"
+    },
+    "invalid": [
+      {
+        "url": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "type": "web_fetch_result",
+      "url": "value",
+      "content": {
+        "type": "document",
+        "title": "value",
+        "citations": {
+          "enabled": true,
+          "extra_field": "strip this"
+        },
+        "source": {
+          "type": "base64",
+          "mediaType": "application/pdf",
+          "data": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      "retrievedAt": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "web_fetch_result",
+      "url": "value",
+      "content": {
+        "type": "document",
+        "title": "value",
+        "citations": {
+          "enabled": true
+        },
+        "source": {
+          "type": "base64",
+          "mediaType": "application/pdf",
+          "data": "value"
+        }
+      },
+      "retrievedAt": "value"
+    },
+    "invalid": [
+      {
+        "type": null,
+        "url": "value",
+        "content": {
+          "type": "document",
+          "title": "value",
+          "citations": {
+            "enabled": true,
+            "extra_field": "strip this"
+          },
+          "source": {
+            "type": "base64",
+            "mediaType": "application/pdf",
+            "data": "value",
+            "extra_field": "strip this"
+          },
+          "extra_field": "strip this"
+        },
+        "retrievedAt": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "url": "value",
+        "content": {
+          "type": "document",
+          "title": "value",
+          "citations": {
+            "enabled": true,
+            "extra_field": "strip this"
+          },
+          "source": {
+            "type": "base64",
+            "mediaType": "application/pdf",
+            "data": "value",
+            "extra_field": "strip this"
+          },
+          "extra_field": "strip this"
+        },
+        "retrievedAt": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "type": "web_fetch_result",
+        "url": null,
+        "content": {
+          "type": "document",
+          "title": "value",
+          "citations": {
+            "enabled": true,
+            "extra_field": "strip this"
+          },
+          "source": {
+            "type": "base64",
+            "mediaType": "application/pdf",
+            "data": "value",
+            "extra_field": "strip this"
+          },
+          "extra_field": "strip this"
+        },
+        "retrievedAt": "value",
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "arguments": {
+    "value": {
+      "maxUses": 1,
+      "allowedDomains": [
+        "value"
+      ],
+      "blockedDomains": [
+        "value"
+      ],
+      "citations": {
+        "enabled": true,
+        "extra_field": "strip this"
+      },
+      "maxContentTokens": 1,
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "web_fetch_20250910",
+        "name": "web_fetch",
+        "max_uses": 1,
+        "allowed_domains": [
+          "value"
+        ],
+        "blocked_domains": [
+          "value"
+        ],
+        "citations": {
+          "enabled": true
+        },
+        "max_content_tokens": 1
+      }
+    ],
+    "invalid": [
+      {
+        "maxUses": null,
+        "allowedDomains": [
+          "value"
+        ],
+        "blockedDomains": [
+          "value"
+        ],
+        "citations": {
+          "enabled": true,
+          "extra_field": "strip this"
+        },
+        "maxContentTokens": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "maxUses": 1,
+        "allowedDomains": null,
+        "blockedDomains": [
+          "value"
+        ],
+        "citations": {
+          "enabled": true,
+          "extra_field": "strip this"
+        },
+        "maxContentTokens": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "maxUses": 1,
+        "allowedDomains": [
+          "value"
+        ],
+        "blockedDomains": null,
+        "citations": {
+          "enabled": true,
+          "extra_field": "strip this"
+        },
+        "maxContentTokens": 1,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.web_search_20250305",
+  "input": {
+    "value": {
+      "query": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "query": "value"
+    },
+    "invalid": [
+      {
+        "query": null,
+        "extra_field": "strip this"
+      },
+      {
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": [
+      {
+        "url": "value",
+        "title": "value",
+        "pageAge": "value",
+        "encryptedContent": "value",
+        "type": "web_search_result",
+        "extra_field": "strip this"
+      }
+    ],
+    "expected": [
+      {
+        "url": "value",
+        "title": "value",
+        "pageAge": "value",
+        "encryptedContent": "value",
+        "type": "web_search_result"
+      }
+    ],
+    "invalid": [
+      42
+    ]
+  },
+  "arguments": {
+    "value": {
+      "maxUses": 1,
+      "allowedDomains": [
+        "value"
+      ],
+      "blockedDomains": [
+        "value"
+      ],
+      "userLocation": {
+        "type": "approximate",
+        "city": "value",
+        "region": "value",
+        "country": "value",
+        "timezone": "value",
+        "extra_field": "strip this"
+      },
+      "extra_field": "strip this"
+    },
+    "wire": [
+      {
+        "type": "web_search_20250305",
+        "name": "web_search",
+        "max_uses": 1,
+        "allowed_domains": [
+          "value"
+        ],
+        "blocked_domains": [
+          "value"
+        ],
+        "user_location": {
+          "type": "approximate",
+          "city": "value",
+          "region": "value",
+          "country": "value",
+          "timezone": "value"
+        }
+      }
+    ],
+    "invalid": [
+      {
+        "maxUses": null,
+        "allowedDomains": [
+          "value"
+        ],
+        "blockedDomains": [
+          "value"
+        ],
+        "userLocation": {
+          "type": "approximate",
+          "city": "value",
+          "region": "value",
+          "country": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "maxUses": 1,
+        "allowedDomains": null,
+        "blockedDomains": [
+          "value"
+        ],
+        "userLocation": {
+          "type": "approximate",
+          "city": "value",
+          "region": "value",
+          "country": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      },
+      {
+        "maxUses": 1,
+        "allowedDomains": [
+          "value"
+        ],
+        "blockedDomains": null,
+        "userLocation": {
+          "type": "approximate",
+          "city": "value",
+          "region": "value",
+          "country": "value",
+          "timezone": "value",
+          "extra_field": "strip this"
+        },
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

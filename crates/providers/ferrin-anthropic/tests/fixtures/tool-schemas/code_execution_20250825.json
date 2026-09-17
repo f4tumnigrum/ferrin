@@ -1,0 +1,69 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.code_execution_20250825",
+  "input": {
+    "value": {
+      "type": "programmatic-tool-call",
+      "code": "value",
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "programmatic-tool-call",
+      "code": "value"
+    },
+    "invalid": [
+      {
+        "type": null,
+        "code": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "code": "value",
+        "extra_field": "strip this"
+      },
+      {
+        "type": "programmatic-tool-call",
+        "code": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": {
+      "type": "code_execution_result",
+      "stdout": "value",
+      "stderr": "value",
+      "return_code": 1,
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "type": "code_execution_result",
+      "stdout": "value",
+      "stderr": "value",
+      "return_code": 1,
+      "content": []
+    },
+    "invalid": [
+      {
+        "type": null,
+        "stdout": "value",
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "stdout": "value",
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "type": "code_execution_result",
+        "stdout": null,
+        "stderr": "value",
+        "return_code": 1,
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

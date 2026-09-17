@@ -6,10 +6,10 @@
 //! wire format and adds the beta flags the tool needs.
 
 mod code_execution;
+pub(crate) mod schemas;
 
 use ferrin_spec::JsonObject;
 use ferrin_spec::JsonValue;
-use ferrin_tool::Schema;
 use ferrin_tool::Tool;
 
 use serde::Serialize;
@@ -25,15 +25,19 @@ fn args<T: Serialize>(value: &T) -> JsonObject {
 }
 
 fn defined<T: Serialize>(id: &str, value: &T) -> Tool {
-    Tool::provider_defined(id, args(value))
-        .input_schema(Schema::any())
-        .build()
+    let mut builder = Tool::provider_defined(id, args(value)).input_schema(schemas::input(id));
+    if let Some(output) = schemas::output(id) {
+        builder = builder.output_schema(output);
+    }
+    builder.build()
 }
 
 fn executed<T: Serialize>(id: &str, value: &T) -> Tool {
-    Tool::provider_executed(id, args(value))
-        .input_schema(Schema::any())
-        .build()
+    let mut builder = Tool::provider_executed(id, args(value)).input_schema(schemas::input(id));
+    if let Some(output) = schemas::output(id) {
+        builder = builder.output_schema(output);
+    }
+    builder.build()
 }
 
 /// Arguments of the computer use tools.

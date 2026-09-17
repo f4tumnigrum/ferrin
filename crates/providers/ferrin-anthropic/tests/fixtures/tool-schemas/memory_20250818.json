@@ -1,0 +1,51 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.memory_20250818",
+  "input": {
+    "value": {
+      "command": "view",
+      "path": "value",
+      "view_range": [
+        1,
+        1
+      ],
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "command": "view",
+      "path": "value",
+      "view_range": [
+        1,
+        1
+      ]
+    },
+    "invalid": [
+      {
+        "command": null,
+        "path": "value",
+        "view_range": [
+          1,
+          1
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "path": "value",
+        "view_range": [
+          1,
+          1
+        ],
+        "extra_field": "strip this"
+      },
+      {
+        "command": "view",
+        "path": null,
+        "view_range": [
+          1,
+          1
+        ],
+        "extra_field": "strip this"
+      }
+    ]
+  }
+}

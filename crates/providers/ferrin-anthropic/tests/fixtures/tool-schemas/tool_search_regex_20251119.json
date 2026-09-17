@@ -1,0 +1,49 @@
+{
+  "reference": "6c6c221",
+  "tool": "anthropic.tool_search_regex_20251119",
+  "input": {
+    "value": {
+      "pattern": "value",
+      "limit": 1,
+      "extra_field": "strip this"
+    },
+    "expected": {
+      "pattern": "value",
+      "limit": 1
+    },
+    "invalid": [
+      {
+        "pattern": null,
+        "limit": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "limit": 1,
+        "extra_field": "strip this"
+      },
+      {
+        "pattern": "value",
+        "limit": null,
+        "extra_field": "strip this"
+      }
+    ]
+  },
+  "output": {
+    "value": [
+      {
+        "type": "tool_reference",
+        "toolName": "value",
+        "extra_field": "strip this"
+      }
+    ],
+    "expected": [
+      {
+        "type": "tool_reference",
+        "toolName": "value"
+      }
+    ],
+    "invalid": [
+      42
+    ]
+  }
+}

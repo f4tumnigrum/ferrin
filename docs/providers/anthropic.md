@@ -39,7 +39,7 @@ IDs use `<name>.<family>`, default `anthropic`. Read standard options then custo
 
 ## Provider options (provider_options["anthropic"])
 
-CamelCase keys; unknown keys/invalid enum values return InvalidArgument. See `src/options.rs` for schemas.
+[Decision] CamelCase keys; unknown keys are ignored, matching reference Zod object parsing, while invalid known fields and enum values return InvalidArgument. See `src/options.rs` for schemas. Source: local AI SDK `6c6c221`, `anthropic-language-model-options.ts`.
 
 [Fact] Model options: `sendReasoning`; `structuredOutputMode` `outputFormat`/`jsonTool`/`auto`; thinking type adaptive/enabled/disabled, budgetTokens, display omitted/summarized/updates, blockBinding prefixMismatchBehavior error/drop_block; `disableParallelToolUse`; cacheControl ephemeral with ttl 5m/1h; metadata userId; mcpServers URL/name/auth/toolConfiguration enabled/allowedTools; container id/skills with anthropic skillId or custom providerReference and version; `toolStreaming`; `effort` `low`/`medium`/`high`/`xhigh`/`max`; taskBudget tokens with total ≥20000 and remaining; `speed` `fast`/`standard`; `serviceTier` `auto`/`standard_only`; `inferenceGeo` `us`/`global`; `fallbacks` default or model array; anthropicBeta; contextManagement edits clear_tool_uses_20250919/clear_thinking_20251015/compact_20260112.
 
@@ -54,6 +54,10 @@ CamelCase keys; unknown keys/invalid enum values return InvalidArgument. See `sr
 [Fact] Parts: raw web `citations`, reasoning signatures/`redactedData`, caller type/toolId, MCP type/serverName, source `citedText`/`encryptedIndex`/page or character ranges/`pageAge`. Compaction becomes text with compaction metadata; container uploads become `anthropic.container_upload` custom parts.
 
 [Fact] Input total sums ordinary/cache-write/cache-read tokens; no_cache is input_tokens; reasoning comes from thinking_tokens. Iteration usage includes compaction, excludes advisor, and substitutes fallback rounds. Batch metadata: `requestCounts`/`archivedAt`/`cancelInitiatedAt`/`endedAt`/`resultsUrl`, failed `requestId`. Files: `filename`/`mimeType`/`sizeBytes`/`createdAt`/`downloadable`. Skills: `source`/`createdAt`/`updatedAt`.
+
+[Decision] Existing tool factories validate their complete reference input/output schemas, including action variants, required fields, tuple sizes and defaults. Object inputs follow the reference parser: unknown fields are stripped unless an explicit record/passthrough policy preserves them; strict objects reject unknown fields. Provider configuration arguments are validated before request conversion. Sources: the local `6c6c221` tool schemas under `packages/anthropic/src/tool`, [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md), 2026-09-17.
+
+[Decision] `UploadData::Stream` uploads use streaming multipart through the shared transport, without collecting the file in memory before HTTP. Cancellation or dropping the request releases the input stream; source-stream failures use a redacted body error. Source: `src/files.rs`, reference file upload implementation; [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md), 2026-09-17.
 
 ## Known limitations and warnings
 

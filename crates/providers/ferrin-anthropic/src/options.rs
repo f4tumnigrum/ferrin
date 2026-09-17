@@ -208,7 +208,7 @@ pub struct ContextManagement {
 
 /// Language model options (`provider_options["anthropic"]`).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct AnthropicLanguageModelOptions {
     /// Whether reasoning parts of the prompt are sent back (default `true`).
     #[serde(default)]

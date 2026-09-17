@@ -198,11 +198,10 @@ async fn provider_options_snapshot() {
 }
 
 #[tokio::test]
-async fn unknown_and_invalid_provider_options_are_invalid_arguments() {
+async fn invalid_known_provider_options_are_invalid_arguments() {
     let test = TestProvider::start().await;
     let base = CallOptions::new(vec![PromptMessage::user_text("Hello")]);
     for value in [
-        json!({"notAnOption": true}),
         json!({"speed": "turbo"}),
         json!({"thinking": {"type": "sometimes"}}),
         json!({"taskBudget": {"type": "tokens", "total": 10}}),

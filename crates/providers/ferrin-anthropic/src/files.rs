@@ -3,11 +3,12 @@
 use std::collections::BTreeSet;
 
 use bytes::Bytes;
-use bytes::BytesMut;
 use chrono::DateTime;
 use chrono::Utc;
 use ferrin_provider_util::MultipartForm;
 use ferrin_provider_util::http::ResponseHandlers;
+use ferrin_provider_util::http::TransportError;
+use ferrin_provider_util::http::TransportErrorKind;
 use ferrin_provider_util::http::json_response_handler;
 use ferrin_provider_util::http::post_form;
 use ferrin_spec::JsonObject;
@@ -21,6 +22,7 @@ use ferrin_spec::files::UploadData;
 use ferrin_spec::files::UploadFileOptions;
 use ferrin_spec::files::UploadFileResult;
 use futures_util::StreamExt;
+use futures_util::TryStreamExt;
 use serde::Deserialize;
 
 use crate::config::SharedConfig;
@@ -67,19 +69,26 @@ pub(crate) fn parse_timestamp(value: Option<&str>) -> Option<DateTime<Utc>> {
         .map(|timestamp| timestamp.with_timezone(&Utc))
 }
 
-pub(crate) async fn collect(data: UploadData) -> Result<Bytes, ProviderError> {
+fn file_form(data: UploadData, filename: Option<String>, media_type: String) -> MultipartForm {
+    let form = MultipartForm::new();
     match data {
-        UploadData::Bytes(bytes) => Ok(bytes),
-        UploadData::Text(text) => Ok(Bytes::from(text)),
-        UploadData::Stream(mut stream) => {
-            let mut buffer = BytesMut::new();
-            while let Some(chunk) = stream.next().await {
-                buffer.extend_from_slice(&chunk?);
-            }
-            Ok(buffer.freeze())
-        }
-        #[allow(unreachable_patterns, reason = "UploadData is non-exhaustive")]
-        _ => Err(ProviderError::unsupported("upload data type")),
+        UploadData::Bytes(data) => form.file("file", filename, Some(media_type), data),
+        UploadData::Text(text) => form.file("file", filename, Some(media_type), Bytes::from(text)),
+        UploadData::Stream(stream) => form.file_stream(
+            "file",
+            filename,
+            Some(media_type),
+            stream
+                .map_err(|error| {
+                    if matches!(error, ProviderError::Cancelled) {
+                        TransportError::cancelled()
+                    } else {
+                        TransportError::new(TransportErrorKind::Body, "file upload stream failed")
+                            .with_cause(error)
+                    }
+                })
+                .boxed(),
+        ),
     }
 }
 
@@ -150,12 +159,15 @@ impl Files for AnthropicFiles {
         &self,
         options: UploadFileOptions,
     ) -> Result<UploadFileResult, ProviderError> {
-        let data = collect(options.data).await?;
-        let form = MultipartForm::new().file(
-            "file",
-            options.filename.clone(),
-            Some(options.media_type.as_str().to_owned()),
-            data,
+        let form = file_form(
+            options.data,
+            Some(
+                options
+                    .filename
+                    .clone()
+                    .unwrap_or_else(|| "blob".to_owned()),
+            ),
+            options.media_type.as_str().to_owned(),
         );
         let betas = BTreeSet::from([FILES_BETA.to_owned()]);
         let handlers = ResponseHandlers::new(
