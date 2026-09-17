@@ -59,7 +59,7 @@ impl std::fmt::Display for Role {
 }
 
 /// A system message.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemMessage {
     /// Instruction text.
     pub content: String,

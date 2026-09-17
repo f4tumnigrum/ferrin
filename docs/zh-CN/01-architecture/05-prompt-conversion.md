@@ -10,7 +10,7 @@
 
 - `prompt` 与 `messages` 互斥，二者皆无或皆有时报 `InvalidPrompt` 错误。
 - `prompt` 为字符串时转换为单条用户消息；为消息数组时等价于 `messages`。
-- `system` 字段（可为字符串或带 `provider_options` 的系统消息）被置于消息序列最前。
+- `system` 字段（可为字符串、带 `provider_options` 的系统消息或有序系统消息数组）被置于消息序列最前。
 - 默认不允许 `messages` 中出现 `system` 角色消息；`allow_system_in_messages(true)` 时放行。
 - `messages` 为空数组时报错。
 - 消息结构校验失败时报 `InvalidPrompt` 错误。
@@ -19,7 +19,7 @@
 
 ```rust
 pub(crate) struct StandardizedPrompt {
-    pub system: Option<SystemMessage>,
+    pub system: Option<Instructions>,
     pub messages: Vec<Message>,
 }
 ```
@@ -28,8 +28,8 @@ pub(crate) struct StandardizedPrompt {
 
 【决策】转换步骤：
 
-1. 收集所有用户消息中的文件/图像部件的 URL 与媒体类型，与模型的 `supported_urls` 匹配；不匹配的 URL 通过下载器并发下载（默认下载器只下载模型不支持的 URL）。
-2. 下载得到的字节与媒体类型（响应头优先，其次魔数探测）内联为 `data` 形式。
+1. 收集用户文件/图像片段以及助手/工具结果内容中的文件 URL 与媒体类型，与模型的 `supported_urls` 匹配；不匹配的 URL 通过下载器并发下载（默认下载器只下载模型不支持的 URL）。
+2. 下载得到的字节内联为 `data` 形式。已声明的完整媒体类型优先于响应头，响应头补齐不完整类型；检测到的图片签名优先于两者。
 3. `image` 部件归一化为 `file` 部件；未提供媒体类型时通过魔数探测，探测失败时 `image` 默认为 `image/*`，`file` 必须有媒体类型。
 4. `data:` URL 被解析为字节与媒体类型。
 5. 助手消息中的 `tool-result` 部件保留（供应商执行结果）；工具消息中的 `tool-approval-response` 在发送给模型前被剥离（审批响应只用于核心层重放）。
@@ -119,7 +119,7 @@ PruneOptions::new()
     .keep_empty_messages();                                // default removes them
 ```
 
-【事实】2026-09-13 实现：`before-last-N` 规则保留末尾 N 条消息中引用的 `tool_call_id`/`approval_id` 在全部消息中的出现；限定工具的规则只删除已知属于这些工具的部件，且把无法关联到工具调用的审批响应一并删除。`PruneScope::BeforeLastMessages(0)` 视同 `All`。
+【事实】2026-09-13 实现：`before-last-N` 规则保留末尾 N 条消息中引用的 `tool_call_id`/`approval_id` 在全部消息中的出现；限定工具的规则只删除已知属于这些工具的部件，且把无法关联到工具调用的审批响应一并删除。`PruneScope::BeforeLastMessages(0)` 保留全部工具部分，与参考 `slice(-0)` 一致（ADR 0026，2026-09-17）。
 
 ## 7. 待验证
 
@@ -129,7 +129,7 @@ PruneOptions::new()
 
 ## 8. 实现记录（2026-09-13）
 
-- 【事实】`ferrin_core::prompt::Instructions { content, provider_options }`（re-export 为 `ferrin_core::Instructions`）表示 `system` 输入，实现 `From<&str>`、`From<String>`；`standardize()` 把它转换为序列最前的系统消息。
+- 【事实】`ferrin_core::prompt::Instructions`（re-export 为 `ferrin_core::Instructions`）表示 `system` 输入。字符串构造器生成单条消息；当前枚举还接受有序系统消息数组（ADR 0026，2026-09-17）。
 - 【决策】`DefaultDownloader::try_default()` 惰性构造：构建器不在配置阶段创建 HTTP 传输，只有当 prompt 中出现模型不支持的 URL 且调用方未提供 `download` 时才构造默认传输并下载。依据：无需下载的调用不应触碰 TLS 与连接池初始化，也不应因传输构造失败而报错。
 - 【事实】`prepare_tools` 对每个工具先以 `tools_context` 校验上下文 schema（失败为 `Error::InvalidArgument { argument: "tools_context" }`），再解析动态描述并生成 `ToolDefinition`；`active_tools` 过滤与 `tool_order` 排序在此处应用。批处理的文本请求复用同一函数。
 
@@ -139,4 +139,10 @@ PruneOptions::new()
 
 【决策】 每次生成或流式调用按 URL 缓存成功下载的文件。后续步骤即使切换模型，也复用这些字节，保证单次调用内文件一致。`None` 结果与失败不缓存：后续模型的 URL 支持范围变化时，可能需要下载此前保留的 URL。不同调用使用独立缓存。
 
-【决策】裁剪时，受保护的尾部工具结果、审批请求和审批响应会保留关联的完整调用与审批链。删除片段前先解析审批与调用的关联，确保恢复审批时仍能找到获批的输入。
+【决策】裁剪分别保护工具调用 ID 与审批 ID，与 Vercel AI SDK `6c6c221` 的 `prune-messages.ts` 一致。尾部审批部分不会隐式保护工具调用，尾部工具结果也不会隐式保护审批部分。需保留可恢复审批时，应选择包含必需部分的尾部范围（ADR 0026，2026-09-17）。
+
+【决策】参考行为对齐（ADR 0026，2026-09-17）：`Instructions` 表示单条 `SystemMessage` 或有序的系统消息向量，字符串构造仍生成单条消息。`Instructions::messages` 及 `From<Vec<SystemMessage>>` 保留每条消息的供应商参数，并接受空向量（不添加系统消息）。提示转换及默认指令中间件按顺序前置全部配置消息；默认指令仅在提示中不存在系统消息时生效。遥测在现有输入记录开关启用时保留完整指令形状。
+
+【决策】参考对齐（ADR 0026，2026-09-17）：删除用户消息中的空文本片段；保留携带供应商参数的助手空文本片段，过滤片段后仍保留助手消息。合并连续工具消息，将前一条消息的供应商参数递归合并到其最后片段，片段参数优先；最后消息的参数仍保留在消息层。在用户/系统消息边界与提示结尾拒绝缺少结果的客户端工具调用。关联的审批响应（批准或拒绝）豁免对应调用，供应商执行的调用无需客户端结果。下载目标还包含助手/工具结果内容中的文件 URL。已声明的完整媒体类型优先于下载响应头，响应头补齐不完整类型；检测到的图片签名优先于两者。来源：Vercel AI SDK `6c6c221` 的 `convert-to-language-model-prompt.ts`。
+
+【决策】助手文件与推理文件的 data URL 转换为内联字节，使用 URL 内嵌媒体类型。推理文件仅接受内联数据或 URL，与参考供应商契约一致；文本及供应商引用在转换时失败。普通文件继续支持现有全部来源。

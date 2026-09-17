@@ -139,10 +139,13 @@ fn keeps_tool_calls_referenced_by_trailing_messages() {
     assert_eq!(two, pruned);
 
     let zero = prune(
-        messages,
+        messages.clone(),
         &PruneOptions::new().tool_calls(PruneScope::BeforeLastMessages(0)),
     );
-    assert_eq!(zero.len(), 1, "zero trailing messages behaves like `All`");
+    assert_eq!(
+        zero, messages,
+        "zero keeps all tool parts like the reference SDK"
+    );
 }
 
 #[test]
@@ -203,7 +206,7 @@ fn empty_messages_can_be_kept() {
 }
 
 #[test]
-fn protected_tail_keeps_the_complete_approval_chain() {
+fn protected_tail_tracks_approval_and_tool_call_ids_independently() {
     let chain = [
         Message::assistant_parts([call("call-1", "weather")]),
         Message::assistant_parts([AssistantPart::ToolApprovalRequest(
@@ -214,14 +217,19 @@ fn protected_tail_keeps_the_complete_approval_chain() {
         )]),
         Message::tool([result("call-1", "weather")]),
     ];
-    // Each boundary protects a request, response, or result respectively.
+    // The reference protects approval IDs separately from tool-call IDs.
     for end in 2..=chain.len() {
         let messages = chain[..end].to_vec();
         for options in [
             PruneOptions::new().tool_calls(PruneScope::before_last_message()),
             PruneOptions::new().tool_calls_for(PruneScope::before_last_message(), ["weather"]),
         ] {
-            assert_eq!(prune(messages.clone(), &options), messages);
+            let expected = if end == chain.len() {
+                vec![chain[0].clone(), chain[3].clone()]
+            } else {
+                chain[1..end].to_vec()
+            };
+            assert_eq!(prune(messages.clone(), &options), expected);
         }
     }
 }

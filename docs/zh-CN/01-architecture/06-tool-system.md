@@ -71,7 +71,7 @@ let tools = ToolSet::new().insert("get_weather", get_weather)?;
 
 - `Tool` 的 `description` 为 `Option<Description>`（无描述的工具合法），另有 `title: Option<String>`（参与指纹）与 `caller_definition: Option<ToolCallerDefinition>`（见第 5 节）。`to_model_output` 的签名为 `Fn(ModelOutputArgs { tool_call_id, input, output }) -> ToolResultOutput`。
 - 构造入口：`Tool::function::<I>()`（schema 由 `Schema::<I>::derived().erased()` 派生）、`Tool::function_with_schema(Schema<JsonValue>)`、`Tool::dynamic(schema)`、`Tool::provider_defined(id, args)`、`Tool::provider_executed(id, args)`（`.supports_deferred_results(true)`）。`ToolBuilder<I>` 提供 `description`/`description_fn`、`title`、`input_schema`、`output_schema`、`context_schema`、`needs_approval`/`needs_approval_if`、`strict`、`input_example(s)`、`metadata`、`provider_options`、`on_input_start`/`on_input_delta`/`on_input_available`、`to_model_output`、`caller`、`execute`（异步闭包，返回 `Result<O: Serialize, ToolError>`）、`execute_stream`（返回 `Stream<Item = Result<O, ToolError>>`，每项为 `Preliminary`，末项重复为 `Final`）、`execute_with(Arc<dyn ToolExecute>)`、`build`。
-- `Tool` 的方法：`definition(name, description) -> spec::ToolDefinition`（函数/动态工具 → `Function`，供应商工具 → `Provider`）、`resolve_description(DescriptionContext)`、`validate_input(name, value)`（错误上下文 `field: "tool input"`）、`validate_context(name, Option<JsonValue>)`（无 `context_schema` 时返回 `None`，有 schema 而未提供上下文时按 `null` 校验，错误上下文 `field: "tool context"`）、`execute(input, ctx) -> Option<ToolOutputStream>`。类型化闭包的输入用 serde 从已校验的 JSON 反序列化，失败为 `ToolError::Message("invalid tool input: ...")`。
+- `Tool` 的方法：`definition(name, description) -> spec::ToolDefinition`（函数/动态工具 → `Function`，供应商工具 → `Provider`）、`resolve_description(DescriptionContext)`、`validate_input(name, value)`（错误上下文 `field: "tool input"`）、`validate_context(name, Option<JsonValue>)`（无 `context_schema` 时原样传递已选上下文，有 schema 而未提供上下文时按 `null` 校验，错误上下文 `field: "tool context"`）、`execute(input, ctx) -> Option<ToolOutputStream>`。类型化闭包的输入用 serde 从已校验的 JSON 反序列化，失败为 `ToolError::Message("invalid tool input: ...")`。
 
 `Tool::function::<I>()` 要求 `I: DeserializeOwned + JsonSchema`；`execute` 闭包的返回类型 `O: Serialize` 在内部转换为 `JsonValue`。依据：把工具集的类型信息推导到结果类型在 Rust 中需要每个工具集一个枚举（或宏生成），成本过高；工具级类型 + 结果级 JSON 值 + 类型化提取辅助（`step.tool_result_as::<Weather>("get_weather")`）在可用性与复杂度之间平衡。
 
@@ -122,7 +122,7 @@ pub struct ToolContext {
 
 【决策】工具调用解析规则：
 
-1. 工具名不在工具集中：构造 `NoSuchTool` 错误；若配置了 `repair_tool_call`，以该错误调用修复函数。
+1. 客户端工具名不在工具集中时构造 `NoSuchTool`，并按配置调用 `repair_tool_call`。供应商执行的动态工具即使在已注册其他工具时也可不在集合中；解析其 JSON 后执行对应的输入 refinement。
 2. 输入字符串为空时按 `{}` 处理；解析 JSON 并按 `input_schema` 校验，失败构造 `InvalidToolInput` 错误并尝试修复。
 3. 修复函数返回 `None` 时放弃；返回新调用时重新解析；修复函数出错时包装为修复错误。
 4. 最终无法解析的调用不抛出，而是作为 `invalid: true, dynamic: true` 的工具调用进入内容，并附 `error` 字段；随后由 `tool-error` 内容把错误反馈给模型。
@@ -164,7 +164,7 @@ pub trait ApprovalPolicy: Send + Sync {
 
 （2026-09-13：实现签名为 `resolve<'a>(&'a self, call: &'a ParsedToolCall, ctx: ApprovalContext<'a>) -> BoxFuture<'a, Option<ApprovalStatus>>`，见第 11 节。）
 
-【决策】由外部或内嵌引擎判定的策略（OPA REST Data API、经 `regorus` 的 Rego）通过同一 trait 接入：`ferrin_policy::policy_approval(client, path)` 实现 `ApprovalPolicy`，把 `allow` / `deny` / `requires-approval` 映射到上述状态、`not-applicable` 映射为 `None`，判定失败时默认拒绝。见[策略化工具审批](18-policy-approval.md)与 [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md)。
+【决策】由外部或内嵌引擎判定的策略（OPA REST Data API、经 `regorus` 的 Rego）通过同一 trait 接入：`ferrin_policy::policy_approval(client, path)` 实现 `ApprovalPolicy`，把 `allow` / `deny` / `requires-approval` 映射到上述状态、`not-applicable` 映射为显式 `NotApplicable`，判定失败时默认拒绝。见[策略化工具审批](18-policy-approval.md)与 [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md)。
 
 ### 4.2 审批请求与响应
 
@@ -201,9 +201,9 @@ Ferrin 在 `ferrin_tool::fingerprint` 提供等价函数，返回 `ToolDrift { a
 
 ## 7. 工具上下文
 
-【决策】`tools_context` 参数为工具执行提供共享上下文，按工具声明的 `context_schema` 校验。依据：请求级的用户身份、租户等信息需要传给工具而不应出现在提示中。
+【决策】`tools_context` 是以注册工具名为键的对象。在描述、审批钩子和执行器校验上下文前，仅选择当前工具对应的条目，使独立凭据和互不兼容的上下文 Schema 不共享执行值（2026-09-17；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)）。
 
-【决策】Ferrin 的 `tools_context: Option<JsonValue>` 在调用时按各工具的 `context_schema` 校验一次；未定义 `context_schema` 的工具收到 `None`。
+【决策】`Tool::validate_named_context` 选择对应条目后调用 `validate_context`。无 Schema 的工具原样接收该值，缺少条目保持缺省；有 Schema 时将缺少条目按 JSON `null` 校验。审批回放在任何副作用前校验所有已批准的可执行工具。这取代了 2026-09-13 记录的共享上下文及无 Schema 时丢弃上下文的行为。
 
 ## 8. 沙箱
 
@@ -242,7 +242,7 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 
 ## 11. 实现记录（2026-09-13）
 
-- 【决策】`ApprovalPolicy::resolve` 返回 `Option<ApprovalStatus>`：`None` 表示策略不表态，判定回退到工具自身的 `needs_approval`；`ApprovalStatus` 自身实现 `ApprovalPolicy`（常量策略），同步闭包 `Fn(&ParsedToolCall, &ApprovalContext<'_>) -> Option<ApprovalStatus>` 经 `ApprovalPolicyFn` 包装后可作为策略。依据：调用级策略不表态时回退到工具级配置，`Option` 直接表达该优先级链，不需要单独的 `ApprovalDecision` 类型。
+- 【决策】`ApprovalPolicy::resolve` 返回 `Option<ApprovalStatus>`：底层 `None` 回退到工具自身的 `needs_approval`；`ApprovalStatus` 自身实现 `ApprovalPolicy`（常量策略），`ApprovalPolicyFn` 包装同步回调，并依照 ADR 0026 将回调的 `None` 归一化为显式 `NotApplicable`。底层 `Option` 为策略组合保留显式回退，无需单独的 `ApprovalDecision` 类型。
 - 【决策】`PrepareStep` 为同步闭包 `Fn(&PrepareStepContext<'_>) -> StepOverrides` 提供 blanket impl，需要异步逻辑的应用实现 trait 本身。依据：绝大多数 `prepare_step` 用法只是按步骤号切换模型或工具集，同步闭包避免 `Box::pin(async move { .. })` 样板。
 - 【事实】`RefineToolInputs` 按工具名保存 `Arc<dyn Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>>>`，在输入通过 schema 校验之后、执行之前改写输入；改写结果写回 `ParsedToolCall.input` 并进入响应消息。
 - 【事实】`ToolApprovalRequestContent { approval_id, tool_call: ParsedToolCall, reason, is_automatic }` 携带完整的已解析工具调用而非仅 `tool_call_id`，`StepContent::ToolApprovalResponse(ToolApprovalResponseContent { approval_id, tool_call, approved, reason, provider_executed })` 记录重放时的判定结果。依据：审批 UI 需要展示工具名与输入，避免应用在历史消息中二次查找。
@@ -263,3 +263,5 @@ Ferrin 只定义 trait 与一个本地进程实现 `LocalProcessSandbox`（仅�
 【决策】`Tool::into_builder()` 将工具重新开放为 `ToolBuilder<JsonValue>`，完整保留定义、schema、参数、元数据、执行器、调用者绑定及钩子；调用方可附加或替换执行行为，无需重建供应商工厂。
 
 【决策】供应商路由元数据随所有审批结果传播至响应消息的供应商参数，包括自动拒绝、重放拒绝、重放成功及重放错误。`ToolOutputDenied::provider_metadata` 保存原始调用的供应商参数，独立于工具定义元数据；旧序列化拒绝结果缺失此字段时默认为无。拒绝也必须保留并行工具包装器标识，供应商才能接收完整的分组结果（2026-09-17；ADR 0021）。
+
+【决策】`approval_policy` 回调将 `None` 归一化为 `NotApplicable`，对齐参考 SDK 回调契约。底层 `ApprovalPolicy::resolve` 保留 `None` 作为未配置的按工具映射及安全策略组合的显式回退；显式 `NotApplicable` 始终覆盖工具自身审批（2026-09-17；[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)）。

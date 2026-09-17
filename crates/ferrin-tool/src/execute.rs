@@ -74,7 +74,7 @@ pub struct ToolContext {
     pub messages: Arc<[Message]>,
     /// Cancels the execution.
     pub cancellation: CancellationToken,
-    /// Tool context validated against the tool's context schema, if any.
+    /// This tool's selected context, validated when it declares a context schema.
     pub tools_context: Option<JsonValue>,
     /// Sandbox the tool operates in.
     #[cfg(feature = "sandbox")]

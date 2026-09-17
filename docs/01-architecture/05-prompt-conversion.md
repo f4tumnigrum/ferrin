@@ -10,7 +10,7 @@ This document describes conversion of application input into specification `Prom
 
 - `prompt` and `messages` are mutually exclusive. Supplying both or neither returns `InvalidPrompt`.
 - A string `prompt` becomes one user message; an array of `messages` is equivalent to `messages`.
-- `system`, a string or `system` message with `provider_options`, is prepended to the sequence.
+- `system`, a string, `system` message with `provider_options`, or ordered array of system messages, is prepended to the sequence.
 - System-role `messages` in `messages` are rejected unless `allow_system_in_messages(true)` is set.
 - An empty `messages` array is an error.
 - Invalid message structure returns `InvalidPrompt`.
@@ -19,7 +19,7 @@ This document describes conversion of application input into specification `Prom
 
 ```rust
 pub(crate) struct StandardizedPrompt {
-    pub system: Option<SystemMessage>,
+    pub system: Option<Instructions>,
     pub messages: Vec<Message>,
 }
 ```
@@ -28,13 +28,17 @@ pub(crate) struct StandardizedPrompt {
 
 [Decision] Conversion steps:
 
-1. Collect URLs and media types from user file/image parts and match the model's `supported_urls`. Download unmatched URLs concurrently; the default downloader fetches only URLs the model cannot handle.
-2. Inline downloaded bytes and media types as `data`, preferring response headers over magic-byte detection.
+1. Collect URLs and media types from user file/image parts and files in assistant/tool result content, and match the model's `supported_urls`. Download unmatched URLs concurrently; the default downloader fetches only URLs the model cannot handle.
+2. Inline downloaded bytes as `data`. A declared full media type takes precedence over download headers; headers complete partial types, while detected image signatures take precedence over either.
 3. Normalize `image` to `file`; detect unspecified media types from magic bytes. If detection fails, images default to `image/*`; files require a media type.
 4. Parse `data:` URLs into bytes and media types.
 5. Preserve assistant `tool-result` parts (provider-executed results). Strip tool-message `tool-approval-response` before sending to the model; these responses serve only core replay.
 6. Normalize tool output with `create_tool_model_output`: call the tool's `to_model_output` if present; otherwise map strings to `text`, other JSON to `json`, and errors to `error-text`/`error-json`.
 7. Reconvert the complete message sequence on every later step, caching downloads within the invocation.
+
+[Decision] Reference parity (ADR 0026, 2026-09-17): remove empty user text parts; retain empty assistant text parts when they carry provider options. Preserve empty assistant messages after part filtering. Merge consecutive tool messages, moving each preceding message's provider options into its last part with the part options taking precedence recursively; the final message options remain at message level. Reject unresolved client tool calls before a user/system boundary and at prompt end. A linked approval response (approved or denied) exempts its call; provider-executed calls need no client result. Source: Vercel AI SDK `6c6c221`, `convert-to-language-model-prompt.ts`.
+
+[Decision] Assistant file and reasoning-file data URLs are converted to inline bytes with the embedded media type. Reasoning files accept only inline data or URLs, matching the reference provider contract; text and provider-reference payloads fail conversion. Ordinary files continue to support all existing sources.
 
 ### 2.1 Ferrin conversion pipeline
 
@@ -119,7 +123,7 @@ PruneOptions::new()
     .keep_empty_messages();                                // default removes them
 ```
 
-[Fact] Implementation on 2026-09-13: `before-last-N` preserves every occurrence of `tool_call_id`/`approval_id` referenced within the last N messages. Selected-tool rules remove only parts known to belong to those tools, also removing approval responses that cannot be linked to a tool call. `PruneScope::BeforeLastMessages(0)` is equivalent to `All`.
+[Fact] Implementation on 2026-09-13: `before-last-N` preserves every occurrence of `tool_call_id`/`approval_id` referenced within the last N messages. Selected-tool rules remove only parts known to belong to those tools, also removing approval responses that cannot be linked to a tool call. `PruneScope::BeforeLastMessages(0)` retains all tool parts, matching the reference `slice(-0)` behavior (ADR 0026, 2026-09-17). Protected tool-call IDs and approval IDs are tracked independently; pruning does not infer a transitive approval-to-call protection relationship.
 
 ## 7. Verification items
 
@@ -129,7 +133,7 @@ PruneOptions::new()
 
 ## 8. Implementation record (2026-09-13)
 
-- [Fact] `ferrin_core::prompt::Instructions { content, provider_options }`, re-exported as `ferrin_core::Instructions`, represents `system` input and implements `From<&str>`/`From<String>`. `standardize()` converts it to the first `system` message.
+- [Fact] `ferrin_core::prompt::Instructions`, re-exported as `ferrin_core::Instructions`, represents system input. String constructors create a single message; the current enum also accepts ordered message arrays (ADR 0026, 2026-09-17).
 - [Decision] Construct `DefaultDownloader::try_default()` lazily, only when the prompt has an unsupported URL and the caller provided no `download`. Calls needing no downloads should not initialize TLS or connection pools or fail because transport construction failed.
 - [Fact] `prepare_tools` first validates each tool's context schema against `tools_context` (failure: `Error::InvalidArgument { argument: "tools_context" }`), resolves dynamic descriptions, and generates `ToolDefinition`. It applies `active_tools` filtering and `tool_order` sorting. Batch text requests reuse this function.
 
@@ -139,4 +143,6 @@ PruneOptions::new()
 
 [Decision] Each generate/stream invocation caches successful downloads by URL. Later steps reuse those bytes even after switching models, keeping one invocation consistent. `None` results and failures are not cached: a later model with different URL support may need to download a previously preserved URL. Separate invocations have independent caches.
 
-[Decision] Protected trailing tool results, approval requests, and approval responses retain their complete linked call/approval chain during pruning. Resolve the approval-to-call associations before deleting parts, so approval resumption always retains the approved input.
+[Decision] Reference pruning protects tool-call IDs and approval IDs independently, as in the Vercel AI SDK `6c6c221` (`prune-messages.ts`). A trailing approval part does not implicitly protect its tool call, and a trailing tool result does not implicitly protect approval parts. Callers retaining resumable approvals must choose a tail containing the required parts (ADR 0026, 2026-09-17).
+
+[Decision] Reference parity (ADR 0026, 2026-09-17): `Instructions` represents one `SystemMessage` or an ordered vector of system messages. String constructors remain a single message. `Instructions::messages` and `From<Vec<SystemMessage>>` preserve each message's provider options and accept an empty vector, which adds no system message. Prompt conversion and default-instructions middleware prepend all configured messages in order; defaults apply only when the prompt has no system message. Telemetry recorded inputs preserve the instruction shape under the existing input-recording opt-in.

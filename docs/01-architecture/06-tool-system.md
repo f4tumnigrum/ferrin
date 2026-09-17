@@ -71,7 +71,7 @@ let tools = ToolSet::new().insert("get_weather", get_weather)?;
 
 - `Tool::description` is `Option<Description>`; descriptions are optional. Additional fields are `title: Option<String>` (included in fingerprints) and `caller_definition: Option<ToolCallerDefinition>` (section 5). `to_model_output` is `Fn(ModelOutputArgs { tool_call_id, input, output }) -> ToolResultOutput`.
 - Constructors: `Tool::function::<I>()` (using `Schema::<I>::derived().erased()`), `Tool::function_with_schema(Schema<JsonValue>)`, `Tool::dynamic(schema)`, `Tool::provider_defined(id, args)`, and `Tool::provider_executed(id, args)` (with `.supports_deferred_results(true)`). `ToolBuilder<I>` offers `description`/`description_fn`, `title`, `input_schema`, `output_schema`, `context_schema`, `needs_approval`/`needs_approval_if`, `strict`, `input_example(s)`, `metadata`, `provider_options`, `on_input_start`/`on_input_delta`/`on_input_available`, `to_model_output`, `caller`, `execute` (async closure returning `Result<O: Serialize, ToolError>`), `execute_stream` (a `Stream<Item = Result<O, ToolError>>`, each item `Preliminary`, with the last repeated as `Final`), `execute_with(Arc<dyn ToolExecute>)`, and `build`.
-- Methods: `definition(name, description) -> spec::ToolDefinition` (function/dynamic → `Function`; provider tools → `Provider`), `resolve_description(DescriptionContext)`, `validate_input(name, value)` (error context `field: "tool input"`), `validate_context(name, Option<JsonValue>)` (returns `None` without a context schema, validates missing context as `null` otherwise, error context `field: "tool context"`), and `execute(input, ctx) -> Option<ToolOutputStream>`. Typed closures deserialize validated JSON through serde; failure is `ToolError::Message("invalid tool input: ...")`.
+- Methods: `definition(name, description) -> spec::ToolDefinition` (function/dynamic → `Function`; provider tools → `Provider`), `resolve_description(DescriptionContext)`, `validate_input(name, value)` (error context `field: "tool input"`), `validate_context(name, Option<JsonValue>)` (passes selected context through without a context schema, validates missing context as `null` otherwise, error context `field: "tool context"`), and `execute(input, ctx) -> Option<ToolOutputStream>`. Typed closures deserialize validated JSON through serde; failure is `ToolError::Message("invalid tool input: ...")`.
 
 `Tool::function::<I>()` requires `I: DeserializeOwned + JsonSchema`; execution output `O: Serialize` becomes `JsonValue` internally. Inferring an entire tool set into a Rust result type would require a per-set enum or macro. Tool-level typing, JSON results, and helpers such as `step.tool_result_as::<Weather>("get_weather")` balance usability and complexity.
 
@@ -122,7 +122,7 @@ Single-value executors adapt through `From` to a stream yielding one `Final`, al
 
 [Decision] Parsing rules:
 
-1. Unknown tool names produce `NoSuchTool`; pass this error to `repair_tool_call` if configured.
+1. Unknown client tool names produce `NoSuchTool`; pass this error to `repair_tool_call` if configured. Provider-executed dynamic calls may be absent from the registered set, including when other tools are registered; parse their JSON and apply the named input refinement.
 2. Treat empty input as `{}`. Parse JSON and validate against `input_schema`; on failure, create `InvalidToolInput` and attempt repair.
 3. A repair returning `None` gives up; a replacement call is reparsed; a repair failure is wrapped as a repair error.
 4. Unparsable calls become content with `invalid: true, dynamic: true` and an `error`, rather than being thrown. Subsequent `tool-error` content reports the failure to the model.
@@ -164,7 +164,7 @@ pub trait ApprovalPolicy: Send + Sync {
 
 (2026-09-13: implemented as `resolve<'a>(&'a self, call: &'a ParsedToolCall, ctx: ApprovalContext<'a>) -> BoxFuture<'a, Option<ApprovalStatus>>`; see section 11.)
 
-[Decision] Policies evaluated by an external or embedded engine (OPA REST Data API, Rego through `regorus`) plug in through the same trait: `ferrin_policy::policy_approval(client, path)` implements `ApprovalPolicy`, maps `allow` / `deny` / `requires-approval` to the statuses above and `not-applicable` to `None`, and denies on evaluation failure by default. See [Policy-based tool approval](18-policy-approval.md) and [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md).
+[Decision] Policies evaluated by an external or embedded engine (OPA REST Data API, Rego through `regorus`) plug in through the same trait: `ferrin_policy::policy_approval(client, path)` implements `ApprovalPolicy`, maps `allow` / `deny` / `requires-approval` to the statuses above and `not-applicable` to explicit `NotApplicable`, and denies on evaluation failure by default. See [Policy-based tool approval](18-policy-approval.md) and [ADR 0020](../04-decisions/2026-09-15-0020-policy-based-tool-approval.md).
 
 ### 4.2 Approval requests and responses
 
@@ -201,9 +201,9 @@ pub trait ApprovalPolicy: Send + Sync {
 
 ## 7. Tool context
 
-[Decision] `tools_context` supplies shared execution context validated against each tool's `context_schema`. Request-specific user or tenant information belongs in tool context rather than the prompt.
+[Decision] `tools_context` is an object keyed by registered tool name. Select only the current tool's entry before description, approval-hook and executor context validation. Independent credentials and incompatible context schemas must not share one execution value (2026-09-17; [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)).
 
-[Decision] Validate `tools_context: Option<JsonValue>` once per tool at call time; tools without a context schema receive `None`.
+[Decision] `Tool::validate_named_context` selects the named entry and delegates to `validate_context`. Schema-less tools receive that selected value unchanged; missing entries remain absent. Schema-bearing tools validate a missing entry as JSON `null`. Approval replay validates every approved executable tool before any side effect. This supersedes the shared-context and schema-less-drop behavior recorded on 2026-09-13.
 
 ## 8. Sandbox
 
@@ -242,7 +242,7 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 
 ## 11. Implementation record (2026-09-13)
 
-- [Decision] `ApprovalPolicy::resolve` returns `Option<ApprovalStatus>`; `None` defers to the tool's `needs_approval`. `ApprovalStatus` implements the policy as a constant; wrap synchronous `Fn(&ParsedToolCall, &ApprovalContext<'_>) -> Option<ApprovalStatus>` in `ApprovalPolicyFn`. `Option` directly expresses fallback priority without a separate `ApprovalDecision` type.
+- [Decision] `ApprovalPolicy::resolve` returns `Option<ApprovalStatus>`; low-level `None` defers to the tool's `needs_approval`. `ApprovalStatus` implements the policy as a constant; `ApprovalPolicyFn` wraps synchronous callbacks and normalizes their `None` to explicit `NotApplicable` under ADR 0026. The low-level `Option` retains explicit fallback for policy composition without a separate `ApprovalDecision` type.
 - [Decision] `PrepareStep` has a blanket implementation for synchronous `Fn(&PrepareStepContext<'_>) -> StepOverrides`; applications needing async logic implement the trait. Most uses simply switch models or tools by step number, so synchronous closures avoid `Box::pin(async move { .. })` boilerplate.
 - [Fact] `RefineToolInputs` stores `Arc<dyn Fn(JsonValue) -> BoxFuture<'static, Result<JsonValue, Error>>>` by tool name, rewriting input after schema validation and before execution. The replacement updates `ParsedToolCall.input` and response messages.
 - [Fact] `ToolApprovalRequestContent { approval_id, tool_call: ParsedToolCall, reason, is_automatic }` carries the full parsed call. `StepContent::ToolApprovalResponse(ToolApprovalResponseContent { approval_id, tool_call, approved, reason, provider_executed })` records replay decisions. Approval UIs need names and input without searching history again.
@@ -263,3 +263,5 @@ Ferrin defines traits and `LocalProcessSandbox` for tests/examples only, explici
 [Fact] 2026-09-15: `ferrin-policy` builds `policy_approval`, `shadow`, `with_default` and `capability_middleware` on this contract without changes to the core; its coverage is listed in [Policy-based tool approval](18-policy-approval.md), section 7.
 
 [Decision] `Tool::into_builder()` reopens a tool as `ToolBuilder<JsonValue>` while moving its complete definition, schemas, options, metadata, executor, caller binding and hooks unchanged; callers may then attach or replace execution behavior without reconstructing provider factories.
+
+[Decision] `approval_policy` callbacks normalize `None` to `NotApplicable`, matching the reference SDK callback contract. Low-level `ApprovalPolicy::resolve` retains `None` as explicit fall-through for unconfigured per-tool maps and security policy composition. An explicit `NotApplicable` always overrides tool-defined approval (2026-09-17; [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)).

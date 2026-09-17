@@ -424,6 +424,7 @@
       "traits": [
         "impl Clone for SystemMessage",
         "impl Debug for SystemMessage",
+        "impl Eq for SystemMessage",
         "impl From<SystemMessage> for Message",
         "impl PartialEq for SystemMessage",
         "impl Serialize for SystemMessage",

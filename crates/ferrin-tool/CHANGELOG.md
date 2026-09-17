@@ -12,6 +12,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- Select description and execution context by tool name before applying an
+  optional context schema; retain the selected value for schema-less tools (ADR 0026).
+
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
 ## [0.1.2] - 2026-09-16

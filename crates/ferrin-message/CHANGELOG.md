@@ -7,6 +7,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- Align pruning with independent tool-call and approval identifiers, including
+  zero protected trailing messages (ADR 0026).
+
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
 ## [0.1.2] - 2026-09-16

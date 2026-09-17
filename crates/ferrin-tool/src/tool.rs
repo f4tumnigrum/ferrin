@@ -439,8 +439,7 @@ impl Tool {
         })
     }
 
-    /// Validates the tool context against the context schema. Tools without
-    /// a context schema receive `None`.
+    /// Validates the selected tool context, preserving it when no schema is set.
     ///
     /// # Errors
     ///
@@ -451,7 +450,7 @@ impl Tool {
         context: Option<JsonValue>,
     ) -> Result<Option<JsonValue>, TypeValidationError> {
         let Some(schema) = &self.context_schema else {
-            return Ok(None);
+            return Ok(context);
         };
         schema
             .validate(context.unwrap_or(JsonValue::Null))
@@ -463,6 +462,43 @@ impl Tool {
                     entity_id: None,
                 })
             })
+    }
+
+    /// Selects this tool's entry from a named context map and validates it.
+    ///
+    /// The map is keyed by the registered tool name. Missing entries remain
+    /// absent without a schema and are validated as JSON `null` with a schema.
+    ///
+    /// # Errors
+    ///
+    /// Returns a validation error for a non-object context map or when the
+    /// selected entry does not satisfy this tool's context schema.
+    pub fn validate_named_context(
+        &self,
+        name: &ToolName,
+        contexts: Option<&JsonValue>,
+    ) -> Result<Option<JsonValue>, TypeValidationError> {
+        if let Some(contexts) = contexts
+            && !contexts.is_object()
+            && !contexts.is_null()
+        {
+            return Err(TypeValidationError::new(
+                contexts.clone(),
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "tools context must be an object keyed by tool name",
+                ),
+            )
+            .with_context(TypeValidationContext {
+                field: Some("tools context".to_owned()),
+                entity_name: Some(name.as_str().to_owned()),
+                entity_id: None,
+            }));
+        }
+        self.validate_context(
+            name,
+            contexts.and_then(|value| value.get(name.as_str())).cloned(),
+        )
     }
 
     /// Starts an execution; `None` when the tool has no executor.

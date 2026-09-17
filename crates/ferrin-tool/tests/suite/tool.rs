@@ -322,7 +322,7 @@ fn context_validation() {
         without
             .validate_context(&name, Some(json!({ "user": 1 })))
             .unwrap(),
-        None
+        Some(json!({ "user": 1 }))
     );
     let with = Tool::function::<GetWeatherInput>()
         .context_schema(Schema::from_json_schema(json!({
@@ -347,4 +347,26 @@ fn tool_error_helpers() {
     assert!(ToolError::Cancelled.is_cancelled());
     let json_error: ToolError = serde_json::from_str::<u8>("x").unwrap_err().into();
     assert!(matches!(json_error, ToolError::Message { .. }));
+}
+
+#[test]
+fn named_context_selects_one_entry_and_preserves_schema_less_values() {
+    let tool = Tool::function::<GetWeatherInput>().build();
+    let contexts = json!({"alpha":{"secret":"a"},"beta":{"secret":"b"},"null":null});
+    for (name, expected) in [
+        ("alpha", Some(json!({"secret":"a"}))),
+        ("beta", Some(json!({"secret":"b"}))),
+        ("null", Some(json!(null))),
+        ("missing", None),
+    ] {
+        assert_eq!(
+            tool.validate_named_context(&name.into(), Some(&contexts))
+                .unwrap(),
+            expected
+        );
+    }
+    assert!(
+        tool.validate_named_context(&"alpha".into(), Some(&json!("invalid")))
+            .is_err()
+    );
 }

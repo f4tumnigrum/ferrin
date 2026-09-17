@@ -37,8 +37,8 @@ pub enum PruneScope {
     /// Every message.
     All,
     /// Every message except the trailing `n`; tool calls referenced by those
-    /// trailing messages are kept everywhere. `n == 0` behaves like
-    /// [`PruneScope::All`].
+    /// trailing messages are kept everywhere. `n == 0` keeps all tool parts,
+    /// matching the reference SDK's `slice(-0)` behavior.
     BeforeLastMessages(usize),
 }
 
@@ -232,10 +232,16 @@ fn rule_keeps(rule: &ToolCallPrune, tool_name: Option<&ToolName>) -> bool {
 
 fn prune_tool_calls(messages: &mut [Message], rule: &ToolCallPrune) {
     let keep_last = match rule.scope {
-        PruneScope::All | PruneScope::BeforeLastMessages(0) => None,
+        PruneScope::All => None,
         PruneScope::BeforeLastMessages(n) => Some(n),
     };
-    let protected_from = keep_last.map_or(messages.len(), |n| messages.len().saturating_sub(n));
+    let protected_from = keep_last.map_or(messages.len(), |n| {
+        if n == 0 {
+            0
+        } else {
+            messages.len().saturating_sub(n)
+        }
+    });
 
     let mut kept = Kept {
         tool_call_ids: HashSet::new(),
@@ -269,20 +275,6 @@ fn prune_tool_calls(messages: &mut [Message], rule: &ToolCallPrune) {
                 }
                 ToolRef::Approval(_, None) => {}
             }
-        }
-    }
-    // Protect the entire association component, including earlier approvals
-    // when a trailing result or another approval references the same call.
-    loop {
-        let mut expanded = false;
-        for (approval_id, call_id) in &approval_calls {
-            if kept.approval_ids.contains(approval_id) || kept.tool_call_ids.contains(call_id) {
-                expanded |= kept.approval_ids.insert(approval_id.clone());
-                expanded |= kept.tool_call_ids.insert(call_id.clone());
-            }
-        }
-        if !expanded {
-            break;
         }
     }
     for (approval_id, call_id) in approval_calls {
