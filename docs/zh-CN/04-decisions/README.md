@@ -30,6 +30,7 @@
 | [0022](2026-09-17-0022-provider-tool-roundtrips.md) | 供应商工具往返转换 | proposed | 2026-09-17 |
 | [0023](2026-09-17-0023-google-interactions-and-live-audio.md) | Google Interactions 与 Live 音频 | proposed | 2026-09-17 |
 | [0025](2026-09-17-0025-azure-and-voyage-providers.md) | Azure OpenAI 与 Voyage 供应商 | proposed | 2026-09-17 |
+| [0026](2026-09-17-0026-reference-sdk-parity.md) | 与参考 SDK 的行为对齐 | proposed | 2026-09-17 |
 
 ## 编辑性修订
 

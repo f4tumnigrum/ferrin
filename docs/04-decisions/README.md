@@ -30,6 +30,7 @@ See the [ADR process](../03-engineering/07-adr-process.md).
 | [0022](2026-09-17-0022-provider-tool-roundtrips.md) | Provider tool roundtrips | proposed | 2026-09-17 |
 | [0023](2026-09-17-0023-google-interactions-and-live-audio.md) | Google Interactions and Live audio | proposed | 2026-09-17 |
 | [0025](2026-09-17-0025-azure-and-voyage-providers.md) | Azure OpenAI and Voyage providers | proposed | 2026-09-17 |
+| [0026](2026-09-17-0026-reference-sdk-parity.md) | Behavioral parity with the reference SDK | proposed | 2026-09-17 |
 
 ## Editorial revisions
 

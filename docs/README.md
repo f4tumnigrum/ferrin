@@ -66,6 +66,7 @@ This directory describes Ferrin's target architecture, technical design, and eng
 
 - [Core behavior checklist](05-appendix/01-core-behaviors.md)
 - [Pending verification](05-appendix/02-pending-verification.md)
+- [Module parity review](05-appendix/03-reference-parity.md)
 
 ### Providers and generated files
 
