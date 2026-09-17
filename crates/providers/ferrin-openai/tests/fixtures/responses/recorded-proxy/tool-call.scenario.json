@@ -1,0 +1,60 @@
+{
+  "path": "responses",
+  "redact_response_fields": [
+    "/instructions",
+    "/safety_identifier",
+    "/prompt_cache_key",
+    "/response/instructions",
+    "/response/safety_identifier",
+    "/response/prompt_cache_key"
+  ],
+  "model": "gpt-5.6-sol",
+  "body": {
+    "model": "gpt-5.6-sol",
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Call get_weather for Berlin."
+          }
+        ]
+      }
+    ],
+    "max_output_tokens": 512,
+    "store": false,
+    "include": [
+      "reasoning.encrypted_content"
+    ],
+    "reasoning": {
+      "effort": "low",
+      "summary": "detailed"
+    },
+    "tools": [
+      {
+        "type": "function",
+        "name": "get_weather",
+        "description": "Returns the current weather for a city.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "additionalProperties": false
+        },
+        "strict": true
+      }
+    ],
+    "tool_choice": {
+      "type": "function",
+      "name": "get_weather"
+    }
+  },
+  "base_url_env": "OPENAI_BASE_URL"
+}

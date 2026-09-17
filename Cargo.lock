@@ -4087,6 +4087,7 @@ dependencies = [
  "ferrin-spec",
  "ferrin-testing",
  "http",
+ "pretty_assertions",
  "serde",
  "serde_json",
  "tokio",

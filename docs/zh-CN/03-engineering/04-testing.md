@@ -56,6 +56,10 @@ crates/providers/ferrin-openai/tests/fixtures/
 
 fixture 一经录制不得手工修改；行为变化需重新录制并在 PR 中说明。
 
+【决策】录制场景可通过 `redact_response_fields` 指定 JSON Pointer 列表，在写入前将匹配值替换为 `[REDACTED]`。该列表应用于 JSON 响应或每个 SSE JSON 载荷，保留事件顺序和非 data 字段；启用脱敏时，除 `[DONE]` 外的非 JSON SSE 数据使录制失败。元数据记录配置的指针列表，以可复现方式移除代理附加的指令及账户、缓存标识，避免手工修改 fixture；回放不验证被脱敏的值。
+
+【决策】私有录制端点使用 `base_url_env`，不写入字面量 `base_url`。配置该字段后对应环境变量必须存在，同时设置两个字段会报错，不能静默回退到官方端点。录制状态仅输出场景路径，不输出端点 URL。公开 fixture 和报告统一使用匿名代理标识。
+
 ### 3.3 回放
 
 `FixtureServer` 按文件重建响应：非流式经 `wiremock` 返回 JSON；流式由 `ferrin-testing` 内置的最小 hyper 1.x 服务器以 `text/event-stream` 逐帧发送，可配置分片间延迟以测试超时逻辑（见第 9 节 PV-026）。测试断言：
@@ -112,6 +116,7 @@ fixture 一经录制不得手工修改；行为变化需重新录制并在 PR �
 - 【事实】核心层非文本模态的测试以内联实现规范 trait 的 mock（`EmbeddingModel`、`ImageModel`、`SpeechModel`、`TranscriptionModel`、`RerankingModel`、`VideoModel`、`Files`、`Skills`、`Batch`、`RealtimeModel`）驱动；实时会话测试用 `tokio-tungstenite` 在 `127.0.0.1` 起本地 WebSocket 服务器并回显子协议头。
 - 【事实】`Fixture::load(dir, case)` 对同一 `case` 先找 `<case>.response.json`，再找 `<case>.chunks.txt`；两者同时存在时只回放前者。`ferrin-openai` 的流式用例因此以 `-stream` 后缀命名（`text-basic.response.json` 与 `text-basic-stream.chunks.txt`），第 3.1 节的目录示例按此理解。
 - 【待验证】（PV-031）`ferrin-openai`、`ferrin-anthropic`、`ferrin-openai-compatible` 与 `ferrin-google` 的 fixture（`crates/providers/<crate>/tests/fixtures/`）在 `record-fixture` 命令实现（2026-09-14）之前依据供应商公开 API 文档的响应 schema 手工编写，不含真实请求 ID 与账户信息，尚未用该命令以真实凭据重新录制；第 3.2 节“fixture 一经录制不得手工修改”的规则自录制版本起适用。
+
 
 ## 11. 实现记录（2026-09-14，基准测试）
 

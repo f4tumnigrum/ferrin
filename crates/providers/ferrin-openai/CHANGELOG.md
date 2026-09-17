@@ -5,6 +5,10 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Reproducible anonymous Responses recording scenarios for text, SSE, function calls and structured output; private endpoints are supplied through the environment.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed

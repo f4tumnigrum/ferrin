@@ -6,6 +6,11 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Fixture recording supports explicit JSON-pointer response redaction, including SSE payloads, with redaction provenance in fixture metadata.
+- Recording scenarios can read private endpoints through `base_url_env`; status output omits the endpoint URL.
+
 ## [0.1.2] - 2026-09-16
 
 ### Added

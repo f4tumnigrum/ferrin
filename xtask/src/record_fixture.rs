@@ -4,6 +4,8 @@
 //! Secrets never reach the fixture files: response headers pass an allow
 //! list, and every file is checked for key patterns before it is written.
 
+pub(crate) mod redact;
+
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
@@ -61,6 +63,8 @@ struct Scenario {
     path: String,
     /// Overrides the provider's default base URL.
     base_url: Option<String>,
+    /// Reads a private endpoint from the environment; required when configured.
+    base_url_env: Option<String>,
     /// Overrides the environment variable holding the API key.
     api_key_env: Option<String>,
     /// Extra request headers.
@@ -73,6 +77,9 @@ struct Scenario {
     stream: bool,
     /// Model id recorded in the metadata.
     model: Option<String>,
+    /// JSON pointers removed from JSON responses and individual SSE payloads.
+    #[serde(default)]
+    redact_response_fields: Vec<String>,
 }
 
 /// `<case>.meta.json`.
@@ -85,6 +92,8 @@ struct Meta<'a> {
     case: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     model: Option<&'a str>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    redacted_response_fields: &'a Vec<String>,
 }
 
 /// Provider defaults: base URL, key variable and the authentication header.
@@ -251,7 +260,22 @@ pub(crate) fn run(provider: &str, case: &str) -> Result<()> {
     let scenario: Scenario = serde_json::from_str(&scenario_text)
         .with_context(|| format!("invalid scenario {}", scenario_path.display()))?;
 
-    let Some(base_url) = scenario.base_url.as_deref().or(defaults.base_url) else {
+    if scenario.base_url.is_some() && scenario.base_url_env.is_some() {
+        bail!("scenario cannot set both `base_url` and `base_url_env`");
+    }
+    let environment_base_url = match &scenario.base_url_env {
+        Some(name) => Some(
+            env_var(name)
+                .filter(|value| !value.trim().is_empty())
+                .with_context(|| format!("environment variable {name} is not set"))?,
+        ),
+        None => None,
+    };
+    let Some(base_url) = environment_base_url
+        .as_deref()
+        .or(scenario.base_url.as_deref())
+        .or(defaults.base_url)
+    else {
         bail!("scenario must set `base_url` for provider {provider}");
     };
     let Some(api_key_env) = scenario.api_key_env.as_deref().or(defaults.api_key_env) else {
@@ -283,7 +307,7 @@ pub(crate) fn run(provider: &str, case: &str) -> Result<()> {
         .last_request()
         .context("the request was not recorded")?;
     let body_text = String::from_utf8(body.to_vec()).context("response body is not UTF-8")?;
-    println!("{} {} -> HTTP {}", recorded.method, recorded.url, status);
+    println!("{} {} -> HTTP {}", recorded.method, scenario.path, status);
 
     let case_path = dir.join(case);
     let request_body = recorded.body_json().ok();
@@ -295,7 +319,10 @@ pub(crate) fn run(provider: &str, case: &str) -> Result<()> {
         )?;
     }
     if scenario.stream {
-        let events = split_sse_events(&body_text);
+        let events = split_sse_events(&body_text)
+            .iter()
+            .map(|event| redact::sse_event(event, &scenario.redact_response_fields))
+            .collect::<Result<Vec<_>>>()?;
         if events.is_empty() {
             bail!("the response contained no SSE events");
         }
@@ -305,8 +332,9 @@ pub(crate) fn run(provider: &str, case: &str) -> Result<()> {
             &api_key,
         )?;
     } else {
-        let json: serde_json::Value =
+        let mut json: serde_json::Value =
             serde_json::from_str(&body_text).context("response body is not JSON")?;
+        redact::json(&mut json, &scenario.redact_response_fields);
         write_checked(
             &case_path.with_extension("response.json"),
             &pretty(&json)?,
@@ -326,6 +354,7 @@ pub(crate) fn run(provider: &str, case: &str) -> Result<()> {
         provider,
         case,
         model: scenario.model.as_deref(),
+        redacted_response_fields: &scenario.redact_response_fields,
     };
     write_checked(
         &case_path.with_extension("meta.json"),

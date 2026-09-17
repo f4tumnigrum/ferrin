@@ -1,0 +1,38 @@
+{
+  "path": "responses",
+  "redact_response_fields": [
+    "/instructions",
+    "/safety_identifier",
+    "/prompt_cache_key",
+    "/response/instructions",
+    "/response/safety_identifier",
+    "/response/prompt_cache_key"
+  ],
+  "model": "gpt-5.6-sol",
+  "stream": true,
+  "body": {
+    "model": "gpt-5.6-sol",
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Reply with exactly: pong"
+          }
+        ]
+      }
+    ],
+    "max_output_tokens": 512,
+    "store": false,
+    "include": [
+      "reasoning.encrypted_content"
+    ],
+    "reasoning": {
+      "effort": "low",
+      "summary": "detailed"
+    },
+    "stream": true
+  },
+  "base_url_env": "OPENAI_BASE_URL"
+}

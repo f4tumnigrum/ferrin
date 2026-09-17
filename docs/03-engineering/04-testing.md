@@ -56,6 +56,10 @@ crates/providers/ferrin-openai/tests/fixtures/
 
 Never hand-edit recorded fixtures; rerecord behavior changes and explain them in the PR.
 
+[Decision] A recording scenario may specify `redact_response_fields`, a list of JSON pointers replaced with `[REDACTED]` before persistence. Apply the pointers to a JSON response or each JSON SSE payload, preserving event order and non-data SSE fields; fail on non-JSON SSE data except `[DONE]` when redaction is requested. Record the configured pointers in metadata. This permits reproducible removal of proxy-injected instructions and account/cache identifiers without hand-editing fixtures; replay does not verify redacted values.
+
+[Decision] Private recording endpoints use `base_url_env` instead of a literal `base_url`. The named environment variable is mandatory when configured, and specifying both fields is an error; never silently fall back to an official endpoint. Recording status output includes only the scenario path, not the endpoint URL. Public fixtures and reports use anonymous proxy labels.
+
 ### 3.3 Replay
 
 `FixtureServer` reconstructs JSON and SSE responses; the original dual-backend design used `wiremock` for JSON and a small hyper server for delayed SSE frames (PV-026), superseded by section 10. Assert:

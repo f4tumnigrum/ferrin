@@ -16,6 +16,9 @@ mod publish_order;
 mod record_fixture;
 mod workspace;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Parser, Debug)]
 #[command(name = "xtask", about = "Ferrin workspace automation")]
 struct Cli {
