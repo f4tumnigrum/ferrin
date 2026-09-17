@@ -34,7 +34,7 @@ pub async fn realtime_tool_definitions(
             continue;
         }
         let tool_context = tool
-            .validate_context(name, tools_context.cloned())
+            .validate_named_context(name, tools_context)
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
         let ctx = tool_context.map_or_else(
             DescriptionContext::default,
@@ -68,6 +68,10 @@ impl ToolTurn {
     /// Records a tool call announced by the model.
     pub(super) fn call_started(&mut self, call_id: &str, name: &ToolName) {
         self.in_response.insert(call_id.to_owned());
+        self.record_name(call_id, name);
+    }
+
+    pub(super) fn record_name(&mut self, call_id: &str, name: &ToolName) {
         self.names.insert(call_id.to_owned(), name.clone());
     }
 

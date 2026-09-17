@@ -63,6 +63,72 @@ fn first_file(prompt: &[PromptMessage]) -> &FileData {
 }
 
 #[tokio::test]
+async fn tool_result_files_download_for_both_roles_and_preserve_declared_media_types() {
+    for role in ["assistant", "tool"] {
+        for media_type in ["image", "application/json"] {
+            for streaming in [false, true] {
+                let model = mock()
+                    .generate(text_result("done"))
+                    .stream(ferrin_testing::text_parts(["done"], Usage::default()))
+                    .build_shared();
+                let requests = Arc::new(Mutex::new(Vec::new()));
+                let downloader: Arc<dyn DownloadFn> = Arc::new(RecordingDownloader {
+                    requests: Arc::clone(&requests),
+                    file: Some(downloaded_file()),
+                });
+                let mut message = serde_json::json!({"role":role,"content":[{
+                    "type":"tool-result","tool_call_id":"one","tool_name":"test",
+                    "output":{"type":"content","value":[{
+                        "type":"file","data":{"type":"url","url":"https://example.com/private.png"},
+                        "media_type":media_type,"filename":"result.bin","provider_options":{"test":{"keep":true}}
+                    }]}
+                }]});
+                let messages: Vec<Message> =
+                    serde_json::from_value(serde_json::json!([message])).unwrap();
+                let calls = if streaming {
+                    ferrin_core::stream_text(Arc::clone(&model))
+                        .messages(messages)
+                        .download(downloader)
+                        .await
+                        .unwrap()
+                        .consume()
+                        .await
+                        .unwrap();
+                    model.stream_calls()
+                } else {
+                    generate_text(Arc::clone(&model))
+                        .messages(messages)
+                        .download(downloader)
+                        .await
+                        .unwrap();
+                    model.generate_calls()
+                };
+                message["content"][0]["output"]["value"][0]["data"] =
+                    serde_json::json!({"type":"data","data":"aW1hZ2U="});
+                message["content"][0]["output"]["value"][0]["media_type"] =
+                    serde_json::json!(if media_type == "image" {
+                        "image/png"
+                    } else {
+                        media_type
+                    });
+                assert_eq!(
+                    calls[0].prompt,
+                    serde_json::from_value::<Vec<PromptMessage>>(serde_json::json!([message]))
+                        .unwrap()
+                );
+                assert_eq!(
+                    *requests.lock().unwrap(),
+                    vec![vec![DownloadRequest {
+                        url: Url::parse("https://example.com/private.png").unwrap(),
+                        is_url_supported_by_model: false,
+                    }]]
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn custom_downloaders_receive_supported_urls_and_may_preserve_them() {
     for supported in [false, true] {
         for inline in [false, true] {

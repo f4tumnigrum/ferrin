@@ -25,15 +25,15 @@ use crate::retry::retry;
 use crate::telemetry::ModelIdentity;
 use crate::telemetry::spans;
 
-/// Media type used when neither the provider nor detection knows better.
-const DEFAULT_AUDIO_MEDIA_TYPE: &str = "audio/mpeg";
+/// Media type used when byte detection cannot recognize the audio.
+const DEFAULT_AUDIO_MEDIA_TYPE: &str = "audio/mp3";
 
 /// Generated audio.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedAudio {
     /// Audio bytes.
     pub data: Bytes,
-    /// Media type (reported, detected, or `audio/mpeg`).
+    /// Media type detected from the bytes, or `audio/mp3`.
     pub media_type: MediaType,
     /// Container format derived from the media type (`mp3` for
     /// `audio/mpeg`, otherwise the subtype).
@@ -189,10 +189,7 @@ async fn run(builder: GenerateSpeech) -> Result<GenerateSpeechResult, Error> {
                 });
             }
             spans::log_warnings(&result.warnings, &identity);
-            let media_type = result
-                .media_type
-                .clone()
-                .or_else(|| detect_media_type_for(&result.audio, "audio"))
+            let media_type = detect_media_type_for(&result.audio, "audio")
                 .unwrap_or_else(|| MediaType::new(DEFAULT_AUDIO_MEDIA_TYPE));
             Ok(GenerateSpeechResult {
                 audio: GeneratedAudio::new(result.audio, media_type),

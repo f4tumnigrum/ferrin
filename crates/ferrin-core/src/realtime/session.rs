@@ -1,4 +1,7 @@
 //! Connection task of a realtime session.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -50,6 +53,7 @@ struct Shared {
     cancellation: CancellationToken,
     closed: AtomicBool,
     tool_turn: Mutex<ToolTurn>,
+    serialization: tokio::sync::Semaphore,
 }
 
 impl Shared {
@@ -86,8 +90,21 @@ impl RealtimeHandle {
     /// Fails when the model cannot serialize the event or the session is
     /// closed.
     pub async fn send(&self, event: RealtimeClientEvent) -> Result<(), Error> {
-        let raw = self.shared.model.serialize_client_event(event).await?;
-        self.send_raw(raw).await
+        let _serialization = tokio::select! {
+            biased;
+            () = self.shared.cancellation.cancelled() => return Err(closed_error()),
+            permit = self.shared.serialization.acquire() => permit.map_err(|_| closed_error())?,
+        };
+        let raw = tokio::select! {
+            biased;
+            () = self.shared.cancellation.cancelled() => return Err(closed_error()),
+            result = self.shared.model.serialize_client_event(event) => result?,
+        };
+        if raw.is_null() {
+            Ok(())
+        } else {
+            self.send_raw(raw).await
+        }
     }
 
     /// Sends a raw provider message.
@@ -226,10 +243,12 @@ pub(super) async fn start(
             config: Box::new(config),
         })
         .await?;
-    socket
-        .send(Message::text(initial.to_string()))
-        .await
-        .map_err(Error::other)?;
+    if !initial.is_null() {
+        socket
+            .send(wire_message(initial))
+            .await
+            .map_err(Error::other)?;
+    }
 
     let (outbound_tx, outbound_rx) = mpsc::channel(OUTBOUND_BUFFER);
     let shared = Arc::new(Shared {
@@ -238,6 +257,7 @@ pub(super) async fn start(
         cancellation,
         closed: AtomicBool::new(false),
         tool_turn: Mutex::new(ToolTurn::default()),
+        serialization: tokio::sync::Semaphore::new(1),
     });
     let handle = RealtimeHandle {
         shared: Arc::clone(&shared),
@@ -319,7 +339,7 @@ impl Connection {
     }
 
     async fn send_raw(&mut self, raw: JsonValue) -> Result<(), ()> {
-        match self.socket.send(Message::text(raw.to_string())).await {
+        match self.socket.send(wire_message(raw)).await {
             Ok(()) => Ok(()),
             Err(error) => {
                 self.emit(Err(Error::other(error))).await;
@@ -369,7 +389,7 @@ impl Connection {
                 ..
             } => {
                 let name = ToolName::new(name.clone());
-                self.shared.tool_turn().call_started(call_id, &name);
+                self.shared.tool_turn().record_name(call_id, &name);
                 Some(ToolCall {
                     call_id: call_id.clone(),
                     name,
@@ -402,17 +422,6 @@ impl Connection {
     /// Starts executing a tool call; returns `false` when the consumer is
     /// gone.
     async fn start_tool_call(&self, call: ToolCall, tool_tasks: &mut JoinSet<()>) -> bool {
-        let Some(tool) = self.tools.get(call.name.as_str()).map(Arc::clone) else {
-            let available = self.tools.names().cloned().collect();
-            return self
-                .emit(Err(Error::no_such_tool(call.name, available)))
-                .await;
-        };
-        if !tool.is_executable() {
-            // Advertised without an executor: the application answers through
-            // `add_tool_output`.
-            return true;
-        }
         let input: JsonValue = match serde_json::from_str(&call.arguments) {
             Ok(input) => input,
             Err(error) => {
@@ -425,6 +434,18 @@ impl Connection {
                     .await;
             }
         };
+        self.shared
+            .tool_turn()
+            .call_started(&call.call_id, &call.name);
+        let Some(tool) = self.tools.get(call.name.as_str()).map(Arc::clone) else {
+            let available = self.tools.names().cloned().collect();
+            return self
+                .emit(Err(Error::no_such_tool(call.name, available)))
+                .await;
+        };
+        if !tool.is_executable() {
+            return true;
+        }
         let input = match tool.validate_input(&call.name, input) {
             Ok(input) => input,
             Err(error) => {
@@ -437,17 +458,18 @@ impl Connection {
                     .await;
             }
         };
-        let tools_context = match tool.validate_context(&call.name, self.tools_context.clone()) {
-            Ok(context) => context,
-            Err(error) => {
-                return self
-                    .emit(Err(Error::invalid_argument(
-                        "tools_context",
-                        error.to_string(),
-                    )))
-                    .await;
-            }
-        };
+        let tools_context =
+            match tool.validate_named_context(&call.name, self.tools_context.as_ref()) {
+                Ok(context) => context,
+                Err(error) => {
+                    return self
+                        .emit(Err(Error::invalid_argument(
+                            "tools_context",
+                            error.to_string(),
+                        )))
+                        .await;
+                }
+            };
         let ctx = ToolContext::new(ToolCallId::new(call.call_id.clone()))
             .with_cancellation(self.shared.cancellation.child_token())
             .with_tools_context(tools_context);
@@ -464,6 +486,13 @@ impl Connection {
             events,
         ));
         true
+    }
+}
+
+fn wire_message(raw: JsonValue) -> Message {
+    match raw {
+        JsonValue::String(text) => Message::text(text),
+        other => Message::text(other.to_string()),
     }
 }
 

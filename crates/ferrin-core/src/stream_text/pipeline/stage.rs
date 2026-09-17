@@ -1,6 +1,7 @@
 //! The producer stage: runs the step loop in a background task and emits
 //! events through the bounded channel.
 
+use crate::generate_text::tools::ToolEnvironment;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -311,7 +312,6 @@ impl Stage {
     ) -> Result<usize, Error> {
         let ctx = Arc::clone(&self.ctx);
         let messages = Arc::clone(&attempt.step_messages);
-        let tools_context = attempt.inputs.tools_context.clone();
         let (progress_tx, mut progress_rx) =
             mpsc::channel::<StepContent>(TOOL_RESULT_CHANNEL_CAPACITY);
         let mut progress_tx = Some(progress_tx);
@@ -328,14 +328,13 @@ impl Stage {
                 *progress_tx = None;
                 return Ok(false);
             };
-            let mut task = ctx.tool_task(
+            let task = ctx.tool_task(
                 &tool,
                 &call,
                 &messages,
-                tools_context.as_ref(),
+                ToolEnvironment::for_step(&attempt.inputs),
                 cancellation,
             )?;
-            task.runtime_context = attempt.inputs.runtime_context.clone();
             let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
             let progress = progress_tx.clone();
             tasks.spawn(run_tool_call(call, tool, task, progress).instrument(span));
@@ -386,14 +385,14 @@ impl Stage {
             return StageOutcome::Failed(error);
         }
         if !self.error_reported {
-            self.ctx.telemetry.on_error(&ErrorEvent {
-                call_id: &self.ctx.call_id,
-                error: &error,
-                phase: ErrorPhase::Stream,
-            });
-            if let Some(on_error) = &self.stream.on_error {
-                let _ = on_error.call(StreamErrorInfo::from_error(&error)).await;
-            }
+            self.ctx
+                .telemetry
+                .on_error(&ErrorEvent {
+                    call_id: &self.ctx.call_id,
+                    error: &error,
+                    phase: ErrorPhase::Stream,
+                })
+                .await;
         }
         let _ = self
             .emitter

@@ -436,3 +436,46 @@ async fn cancellation_during_webhook_wait_is_immediate() {
         (Duration::ZERO, 0)
     );
 }
+
+#[tokio::test]
+async fn frame_images_override_standalone_image_and_reference_inputs() {
+    use ferrin_spec::Warning;
+    use ferrin_spec::video_model::FrameImage;
+    use ferrin_spec::video_model::FrameType;
+    use ferrin_spec::video_model::VideoFile;
+    let file = |payload: &'static [u8]| VideoFile {
+        data: FileData::bytes(Bytes::from_static(payload)),
+        media_type: Some(MediaType::new("image/png")),
+        provider_options: None,
+    };
+    let model = Arc::new(mock());
+    let first = file(b"first");
+    let result = generate_video(Arc::clone(&model), "cat")
+        .n(2)
+        .image(file(b"standalone"))
+        .frame_images(vec![FrameImage {
+            image: first.clone(),
+            frame_type: FrameType::FirstFrame,
+        }])
+        .input_references(vec![file(b"reference")])
+        .await
+        .unwrap();
+    assert_eq!(
+        result.warnings,
+        vec![
+            Warning::other(
+                "inputReferences were ignored because frameImages were provided; frameImages and inputReferences cannot be combined."
+            ),
+            Warning::other(
+                "prompt.image was ignored because a first_frame frameImage was provided; the first_frame frameImage takes precedence as the start image."
+            ),
+        ]
+    );
+    assert_eq!(
+        lock(&model.generate_calls)
+            .iter()
+            .map(|call| (call.image.clone(), call.input_references.clone()))
+            .collect::<Vec<_>>(),
+        vec![(Some(first.clone()), vec![]), (Some(first), vec![])]
+    );
+}

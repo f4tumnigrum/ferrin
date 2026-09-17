@@ -2,6 +2,7 @@
 //! same names).
 
 use ferrin_core::middleware::builtin::extract_reasoning;
+use ferrin_spec::Content;
 use ferrin_spec::FinishReason;
 use ferrin_spec::PartId;
 use ferrin_spec::StreamPart;
@@ -140,6 +141,40 @@ async fn should_preserve_reasoning_property_even_when_rest_contains_other_proper
 }
 
 // ---- wrapStream ----
+
+#[test]
+fn generated_part_metadata_is_preserved_only_without_extraction() {
+    let metadata = Some(
+        [(
+            "mock".to_owned(),
+            json!({"signature":"value"}).as_object().unwrap().clone(),
+        )]
+        .into(),
+    );
+    let untouched = Content::Text {
+        text: "plain".into(),
+        provider_metadata: metadata.clone(),
+    };
+    let result = GenerateResult::new(
+        vec![
+            untouched.clone(),
+            Content::Text {
+                text: "<think>reason</think>answer".into(),
+                provider_metadata: metadata,
+            },
+        ],
+        FinishReason::stop(),
+    );
+    let extracted = extract_reasoning("think").apply(result);
+    assert_eq!(
+        extracted.content,
+        vec![
+            untouched,
+            Content::reasoning("reason"),
+            Content::text("answer")
+        ]
+    );
+}
 
 #[tokio::test]
 async fn should_not_read_object_prototype_for_missing_text_part_ids() {

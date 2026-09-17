@@ -1,6 +1,9 @@
 use std::future::Future;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 use ferrin_core::Error;
 use ferrin_core::StepContent;
@@ -41,6 +44,7 @@ use futures_util::StreamExt;
 use futures_util::stream;
 use pretty_assertions::assert_eq;
 use serde_json::json;
+use tokio_util::sync::CancellationToken;
 
 use super::super::common::weather_tools;
 use super::common::lock;
@@ -49,6 +53,8 @@ struct BatchMock {
     provider: ProviderId,
     starts: Mutex<Vec<BatchStartOptions>>,
     listing: bool,
+    pending_results: AtomicBool,
+    result_cancellation: Mutex<Option<CancellationToken>>,
 }
 
 impl Batch for BatchMock {
@@ -88,8 +94,12 @@ impl Batch for BatchMock {
 
     async fn do_get_batch_results(
         &self,
-        _options: BatchOperationOptions,
+        options: BatchOperationOptions,
     ) -> Result<BatchResultStream, ProviderError> {
+        *lock(&self.result_cancellation) = Some(options.cancellation);
+        if self.pending_results.load(Ordering::Relaxed) {
+            return Ok(Box::pin(stream::pending()));
+        }
         {
             let mut text = GenerateResult::new(
                 vec![
@@ -150,6 +160,8 @@ fn mock(listing: bool) -> Arc<BatchMock> {
         provider: ProviderId::new("mock"),
         starts: Mutex::new(Vec::new()),
         listing,
+        pending_results: AtomicBool::new(false),
+        result_cancellation: Mutex::new(None),
     })
 }
 
@@ -263,4 +275,74 @@ async fn status_results_cancel_and_list() {
 
     let error = list_batches(mock(false)).await.unwrap_err();
     assert!(error.as_provider().is_some(), "{error}");
+}
+
+#[tokio::test]
+async fn zero_image_count_is_forwarded_to_the_batch_provider() {
+    let api = mock(false);
+    start_batch(
+        Arc::clone(&api),
+        [ImageBatchRequest::new("image", "image-model", "a tree").n(0)],
+    )
+    .await
+    .unwrap();
+    let starts = lock(&api.starts);
+    assert!(matches!(
+        &starts[0].requests[0],
+        ModelBatchRequest::Image { options, .. } if options.n == 0
+    ));
+}
+
+#[tokio::test(start_paused = true)]
+async fn batch_results_deadline_covers_stream_consumption() {
+    let api = mock(false);
+    api.pending_results.store(true, Ordering::Relaxed);
+    let parent = CancellationToken::new();
+    let mut results = get_batch_results(Arc::clone(&api), "batch-1")
+        .cancellation(parent.clone())
+        .timeout(Duration::from_secs(5))
+        .await
+        .unwrap();
+    let provider = lock(&api.result_cancellation).clone().unwrap();
+    assert!(!provider.is_cancelled());
+    tokio::time::advance(Duration::from_secs(5)).await;
+    assert!(matches!(
+        results.next().await,
+        Some(Err(Error::Timeout { .. }))
+    ));
+    assert!(results.next().await.is_none());
+    assert_eq!(
+        (provider.is_cancelled(), parent.is_cancelled()),
+        (true, false)
+    );
+}
+
+#[tokio::test]
+async fn batch_results_drop_cancels_the_provider_without_polling() {
+    let api = mock(false);
+    let parent = CancellationToken::new();
+    let results = get_batch_results(Arc::clone(&api), "batch-1")
+        .cancellation(parent.clone())
+        .await
+        .unwrap();
+    let provider = lock(&api.result_cancellation).clone().unwrap();
+    drop(results);
+    assert_eq!(
+        (provider.is_cancelled(), parent.is_cancelled()),
+        (true, false)
+    );
+}
+
+#[tokio::test]
+async fn batch_results_cancellation_ends_an_uncooperative_provider_stream() {
+    let api = mock(false);
+    api.pending_results.store(true, Ordering::Relaxed);
+    let parent = CancellationToken::new();
+    let mut results = get_batch_results(Arc::clone(&api), "batch-1")
+        .cancellation(parent.clone())
+        .await
+        .unwrap();
+    parent.cancel();
+    assert!(matches!(results.next().await, Some(Err(Error::Cancelled))));
+    assert!(results.next().await.is_none());
 }

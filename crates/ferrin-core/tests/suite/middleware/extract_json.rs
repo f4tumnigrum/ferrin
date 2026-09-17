@@ -3,6 +3,7 @@ use ferrin_core::middleware::builtin::strip_json_fences;
 use ferrin_spec::StreamPart;
 use ferrin_testing::MockLanguageModel;
 use pretty_assertions::assert_eq;
+use serde_json::json;
 
 use super::common::generate;
 use super::common::render;
@@ -28,6 +29,43 @@ fn strips_fences() {
     assert_eq!(strip_json_fences("```\n{\"a\":1}\n```  \n"), "{\"a\":1}");
     assert_eq!(strip_json_fences("  {\"a\":1}  "), "{\"a\":1}");
     assert_eq!(strip_json_fences("```json{\"a\":1}```"), "{\"a\":1}");
+}
+
+#[test]
+fn fence_whitespace_matches_ecmascript_trim_rules() {
+    assert_eq!(
+        strip_json_fences("```json\u{feff}\n{\"a\":1}\n```\u{feff}"),
+        "{\"a\":1}"
+    );
+    assert_eq!(strip_json_fences("\u{feff}{\"a\":1}\u{feff}"), "{\"a\":1}");
+    assert_eq!(
+        strip_json_fences("\u{0085}{\"a\":1}\u{0085}"),
+        "\u{0085}{\"a\":1}\u{0085}"
+    );
+}
+
+#[tokio::test]
+async fn unmatched_text_deltas_preserve_metadata() {
+    let parts = vec![StreamPart::TextDelta {
+        id: "unmatched".into(),
+        delta: "raw".into(),
+        provider_metadata: Some(
+            [(
+                "mock".to_owned(),
+                json!({"signature":"value"}).as_object().unwrap().clone(),
+            )]
+            .into(),
+        ),
+    }];
+    let expected = serde_json::to_value(&parts).unwrap();
+    let model = wrapped(
+        MockLanguageModel::builder().stream(parts).build_shared(),
+        extract_json(),
+    );
+    assert_eq!(
+        serde_json::to_value(stream(&model).await).unwrap(),
+        expected
+    );
 }
 
 #[tokio::test]

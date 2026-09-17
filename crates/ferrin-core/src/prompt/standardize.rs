@@ -7,38 +7,82 @@ use ferrin_spec::ProviderOptions;
 
 use crate::error::Error;
 
-/// System instructions: text with optional provider options.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Instructions {
-    /// The instruction text.
-    pub content: String,
-    /// Provider-specific options for the system message.
-    pub provider_options: Option<ProviderOptions>,
+/// One system message or an ordered sequence of system messages.
+///
+/// String conversions create a single message. Use [`Self::messages`] for
+/// several instruction messages with independent provider options.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Instructions {
+    /// A single system message.
+    System(SystemMessage),
+    /// System messages in prompt order (an empty vector adds none).
+    Messages(Vec<SystemMessage>),
+}
+
+impl Default for Instructions {
+    fn default() -> Self {
+        Self::new("")
+    }
 }
 
 impl Instructions {
-    /// Creates instructions from text.
+    /// Creates a single system instruction from text.
     #[must_use]
     pub fn new(content: impl Into<String>) -> Self {
-        Self {
+        Self::System(SystemMessage {
             content: content.into(),
             provider_options: None,
-        }
+        })
     }
 
-    /// Sets provider options.
+    /// Creates ordered instructions with independent message metadata.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ferrin_core::Instructions;
+    /// use ferrin_message::SystemMessage;
+    /// let instructions = Instructions::messages([
+    ///     SystemMessage { content: "Be concise.".into(), provider_options: None },
+    ///     SystemMessage { content: "Use supplied sources.".into(), provider_options: None },
+    /// ]);
+    /// assert_eq!(instructions.as_messages().len(), 2);
+    /// ```
+    #[must_use]
+    pub fn messages(messages: impl IntoIterator<Item = SystemMessage>) -> Self {
+        Self::Messages(messages.into_iter().collect())
+    }
+
+    /// Replaces provider options on every configured system message.
     #[must_use]
     pub fn with_provider_options(mut self, options: ProviderOptions) -> Self {
-        self.provider_options = Some(options);
+        match &mut self {
+            Self::System(message) => message.provider_options = Some(options),
+            Self::Messages(messages) => {
+                for message in messages {
+                    message.provider_options = Some(options.clone());
+                }
+            }
+        }
         self
     }
 
-    /// Converts into a system message.
+    /// Borrows instruction messages in prompt order.
     #[must_use]
-    pub fn into_message(self) -> SystemMessage {
-        SystemMessage {
-            content: self.content,
-            provider_options: self.provider_options,
+    pub fn as_messages(&self) -> &[SystemMessage] {
+        match self {
+            Self::System(message) => std::slice::from_ref(message),
+            Self::Messages(messages) => messages,
+        }
+    }
+
+    /// Consumes the instructions into ordered system messages.
+    #[must_use]
+    pub fn into_messages(self) -> Vec<SystemMessage> {
+        match self {
+            Self::System(message) => vec![message],
+            Self::Messages(messages) => messages,
         }
     }
 }
@@ -57,10 +101,13 @@ impl From<String> for Instructions {
 
 impl From<SystemMessage> for Instructions {
     fn from(message: SystemMessage) -> Self {
-        Self {
-            content: message.content,
-            provider_options: message.provider_options,
-        }
+        Self::System(message)
+    }
+}
+
+impl From<Vec<SystemMessage>> for Instructions {
+    fn from(messages: Vec<SystemMessage>) -> Self {
+        Self::Messages(messages)
     }
 }
 

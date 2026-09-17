@@ -21,12 +21,14 @@ use ferrin_spec::realtime_model::ClientSecretOptions;
 use ferrin_spec::realtime_model::RealtimeSessionConfig;
 use ferrin_spec::realtime_model::WebSocketConfig;
 use ferrin_tool::ToolSet;
+use futures_util::FutureExt;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use http::header::SEC_WEBSOCKET_PROTOCOL;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use tokio::net::TcpListener;
+use tokio::sync::Notify;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_tungstenite::tungstenite::Message;
@@ -41,6 +43,7 @@ use super::common::weather_tools;
 struct MockServer {
     url: Url,
     received: Arc<Mutex<Vec<JsonValue>>>,
+    received_change: Arc<Notify>,
     to_client: mpsc::Sender<JsonValue>,
     tasks: JoinSet<()>,
 }
@@ -50,9 +53,11 @@ impl MockServer {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let received = Arc::new(Mutex::new(Vec::new()));
+        let received_change = Arc::new(Notify::new());
         let (to_client, mut from_test) = mpsc::channel::<JsonValue>(32);
         let mut tasks = JoinSet::new();
         let sink = Arc::clone(&received);
+        let changed = Arc::clone(&received_change);
         tasks.spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
             // Echo the first requested sub-protocol, as real servers do.
@@ -87,6 +92,7 @@ impl MockServer {
                         Some(Ok(Message::Text(text))) => {
                             let value: JsonValue = serde_json::from_str(text.as_str()).unwrap();
                             sink.lock().unwrap().push(value);
+                            changed.notify_one();
                         }
                         Some(Ok(Message::Close(_))) | None => break,
                         Some(Ok(_)) => {}
@@ -105,6 +111,7 @@ impl MockServer {
         Self {
             url: Url::parse(&format!("ws://127.0.0.1:{port}/realtime")).unwrap(),
             received,
+            received_change,
             to_client,
             tasks,
         }
@@ -122,11 +129,11 @@ impl MockServer {
             if snapshot.len() >= count {
                 return snapshot;
             }
-            assert!(
-                tokio::time::Instant::now() < deadline,
-                "timed out waiting for {count} messages, got {snapshot:?}"
-            );
-            tokio::time::sleep(Duration::from_millis(5)).await;
+            tokio::time::timeout_at(deadline, self.received_change.notified())
+                .await
+                .unwrap_or_else(|_| {
+                    panic!("timed out waiting for {count} messages, got {snapshot:?}")
+                });
         }
     }
 
@@ -149,6 +156,8 @@ struct MockRealtimeModel {
     provider: ProviderId,
     model_id: ModelId,
     secret_url: Option<Url>,
+    suppress_response_create: bool,
+    serialization_gate: Option<Arc<Notify>>,
 }
 
 impl RealtimeModel for MockRealtimeModel {
@@ -197,14 +206,21 @@ impl RealtimeModel for MockRealtimeModel {
         })?])
     }
 
-    fn serialize_client_event(
+    async fn serialize_client_event(
         &self,
         event: RealtimeClientEvent,
-    ) -> impl Future<Output = Result<JsonValue, ProviderError>> + Send {
-        std::future::ready(
-            serde_json::to_value(event)
-                .map_err(|error| ProviderError::Other(error.to_string().into())),
-        )
+    ) -> Result<JsonValue, ProviderError> {
+        if self.suppress_response_create
+            && matches!(event, RealtimeClientEvent::ResponseCreate { .. })
+        {
+            return Ok(JsonValue::Null);
+        }
+        if matches!(event, RealtimeClientEvent::InputAudioCommit)
+            && let Some(gate) = &self.serialization_gate
+        {
+            gate.notified().await;
+        }
+        serde_json::to_value(event).map_err(|error| ProviderError::Other(error.to_string().into()))
     }
 
     fn build_session_config(
@@ -224,6 +240,8 @@ fn model() -> Arc<MockRealtimeModel> {
         provider: ProviderId::new("mock"),
         model_id: ModelId::new("realtime-mock"),
         secret_url: None,
+        suppress_response_create: false,
+        serialization_gate: None,
     })
 }
 
@@ -426,6 +444,8 @@ async fn creates_a_client_secret_when_none_is_given() {
         provider: ProviderId::new("mock"),
         model_id: ModelId::new("realtime-mock"),
         secret_url: Some(server.url.clone()),
+        suppress_response_create: false,
+        serialization_gate: None,
     });
     let session = realtime_session(issuing)
         .expires_after_seconds(600)
@@ -489,7 +509,10 @@ async fn tool_approval_controls_automatic_execution_and_manual_outputs() {
         (
             NeedsApproval::Dynamic(Arc::new(|input, ctx| {
                 Box::pin(async move {
-                    assert_eq!((input, ctx.tools_context), (json!({}), None));
+                    assert_eq!(
+                        (input, ctx.tools_context),
+                        (json!({}), Some(json!({"tenant":"selected"})))
+                    );
                     true
                 })
             })),
@@ -513,7 +536,7 @@ async fn tool_approval_controls_automatic_execution_and_manual_outputs() {
         let mut session = realtime_session(model())
             .client_secret(server.secret())
             .tools(ToolSet::new().insert("guarded", tool).unwrap())
-            .tools_context(json!({"ignored_without_schema": true}))
+            .tools_context(json!({"guarded":{"tenant":"selected"},"other":{"private":true}}))
             .connect()
             .await
             .unwrap();
@@ -597,6 +620,116 @@ async fn cancellation_during_approval_resolution_prevents_execution() {
     let error = next(&mut session).await.unwrap_err();
     assert!(matches!(error, Error::Cancelled), "{error}");
     assert_eq!(executions.load(Ordering::SeqCst), 0);
+    session.close().await.unwrap();
+    server.shutdown().await;
+}
+
+#[tokio::test]
+async fn malformed_call_does_not_block_a_valid_calls_follow_up() {
+    let server = MockServer::start().await;
+    let mut session = realtime_session(model())
+        .client_secret(server.secret())
+        .tools(weather_tools())
+        .connect()
+        .await
+        .unwrap();
+    for (call_id, arguments) in [("bad", "{"), ("good", r#"{"city":"Rome"}"#)] {
+        server
+            .push(json!({
+                "type": "function-call-arguments-done", "response_id": "resp_1",
+                "item_id": call_id, "call_id": call_id, "name": "get_weather",
+                "arguments": arguments, "raw": {}
+            }))
+            .await;
+        next(&mut session).await.unwrap();
+        if call_id == "bad" {
+            assert!(matches!(
+                next(&mut session).await,
+                Err(Error::InvalidToolInput(_))
+            ));
+        }
+    }
+    server
+        .push(
+            json!({"type":"response-done", "response_id":"resp_1", "status":"completed", "raw":{}}),
+        )
+        .await;
+    next(&mut session).await.unwrap();
+    let sent = server.wait_for(3).await;
+    assert_eq!(
+        sent.iter()
+            .map(|value| value["type"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec![
+            "session-update",
+            "conversation-item-create",
+            "response-create"
+        ]
+    );
+    session.close().await.unwrap();
+    server.shutdown().await;
+}
+
+#[tokio::test]
+async fn null_serializations_are_skipped_and_raw_strings_are_not_double_encoded() {
+    let server = MockServer::start().await;
+    let mut realtime = model();
+    Arc::get_mut(&mut realtime)
+        .unwrap()
+        .suppress_response_create = true;
+    let session = realtime_session(realtime)
+        .client_secret(server.secret())
+        .connect()
+        .await
+        .unwrap();
+    session.send_text("hello").await.unwrap();
+    session
+        .handle()
+        .send_raw(JsonValue::String(r#"{"type":"raw"}"#.to_owned()))
+        .await
+        .unwrap();
+    assert_eq!(
+        server
+            .wait_for(3)
+            .await
+            .iter()
+            .map(|value| value["type"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["session-update", "conversation-item-create", "raw"]
+    );
+    session.close().await.unwrap();
+    server.shutdown().await;
+}
+
+#[tokio::test]
+async fn event_serialization_preserves_order_across_concurrent_senders() {
+    let server = MockServer::start().await;
+    let mut realtime = model();
+    let gate = Arc::new(Notify::new());
+    Arc::get_mut(&mut realtime).unwrap().serialization_gate = Some(Arc::clone(&gate));
+    let session = realtime_session(realtime)
+        .client_secret(server.secret())
+        .connect()
+        .await
+        .unwrap();
+    let handle = session.handle();
+    let mut first = Box::pin(handle.send(RealtimeClientEvent::InputAudioCommit));
+    assert!(first.as_mut().now_or_never().is_none());
+    let mut second = Box::pin(handle.send(RealtimeClientEvent::InputAudioClear));
+    assert!(second.as_mut().now_or_never().is_none());
+    gate.notify_one();
+    let (first, second) = tokio::join!(first, second);
+    first.unwrap();
+    second.unwrap();
+    assert_eq!(
+        server
+            .wait_for(3)
+            .await
+            .iter()
+            .map(|value| value["type"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["session-update", "input-audio-commit", "input-audio-clear"]
+    );
     session.close().await.unwrap();
     server.shutdown().await;
 }

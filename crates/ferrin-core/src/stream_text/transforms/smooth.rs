@@ -1,6 +1,9 @@
 //! `smooth_stream`: buffers text and reasoning deltas and re-emits them in
 //! word- or line-sized chunks with a small delay, producing an even typing
 //! rhythm regardless of provider chunking.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::collections::VecDeque;
 use std::fmt;
@@ -16,7 +19,9 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use super::StreamTransform;
 use super::TransformContext;
+use crate::error::Error;
 use crate::stream_text::EventStream;
+use crate::stream_text::StreamErrorInfo;
 use crate::stream_text::StreamEvent;
 
 /// A function returning the byte length of the next chunk in a buffer, or
@@ -33,14 +38,14 @@ pub enum Chunking {
     /// Up to and including a run of newlines (`\n+`).
     Line,
     /// The first match of a regular expression; the chunk spans from the
-    /// buffer start to the end of the match. Empty matches are ignored.
+    /// buffer start to the end of the match. Empty matches fail the stream.
     Regex(Regex),
-    /// Unicode word boundaries (UAX #29): one word plus the whitespace that
-    /// follows it. Splits scripts written without spaces character by
-    /// character.
+    /// The first Unicode word-boundary segment (UAX #29), emitted immediately.
+    /// Whitespace and punctuation are separate segments; locale dictionaries
+    /// and ICU tailoring require an application-supplied detector.
     UnicodeWords,
     /// A custom detector. Lengths of zero, beyond the buffer or inside a
-    /// character are ignored.
+    /// character fail the smoothing stream.
     Detector(ChunkDetector),
 }
 
@@ -66,14 +71,34 @@ impl Chunking {
     /// Byte length of the next chunk in `buffer`, if complete.
     #[must_use]
     pub fn detect(&self, buffer: &str) -> Option<usize> {
+        self.detect_checked(buffer).ok().flatten()
+    }
+
+    fn detect_checked(&self, buffer: &str) -> Result<Option<usize>, Error> {
         let end = match self {
             Self::Word => word_chunk(buffer),
             Self::Line => line_chunk(buffer),
-            Self::Regex(regex) => regex.find(buffer).map(|found| found.end()),
+            Self::Regex(regex) => match regex.find(buffer) {
+                Some(found) if found.is_empty() => {
+                    return Err(Error::invalid_argument(
+                        "chunking",
+                        "chunking regex must not match an empty string",
+                    ));
+                }
+                found => found.map(|found| found.end()),
+            },
             Self::UnicodeWords => unicode_word_chunk(buffer),
             Self::Detector(detector) => detector(buffer),
-        }?;
-        (end > 0 && end <= buffer.len() && buffer.is_char_boundary(end)).then_some(end)
+        };
+        if let Some(end) = end
+            && (end == 0 || end > buffer.len() || !buffer.is_char_boundary(end))
+        {
+            return Err(Error::invalid_argument(
+                "chunking",
+                "chunk detector must return a nonempty UTF-8 prefix length",
+            ));
+        }
+        Ok(end)
     }
 }
 
@@ -106,24 +131,10 @@ fn line_chunk(buffer: &str) -> Option<usize> {
     Some(start + run)
 }
 
-/// First word (after leading whitespace) plus the whitespace following it,
-/// once the next word has started or the buffer ends in whitespace.
+/// The first segment, matching the reference Intl.Segmenter adapter's
+/// emission timing without assuming locale-specific dictionary support.
 fn unicode_word_chunk(buffer: &str) -> Option<usize> {
-    let mut seen_word = false;
-    let mut in_trailing_space = false;
-    for (index, segment) in buffer.split_word_bound_indices() {
-        let is_space = segment.chars().all(char::is_whitespace);
-        if !seen_word {
-            if !is_space {
-                seen_word = true;
-            }
-        } else if is_space {
-            in_trailing_space = true;
-        } else {
-            return Some(index);
-        }
-    }
-    in_trailing_space.then_some(buffer.len())
+    buffer.split_word_bounds().next().map(str::len)
 }
 
 /// Configuration of [`smooth_stream`].
@@ -179,7 +190,7 @@ pub struct SmoothStream {
 }
 
 impl StreamTransform for SmoothStream {
-    fn apply(&self, input: EventStream, _ctx: TransformContext) -> EventStream {
+    fn apply(&self, input: EventStream, ctx: TransformContext) -> EventStream {
         let state = SmoothState {
             input,
             delay: self.config.delay,
@@ -190,6 +201,7 @@ impl StreamTransform for SmoothStream {
             pending: VecDeque::new(),
             delay_pending: false,
             done: false,
+            context: ctx,
         };
         Box::pin(stream::unfold(state, |mut state| async move {
             loop {
@@ -197,7 +209,22 @@ impl StreamTransform for SmoothStream {
                     if state.delay_pending
                         && let Some(delay) = state.delay
                     {
-                        tokio::time::sleep(delay).await;
+                        let cancelled = tokio::select! {
+                            biased;
+                            () = state.context.cancellation().cancelled() => true,
+                            () = async {
+                                match tokio::time::Instant::now().checked_add(delay) {
+                                    Some(deadline) => tokio::time::sleep_until(deadline).await,
+                                    None => std::future::pending().await,
+                                }
+                            } => false,
+                        };
+                        if cancelled {
+                            state.pending.clear();
+                            state.buffer.clear();
+                            state.delay_pending = false;
+                            continue;
+                        }
                     }
                     state.delay_pending = delay_after;
                     return Some((event, state));
@@ -206,7 +233,19 @@ impl StreamTransform for SmoothStream {
                     return None;
                 }
                 match state.input.next().await {
-                    Some(event) => state.handle(event),
+                    Some(event) => {
+                        if let Err(error) = state.handle(event) {
+                            let info = StreamErrorInfo::from_error(&error);
+                            state.context.fail(error);
+                            state.pending.clear();
+                            state.buffer.clear();
+                            state.delay_pending = false;
+                            state.done = true;
+                            state
+                                .pending
+                                .push_back((StreamEvent::Error { error: info }, false));
+                        }
+                    }
                     None => {
                         state.done = true;
                         state.flush();
@@ -233,10 +272,11 @@ struct SmoothState {
     pending: VecDeque<(StreamEvent, bool)>,
     delay_pending: bool,
     done: bool,
+    context: TransformContext,
 }
 
 impl SmoothState {
-    fn handle(&mut self, event: StreamEvent) {
+    fn handle(&mut self, event: StreamEvent) -> Result<(), Error> {
         match event {
             StreamEvent::TextDelta {
                 id,
@@ -251,6 +291,7 @@ impl SmoothState {
             other => {
                 self.flush();
                 self.pending.push_back((other, false));
+                Ok(())
             }
         }
     }
@@ -261,27 +302,26 @@ impl SmoothState {
         id: PartId,
         text: String,
         provider_metadata: Option<ProviderMetadata>,
-    ) {
+    ) -> Result<(), Error> {
         let same_part = self
             .current
             .as_ref()
             .is_some_and(|(current_kind, current_id)| *current_kind == kind && *current_id == id);
-        if !same_part || provider_metadata.is_some() {
+        if !same_part {
             self.flush();
-            self.provider_metadata = provider_metadata;
         }
         self.buffer.push_str(&text);
         self.current = Some((kind, id));
-        if text.is_empty() && self.provider_metadata.is_some() {
-            self.flush();
+        if provider_metadata.is_some() {
+            self.provider_metadata = provider_metadata;
         }
-        while let Some(end) = self.chunking.detect(&self.buffer) {
+        while let Some(end) = self.chunking.detect_checked(&self.buffer)? {
             let chunk: String = self.buffer.drain(..end).collect();
-            let metadata = self.provider_metadata.take();
-            if let Some(event) = self.delta(chunk, metadata) {
+            if let Some(event) = self.delta(chunk, None) {
                 self.pending.push_back((event, true));
             }
         }
+        Ok(())
     }
 
     fn flush(&mut self) {

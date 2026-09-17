@@ -7,12 +7,34 @@ All notable changes to this crate are documented here. The format follows
 
 ### Added
 
+- Optional agent call-options schema validation and complete prepared-call overrides,
+  including download, approval, tool callers, repair, refinement and sandbox settings.
+- Independent full, text, partial-output and array-element stream views, with
+  completion that drives the shared pipeline and supports non-`Clone` outputs.
+- Aggregate generation accessors and original documents in reranking results.
+- Logical `on_start` / `on_end` hooks and independent `runtime_context` for
+  `embed`, `embed_many` and `rerank`, including empty-input completion.
+- Corresponding operation-level telemetry callbacks with filtered copies of
+  inputs, outputs and runtime context, dispatched concurrently with application hooks.
+
 - Separate JSON runtime context for generation and agent builders, prepared calls,
   step preparation, approval policies, lifecycle hooks and serialized step results.
 - Tool-definition metadata on parsed calls, preliminary and final results, errors,
   provider outcomes and replayed approval outcomes, distinct from provider metadata.
 
 ### Changed
+
+- Align existing generation, agent, output and modality contracts with reference
+  SDK revision `6c6c221` (ADR 0026). `Instructions` accepts system text or message
+  arrays, step preparation exposes the model instance, and embeddings/cosine
+  similarity use `f64`.
+- Run lifecycle hooks and stop predicates concurrently; isolate hook panics.
+  Explicit call timeouts take precedence over prepared agent settings.
+- Telemetry callbacks return `BoxFuture` and are awaited concurrently. The last
+  registered execution wrapper is outermost; `ToolExecutionContext` includes
+  `record_outputs` for wrapper-level content filtering.
+- Merge modality metadata using each reference operation's rules; detect speech
+  and transcription MIME types from input bytes and preserve video frame precedence.
 
 - Retain message, instruction, tool context and runtime context overrides across
   generation steps, including streaming and compacted histories (ADR 0021).
@@ -24,6 +46,20 @@ All notable changes to this crate are documented here. The format follows
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
 ### Fixed
+
+- Enable `futures-util/std` explicitly for panic isolation and shared completion,
+  so standalone consumers do not depend on workspace feature unification.
+- Select context by registered tool name before validation, accept dynamic
+  provider-executed calls alongside registered tools, and preserve not-applicable
+  approval decisions.
+- Apply step-local sandbox overrides, recursive provider-option merging and
+  reference retry classification without retrying user output transforms.
+- Align structured partial output, streaming transform boundaries, registry lookup
+  errors, speech translation completion and per-step usage/warning aggregation.
+- Preserve middleware event metadata at reference boundaries, merge default
+  response schemas recursively and support registry/custom-provider file and skill services.
+- Emit generation `on_error` on failure and apply batch-result cancellation and
+  deadlines during stream consumption.
 
 - Preserve provider routing metadata on local tool outcomes and approval replay,
   including programmatic callers, parallel tool wrappers, automatic denials and

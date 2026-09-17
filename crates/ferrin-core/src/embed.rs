@@ -2,6 +2,9 @@
 //! into provider calls by the model's limits) and [`cosine_similarity`].
 //!
 //! Design: `docs/01-architecture/11-other-modalities.md` §1.
+//!
+//! Lifecycle behavior is derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated to Rust and modified; see NOTICE.
 
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -26,10 +29,18 @@ use tokio_util::sync::CancellationToken;
 use tracing::Instrument;
 
 use crate::error::Error;
+use crate::hooks::Hooks;
 use crate::ids::default_id_generator;
 use crate::modality::ModalityOptions;
-use crate::modality::accumulate_provider_metadata;
 use crate::modality::impl_modality_builder;
+pub use crate::modality_hooks::EmbedCallEndEvent;
+pub use crate::modality_hooks::EmbedCallStartEvent;
+pub use crate::modality_hooks::EmbeddingInput;
+pub use crate::modality_hooks::EmbeddingOutput;
+pub use crate::modality_hooks::EmbeddingResponse;
+use crate::modality_hooks::ModalityHooks;
+use crate::modality_hooks::impl_modality_hooks;
+use crate::modality_metadata::accumulate_embedding_metadata;
 use crate::registry::ProviderRegistry;
 use crate::registry::default::resolve_model;
 use crate::retry::RetryPolicy;
@@ -90,6 +101,7 @@ pub fn embed(model: impl Into<EmbeddingModelRef>, value: impl Into<String>) -> E
         model: model.into(),
         value: value.into(),
         base: ModalityOptions::default(),
+        hooks: ModalityHooks::default(),
     }
 }
 
@@ -99,9 +111,11 @@ pub struct Embed {
     model: EmbeddingModelRef,
     value: String,
     base: ModalityOptions,
+    hooks: ModalityHooks<EmbedCallStartEvent, EmbedCallEndEvent>,
 }
 
 impl_modality_builder!(Embed);
+impl_modality_hooks!(Embed, EmbedCallStartEvent, EmbedCallEndEvent);
 
 impl IntoFuture for Embed {
     type Output = Result<EmbedResult, Error>;
@@ -109,7 +123,14 @@ impl IntoFuture for Embed {
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
-            let many = run(self.model, vec![self.value], self.base, Some(1)).await?;
+            let many = run(
+                self.model,
+                EmbeddingInput::Single(self.value),
+                self.base,
+                Some(1),
+                self.hooks,
+            )
+            .await?;
             let EmbedManyResult {
                 values,
                 embeddings,
@@ -150,6 +171,7 @@ pub fn embed_many(
         values: values.into_iter().map(Into::into).collect(),
         max_parallel_calls: None,
         base: ModalityOptions::default(),
+        hooks: ModalityHooks::default(),
     }
 }
 
@@ -160,6 +182,7 @@ pub struct EmbedMany {
     values: Vec<String>,
     max_parallel_calls: Option<usize>,
     base: ModalityOptions,
+    hooks: ModalityHooks<EmbedCallStartEvent, EmbedCallEndEvent>,
 }
 
 impl EmbedMany {
@@ -173,6 +196,7 @@ impl EmbedMany {
 }
 
 impl_modality_builder!(EmbedMany);
+impl_modality_hooks!(EmbedMany, EmbedCallStartEvent, EmbedCallEndEvent);
 
 impl IntoFuture for EmbedMany {
     type Output = Result<EmbedManyResult, Error>;
@@ -181,9 +205,10 @@ impl IntoFuture for EmbedMany {
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(run(
             self.model,
-            self.values,
+            EmbeddingInput::Many(self.values),
             self.base,
             self.max_parallel_calls,
+            self.hooks,
         ))
     }
 }
@@ -194,7 +219,7 @@ impl IntoFuture for EmbedMany {
 ///
 /// Returns [`Error::InvalidArgument`] when the vectors have different
 /// dimensions.
-pub fn cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32, Error> {
+pub fn cosine_similarity(a: &[f64], b: &[f64]) -> Result<f64, Error> {
     if a.len() != b.len() {
         return Err(Error::invalid_argument(
             "vectors",
@@ -205,9 +230,9 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32, Error> {
             ),
         ));
     }
-    let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
-    let norm_a = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    let norm_b = b.iter().map(|y| y * y).sum::<f32>().sqrt();
+    let dot: f64 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+    let norm_a = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let norm_b = b.iter().map(|y| y * y).sum::<f64>().sqrt();
     if norm_a == 0.0 || norm_b == 0.0 {
         return Ok(0.0);
     }
@@ -289,12 +314,14 @@ impl ChunkCall {
             let call_id = format!("{call_id}/attempt/{attempt}");
             async move {
                 let started = Instant::now();
-                telemetry.on_embed_start(&EmbedStartEvent {
-                    call_id: call_id.clone(),
-                    model: identity.clone(),
-                    value_count: values.len(),
-                    values: telemetry.record_inputs().then(|| values.clone()),
-                });
+                telemetry
+                    .on_embed_start(&EmbedStartEvent {
+                        call_id: call_id.clone(),
+                        model: identity.clone(),
+                        value_count: values.len(),
+                        values: telemetry.record_inputs().then(|| values.clone()),
+                    })
+                    .await;
                 let result = model
                     .do_embed(EmbedOptions {
                         values,
@@ -305,17 +332,25 @@ impl ChunkCall {
                     .await
                     .map_err(Error::from);
                 match &result {
-                    Ok(result) => telemetry.on_embed_end(&EmbedEndEvent {
-                        call_id: call_id.clone(),
-                        embedding_count: result.embeddings.len(),
-                        tokens: result.usage.map(|usage| usage.tokens),
-                        duration: started.elapsed(),
-                    }),
-                    Err(error) => telemetry.on_error(&ErrorEvent {
-                        call_id: &call_id,
-                        error,
-                        phase: ErrorPhase::ModelCall,
-                    }),
+                    Ok(result) => {
+                        telemetry
+                            .on_embed_end(&EmbedEndEvent {
+                                call_id: call_id.clone(),
+                                embedding_count: result.embeddings.len(),
+                                tokens: result.usage.map(|usage| usage.tokens),
+                                duration: started.elapsed(),
+                            })
+                            .await
+                    }
+                    Err(error) => {
+                        telemetry
+                            .on_error(&ErrorEvent {
+                                call_id: &call_id,
+                                error,
+                                phase: ErrorPhase::ModelCall,
+                            })
+                            .await
+                    }
                 }
                 result
             }
@@ -332,16 +367,83 @@ impl ChunkCall {
 
 async fn run(
     model: EmbeddingModelRef,
-    values: Vec<String>,
+    value: EmbeddingInput,
     base: ModalityOptions,
     max_parallel_calls: Option<usize>,
+    hooks: ModalityHooks<EmbedCallStartEvent, EmbedCallEndEvent>,
 ) -> Result<EmbedManyResult, Error> {
     let model = resolve_model(&model, ProviderRegistry::embedding_model)?;
     let identity = ModelIdentity::new(model.provider().clone(), model.model_id().clone());
     let span = spans::modality_span("embed", &identity);
     base.run(|base, token| {
-        async move { run_calls(model, identity, values, &base, max_parallel_calls, token).await }
-            .instrument(span)
+        async move {
+            let telemetry = TelemetryDispatcher::new(base.telemetry.clone());
+            let call_id = default_id_generator().generate();
+            let (operation_id, values) = match &value {
+                EmbeddingInput::Single(value) => ("ai.embed", vec![value.clone()]),
+                EmbeddingInput::Many(values) => ("ai.embedMany", values.clone()),
+            };
+            let start = Arc::new(EmbedCallStartEvent {
+                runtime_context: Some(hooks.runtime_context.clone()),
+                call_id: call_id.clone(),
+                operation_id,
+                model: identity.clone(),
+                value: Some(value.clone()),
+                max_retries: base.retry_policy.max_retries,
+                headers: base.request_headers(),
+                provider_options: base.provider_options.clone(),
+            });
+            tokio::join!(
+                Hooks::emit(&hooks.on_start, start.clone()),
+                telemetry.on_embed_operation_start(&start),
+            );
+            let result = run_calls(
+                model,
+                identity.clone(),
+                values,
+                &base,
+                max_parallel_calls,
+                token,
+                &call_id,
+            )
+            .await?;
+            let (embedding, response) = match &value {
+                EmbeddingInput::Single(_) => (
+                    EmbeddingOutput::Single(
+                        result
+                            .embeddings
+                            .first()
+                            .cloned()
+                            .ok_or_else(|| invalid_count(1, 0))?,
+                    ),
+                    EmbeddingResponse::Single(Box::new(
+                        result.responses.first().cloned().unwrap_or_default(),
+                    )),
+                ),
+                EmbeddingInput::Many(_) => (
+                    EmbeddingOutput::Many(result.embeddings.clone()),
+                    EmbeddingResponse::Many(result.responses.clone()),
+                ),
+            };
+            let end = Arc::new(EmbedCallEndEvent {
+                runtime_context: Some(hooks.runtime_context),
+                call_id,
+                operation_id,
+                model: identity,
+                value: Some(value),
+                embedding: Some(embedding),
+                usage: result.usage,
+                warnings: result.warnings.clone(),
+                provider_metadata: result.provider_metadata.clone(),
+                response,
+            });
+            tokio::join!(
+                Hooks::emit(&hooks.on_end, end.clone()),
+                telemetry.on_embed_operation_end(&end),
+            );
+            Ok(result)
+        }
+        .instrument(span)
     })
     .await
 }
@@ -353,9 +455,9 @@ async fn run_calls(
     base: &ModalityOptions,
     max_parallel_calls: Option<usize>,
     cancellation: CancellationToken,
+    call_id: &str,
 ) -> Result<EmbedManyResult, Error> {
     let telemetry = TelemetryDispatcher::new(base.telemetry.clone());
-    let call_id = default_id_generator().generate();
     let headers = base.request_headers();
 
     let max_embeddings = match model.max_embeddings_per_call() {
@@ -378,7 +480,13 @@ async fn run_calls(
         Some(limit) => limit,
         None => usize::MAX,
     };
-    let chunks = split_by_limits(&values, max_embeddings, max_bytes);
+    let chunks = if model.max_embeddings_per_call().is_none()
+        && model.max_input_bytes_per_call().is_none()
+    {
+        vec![values.clone()]
+    } else {
+        split_by_limits(&values, max_embeddings, max_bytes)
+    };
     let parallel = if model.supports_parallel_calls() {
         max_parallel_calls.unwrap_or(usize::MAX).max(1)
     } else {
@@ -434,7 +542,7 @@ async fn run_calls(
             (Some(total), Some(usage)) => Some(total.saturating_add(usage.tokens)),
             _ => None,
         };
-        accumulate_provider_metadata(&mut provider_metadata, result.provider_metadata.as_ref());
+        accumulate_embedding_metadata(&mut provider_metadata, result.provider_metadata.as_ref());
     }
     if embeddings.len() != values.len() {
         return Err(invalid_count(values.len(), embeddings.len()));

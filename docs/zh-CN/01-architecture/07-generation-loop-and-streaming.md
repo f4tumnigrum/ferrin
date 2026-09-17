@@ -59,7 +59,7 @@ impl StepResult {
 即：所有客户端工具调用都有了输出或拒绝（无待审批项、无缺少 `execute` 的工具），且存在客户端工具调用或有待补齐的延迟结果，且停止条件未满足。
 
 9. 循环结束后：合计各步用量为 `total_usage`；若配置了 `output`，在最后一步完成原因为 `stop`、或（完成原因不是 `tool-calls` 且文本非空）时解析结构化输出（`Output::parse_complete`），否则不解析；调用 `on_end` 回调。
-10. `stop_when` 默认为 `step_count(1)`；多个条件任一满足即停。内置条件：步数上限、出现指定工具的调用、循环自然结束。
+10. `stop_when` 默认为 `step_count(1)`；多个条件并发执行并等待全部完成后判断任一是否满足。`step_count(n)` 严格匹配已完成步骤数等于 `n`，因此 `step_count(0)` 不会在第一步完成后命中。其他内置条件检查指定工具调用和循环自然结束。
 
 【决策】Ferrin 的 `generate_text::run` 逐条实现上述规则；继续条件以同名函数 `should_continue(&LoopState) -> bool` 表达并配套单元测试覆盖四类边界（待审批、缺少执行函数、延迟结果未回、停止条件满足）。
 
@@ -89,6 +89,8 @@ pub struct RetryPolicy {
 ```
 
 【决策】默认无抖动，便于测试确定性；`Jitter::Full` 作为可选项。重试只包裹单次模型调用，不包裹工具执行。
+
+【决策】调用供应商前拒绝负数或非有限的 `backoff_factor`。仅在错误可重试且重试预算允许下一次尝试后计算延迟。时长计算饱和处理，超出运行时时钟范围的等待仍可取消；公开的延迟计算不得因极端值而 panic。这保持参考 SDK 的终止错误判定顺序，同时明确 Rust 时长转换边界。来源：Vercel AI SDK `6c6c221` 的 `retry-with-exponential-backoff.ts`；core 重试边界回归测试。
 
 ### 2.2 超时
 
@@ -125,9 +127,9 @@ impl<O> GenerateTextResult<O> {
     pub fn last_step(&self) -> &StepResult;
     pub fn text(&self) -> String;
     pub fn finish_reason(&self) -> &FinishReason;
-    pub fn usage(&self) -> &Usage;            // last step
+    pub fn usage(&self) -> &Usage;            // summed across every step
     pub fn response_messages(&self) -> Vec<Message>;   // all steps
-    pub fn warnings(&self) -> &[Warning];     // last step
+    pub fn warnings(&self) -> Vec<&Warning>;  // all steps, in order
 }
 ```
 
@@ -148,21 +150,24 @@ impl<O> GenerateTextResult<O> {
 ```rust
 pub struct StreamTextResult<O = ()> {
     events: EventStream,                 // impl Stream<Item = StreamEvent>
-    completion: Completion<O>,           // resolves after the stream is fully drained
+    completion: Completion<O>,           // polling also drives the event pipeline
 }
 
 impl<O> StreamTextResult<O> {
     pub fn split(self) -> (EventStream, Completion<O>);
     pub fn events(&mut self) -> &mut EventStream;
+    pub fn full_stream(&mut self) -> EventStream;
+    pub fn into_completion(self) -> Completion<O>;
+    pub async fn final_result(self) -> Result<GenerateTextResult<O>, Error>;
     pub fn text_stream(self) -> impl Stream<Item = Result<String, Error>>;   // consumes the result, forwards text deltas
     pub fn partial_output_stream(self) -> impl Stream<Item = PartialOutput<O>>;
     pub async fn consume(self) -> Result<GenerateTextResult<O>, Error>;     // drain everything
 }
 
-pub struct Completion<O>(oneshot::Receiver<Result<GenerateTextResult<O>, Error>>);
+pub struct Completion<O> { /* final receiver and an owned event driver */ }
 ```
 
-依据：Rust 的 `Stream` 是拉取式且单消费者；tee 出多个消费视图并自动消费的形态需要无界缓冲与隐式驱动，与背压和显式所有权冲突。`split` 让应用在一个任务里转发事件、在另一个任务里等待最终结果；需要多路消费的应用可自行用 `tokio::sync::broadcast` 分发。
+【决策】ADR 0026 引入拥有所有权的 tee 视图和 completion 主动驱动；视图分别保留未读事件，最后一个持有者 drop 才取消管线。详见本章 2026-09-17 修订记录。
 
 ### 3.2 事件类型
 
@@ -241,7 +246,7 @@ pub enum Chunking {
 }
 ```
 
-【决策】`Intl.Segmenter` 的对应物为 `unicode-segmentation` 的词边界；不引入 ICU 数据。
+【决策】`UnicodeWords` 使用不带语言定制的 `unicode-segmentation` 词边界；需要特定语言分词时可配置自定义 `Detector`。不捆绑ICU词典数据。
 
 ### 3.7 事件处理器
 
@@ -279,7 +284,7 @@ pub enum Chunking {
 
 【决策】 两种生成循环在执行已排队工具之前，使用同一项必选或指定名称工具选择的完成校验；仅返回文本或拒答时同样适用。
 
-【决策】 流平滑将元数据与缓冲的增量一起保存，并在该增量重新分段后的首个片段上发送。后续带元数据的增量到达时，先用原有元数据刷新前面的缓冲；即使没有文本，也保留仅携带元数据的增量。
+【事实】此前流平滑在首个重新分段的块发送元数据，并在后续带元数据的增量到达前flush。ADR 0026将该行为替换为参考SDK的最新元数据在flush时发送语义，见下文2026-09-17记录及 `tests/suite/stream_metadata.rs`。
 
 ## 7. 实现记录（2026-09-17）
 
@@ -288,3 +293,18 @@ pub enum Chunking {
 【决策】`runtime_context(JsonValue)` 是独立于验证后工具上下文的应用生命周期状态，传至审批策略及生命周期钩子，不进入模型参数或工具执行器。`StepOverrides::with_runtime_context` 替换运行上下文；不覆盖时保留原值，JSON `null` 是显式值。`StepResult` 和 `StreamEvent::StartStep` 记录两类上下文，新字段使用可选 serde 默认值。应用钩子可读取快照；遥测副本仅在 `TelemetryOptions::include_runtime_context` 开启时保留运行上下文，仅在 `include_tools_context` 开启时保留工具上下文，两者默认均关闭。审批重放发生于 `prepare_step` 之前，使用调用初始上下文。
 
 【事实】确定性测试位于 `crates/ferrin-core/tests/suite/runtime_context.rs`：覆盖两种循环的三步压缩、指令与上下文延续、独立执行及审批上下文、Agent 调用隔离、显式 null 替换、钩子可见性、遥测过滤和旧结果反序列化。这些测试不验证真实供应商行为。
+
+## 2026-09-17 流消费修订（ADR 0026）
+
+【决策】新增拥有独立游标的 `full_stream`、`text_view`、`partial_output_view`、`element_view`。`split` 返回事件游标和可主动推进另一游标的 completion；`into_completion`、`final_result` 无需消费者即可推进管线。无分离任务：最后一个游标/驱动器 drop 释放 processor 和自有任务集；丢弃单个游标不会取消其他持有者。滞后游标缓存未读事件，与参考 SDK tee 一致；不再需要的视图应及时丢弃。最终结果保留拥有所有权的 `O` 和错误，不要求 Clone，因此 completion 仅解析一次，调用方保留结果并反复借用读取。
+
+
+【决策】`GenerateTextResult::usage` 返回累计用量，`warnings` 收集所有步骤的警告引用。content/files/sources 及静态/动态工具调用/结果迭代器跨所有步骤；text、reasoning、请求/响应、供应商元数据和完成原因仍来自最后步骤。`final_step` 别名与参考 SDK 命名一致。来源：Vercel AI SDK `6c6c221` 的 `generate-text-result.ts`、`stream-text.ts` 和核心结果聚合回归。
+
+【决策】`O: Send + Sync + 'static` 时可使用 `into_shared_completion`；可克隆的等待器返回同一 `Arc<Result<GenerateTextResult<O>, Error>>`，无须克隆输出或错误。普通 completion 仍一次返回拥有所有权的结果。full/text/partial/element 视图各自持有游标；过滤视图的最终错误以 final result 为准。来源：`src/stream_text/result.rs`、`result/tee.rs`、`tests/suite/stream_views.rs`。
+
+【决策】在用户变换外拦截重试边界，每次尝试重新创建变换状态；即使用户过滤或重建全部事件，边界仍送达processor。`TransformContext::fail` 使用指定错误停止管线。平滑流拒绝正则空匹配和非法检测器字节长度，不再静默累积文本；取消可中断平滑延迟。来源：Vercel AI SDK `6c6c221` 重试分段/平滑实现及流变换对齐回归。
+
+【决策】`on_chunk` 观察变换后的公开事件，内部重试边界除外；供应商流错误在重试层先通知 `on_chunk` 再调用 `on_error`，成功重试吞掉错误事件时也会通知。未改变的终结错误不会重复通知；变换替换的错误视为独立事件并调用两个回调。回调panic被隔离，保留原供应商错误和自动重试预算。来源：Vercel AI SDK `6c6c221` 的 `errorsHandledForStreamRetry` 及流回调回归。
+
+【决策】平滑流把最新片段元数据保留到缓冲flush，词/行已清空文本时也输出仅带元数据的空增量；普通切分块不附该元数据。`UnicodeWords` 立即输出第一个 UAX #29 分段，包括空白/标点分段，与参考segmenter的首分段行为一致；不提供语言词典或ICU定制，需要应用特定分词时使用自定义 `Detector`。超大延迟可取消且不溢出时钟。来源：Vercel AI SDK `smooth-stream.ts`、元数据和Unicode/计时回归。

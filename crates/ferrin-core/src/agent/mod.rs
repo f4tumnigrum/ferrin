@@ -7,6 +7,8 @@
 //! (sub-agent pattern), typically returning `GenerateTextResult::text()`
 //! as the tool output.
 
+mod options;
+mod prepare_call;
 mod tool_loop_agent;
 
 use std::fmt;
@@ -17,10 +19,10 @@ use ferrin_message::Message;
 use ferrin_tool::ToolSet;
 use tokio_util::sync::CancellationToken;
 
+pub use prepare_call::PrepareCall;
+pub use prepare_call::PrepareCallInput;
+pub use prepare_call::PreparedCall;
 pub use tool_loop_agent::AGENT_USER_AGENT;
-pub use tool_loop_agent::PrepareCall;
-pub use tool_loop_agent::PrepareCallInput;
-pub use tool_loop_agent::PreparedCall;
 pub use tool_loop_agent::ToolLoopAgent;
 pub use tool_loop_agent::ToolLoopAgentBuilder;
 
@@ -102,7 +104,7 @@ pub struct AgentCall<O> {
     pub cancellation: CancellationToken,
     /// Overrides the agent's timeouts when set.
     pub timeout: Option<Timeout>,
-    /// Hooks run after the agent's own hooks.
+    /// Hooks invoked after the agent's own hooks, then awaited concurrently.
     pub hooks: Hooks,
     /// Sandbox passed to tools.
     #[cfg(feature = "sandbox")]
@@ -176,7 +178,7 @@ impl<O> AgentCall<O> {
         self
     }
 
-    /// Adds hooks (run after the agent's hooks).
+    /// Adds hooks (invoked after the agent's hooks, awaited concurrently).
     #[must_use]
     pub fn hooks(mut self, hooks: Hooks) -> Self {
         self.hooks = self.hooks.merged(hooks);

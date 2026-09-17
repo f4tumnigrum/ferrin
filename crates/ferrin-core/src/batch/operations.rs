@@ -1,4 +1,7 @@
 //! `get_batch_status`, `get_batch_results`, `cancel_batch` and `list_batches`.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -14,11 +17,13 @@ use ferrin_spec::batch::BatchStatus;
 use ferrin_spec::error::ProviderError;
 use ferrin_tool::ToolSet;
 use futures_util::StreamExt;
+use futures_util::stream;
 use tracing::Instrument;
 
 use crate::error::Error;
 use crate::modality::ModalityOptions;
 use crate::modality::impl_modality_builder;
+use crate::modality_stream::StreamDeadline;
 use crate::retry::retry;
 
 use super::result::BatchResults;
@@ -140,8 +145,10 @@ impl IntoFuture for GetBatchResults {
             let base = self.base.clone();
             let batch_id = self.batch_id;
             let tools = Arc::new(self.tools);
-            let stream = base
-                .run(|base, token| {
+            let deadline = StreamDeadline::new(&base.cancellation, base.timeout);
+            let token = deadline.cancellation.clone();
+            let stream = deadline
+                .run(
                     async move {
                         let headers = base.request_headers();
                         retry(&base.retry_policy, &token, |_| {
@@ -161,16 +168,24 @@ impl IntoFuture for GetBatchResults {
                         })
                         .await
                     }
-                    .instrument(span)
-                })
+                    .instrument(span),
+                )
                 .await?;
-            let converted = stream.then(move |item| {
-                let tools = Arc::clone(&tools);
-                async move {
-                    match item {
-                        Ok(item) => Ok(convert_item(item, &tools).await),
-                        Err(error) => Err(Error::from(error)),
-                    }
+            let converted = stream::unfold(Some((deadline, stream, tools)), |state| async move {
+                let (deadline, mut stream, tools) = state?;
+                let item = deadline
+                    .run(async {
+                        match stream.next().await {
+                            Some(Ok(item)) => Ok(Some(convert_item(item, &tools).await)),
+                            Some(Err(error)) => Err(Error::from(error)),
+                            None => Ok(None),
+                        }
+                    })
+                    .await;
+                match item {
+                    Ok(Some(item)) => Some((Ok(item), Some((deadline, stream, tools)))),
+                    Ok(None) => None,
+                    Err(error) => Some((Err(error), None)),
                 }
             });
             Ok(Box::pin(converted) as BatchResults)

@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::Arc;
 
 use ferrin_message::Message;
 use ferrin_spec::BoxFuture;
@@ -114,6 +115,16 @@ pub trait ApprovalPolicy: Send + Sync {
     ) -> BoxFuture<'a, Option<ApprovalStatus>>;
 }
 
+impl<P: ApprovalPolicy + ?Sized> ApprovalPolicy for Arc<P> {
+    fn resolve<'a>(
+        &'a self,
+        call: &'a ParsedToolCall,
+        ctx: ApprovalContext<'a>,
+    ) -> BoxFuture<'a, Option<ApprovalStatus>> {
+        self.as_ref().resolve(call, ctx)
+    }
+}
+
 impl ApprovalPolicy for ApprovalStatus {
     fn resolve<'a>(
         &'a self,
@@ -139,6 +150,10 @@ impl ApprovalPolicy for HashMap<ToolName, ApprovalStatus> {
 pub struct ApprovalPolicyFn<F>(F);
 
 /// Wraps a synchronous closure as an approval policy.
+///
+/// `None` means [`ApprovalStatus::NotApplicable`] and overrides the tool's
+/// own approval declaration. Implement [`ApprovalPolicy`] directly to return
+/// explicit fall-through instead.
 pub fn approval_policy<F>(f: F) -> ApprovalPolicyFn<F>
 where
     F: Fn(&ParsedToolCall, &ApprovalContext<'_>) -> Option<ApprovalStatus> + Send + Sync,
@@ -161,8 +176,8 @@ where
         call: &'a ParsedToolCall,
         ctx: ApprovalContext<'a>,
     ) -> BoxFuture<'a, Option<ApprovalStatus>> {
-        let status = (self.0)(call, &ctx);
-        Box::pin(async move { status })
+        let status = (self.0)(call, &ctx).unwrap_or(ApprovalStatus::NotApplicable);
+        Box::pin(async move { Some(status) })
     }
 }
 

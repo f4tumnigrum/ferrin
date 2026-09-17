@@ -33,7 +33,7 @@ use crate::error::Error;
 use crate::modality::ModalityOptions;
 use crate::modality::add_optional;
 use crate::modality::impl_modality_builder;
-use crate::modality::merge_provider_metadata;
+use crate::modality_metadata::merge_image_metadata;
 use crate::registry::ProviderRegistry;
 use crate::registry::default::resolve_model;
 use crate::retry::RetryPolicy;
@@ -441,7 +441,7 @@ async fn run_calls(
             usage = add_image_usage(usage, call_usage);
         }
         if let Some(metadata) = &result.provider_metadata {
-            merge_provider_metadata(&mut provider_metadata, metadata);
+            merge_image_metadata(&mut provider_metadata, metadata);
         }
         calls.push(ImageCall {
             images: call_images,

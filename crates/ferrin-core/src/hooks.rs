@@ -2,9 +2,13 @@
 
 use std::fmt;
 use std::future::Future;
+use std::panic::AssertUnwindSafe;
+use std::panic::catch_unwind;
 use std::sync::Arc;
 
 use ferrin_spec::BoxFuture;
+use futures_util::FutureExt;
+use futures_util::future::join_all;
 
 use crate::generate_text::StepResult;
 use crate::stream_text::StreamEvent;
@@ -21,7 +25,9 @@ use crate::telemetry::ToolExecutionStartEvent;
 ///
 /// Implemented for every `Fn(Arc<E>) -> impl Future<Output = ()>` closure, so
 /// builders accept `|event| async move { ... }` directly. The core awaits the
-/// returned future before continuing.
+/// returned future before continuing, concurrently with other hooks for the
+/// same event. Unwinding callback panics are isolated; the normal panic handler
+/// still runs, and `panic = "abort"` cannot be isolated.
 pub trait HookFn<E>: Send + Sync + 'static {
     /// Handles one event.
     fn call(&self, event: Arc<E>) -> BoxFuture<'static, ()>;
@@ -59,7 +65,7 @@ pub struct Hooks {
     pub on_step_end: HookList<StepResult>,
     /// The call finished.
     pub on_end: HookList<EndEvent>,
-    /// Streaming: an event was emitted.
+    /// Streaming: a transformed event or a provider error entering retry handling.
     pub on_chunk: HookList<StreamEvent>,
     /// Streaming: the call was aborted.
     pub on_abort: HookList<AbortEvent>,
@@ -67,7 +73,8 @@ pub struct Hooks {
 
 impl Hooks {
     /// Appends the hooks of `other` after those of `self` (settings-level
-    /// hooks run before call-level hooks).
+    /// callbacks are invoked before call-level callbacks; their futures run
+    /// concurrently).
     #[must_use]
     pub fn merged(mut self, other: Hooks) -> Hooks {
         self.on_start.extend(other.on_start);
@@ -87,11 +94,18 @@ impl Hooks {
         self
     }
 
-    /// Runs every hook of `list` in order with `event`.
+    /// Invokes hooks in list order and awaits all returned futures concurrently.
+    ///
+    /// Completion order is unspecified. Unwinding panics from invoking or
+    /// polling a callback are ignored after the normal panic handler runs.
+    /// This cannot isolate panics when compiled with `panic = "abort"`.
     pub async fn emit<E: 'static>(list: &[Arc<dyn HookFn<E>>], event: Arc<E>) {
-        for hook in list {
-            hook.call(Arc::clone(&event)).await;
-        }
+        let futures = list.iter().filter_map(|hook| {
+            catch_unwind(AssertUnwindSafe(|| hook.call(Arc::clone(&event))))
+                .ok()
+                .map(|future| AssertUnwindSafe(future).catch_unwind())
+        });
+        let _ = join_all(futures).await;
     }
 }
 

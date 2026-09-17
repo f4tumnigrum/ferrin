@@ -1,4 +1,7 @@
 //! Retry policy and the retry loop used around provider calls.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
 
 use std::future::Future;
 use std::time::Duration;
@@ -58,6 +61,9 @@ impl RetryPolicy {
 
     /// Computes the delay before retry number `retry` (1-based), honouring
     /// `Retry-After` headers when they fall within `max_retry_after`.
+    ///
+    /// Arithmetic overflow saturates at [`Duration::MAX`]. Provider calls
+    /// reject negative or non-finite backoff factors before using this policy.
     #[must_use]
     pub fn delay_for(&self, retry: u32, error: &ProviderError) -> Duration {
         let header_delay = error
@@ -69,7 +75,12 @@ impl RetryPolicy {
             let factor = self
                 .backoff_factor
                 .powi(i32::try_from(exponent).unwrap_or(i32::MAX));
-            self.initial_delay.mul_f64(factor.max(0.0))
+            if self.initial_delay.is_zero() {
+                Duration::ZERO
+            } else {
+                Duration::try_from_secs_f64(self.initial_delay.as_secs_f64() * factor.max(0.0))
+                    .unwrap_or(Duration::MAX)
+            }
         });
         match self.jitter {
             Jitter::None => base,
@@ -127,6 +138,12 @@ where
     F: FnMut(u32) -> Fut,
     Fut: Future<Output = Result<T, Error>>,
 {
+    if !policy.backoff_factor.is_finite() || policy.backoff_factor < 0.0 {
+        return Err(Error::invalid_argument(
+            "retry_policy.backoff_factor",
+            "must be finite and nonnegative",
+        ));
+    }
     let mut errors: Vec<ProviderError> = Vec::new();
     loop {
         if cancellation.is_cancelled() {
@@ -141,9 +158,9 @@ where
                 if policy.max_retries == 0 {
                     return Err(Error::from(error));
                 }
-                let retryable = is_retryable(&error);
                 let retry_number = attempt.saturating_add(1);
-                let delay = policy.delay_for(retry_number, &error);
+                let retryable = retry_number <= policy.max_retries && is_retryable(&error);
+                let delay = retryable.then(|| policy.delay_for(retry_number, &error));
                 errors.push(error);
                 let attempts = retry_number;
                 if attempts > policy.max_retries {
@@ -165,7 +182,12 @@ where
                         errors,
                     });
                 }
-                let sleep = Box::pin(tokio::time::sleep(delay));
+                let sleep = Box::pin(async {
+                    match tokio::time::Instant::now().checked_add(delay.unwrap_or_default()) {
+                        Some(deadline) => tokio::time::sleep_until(deadline).await,
+                        None => std::future::pending().await,
+                    }
+                });
                 let cancelled = Box::pin(cancellation.cancelled());
                 if let Either::Right(_) = select(sleep, cancelled).await {
                     return Err(Error::Retry {

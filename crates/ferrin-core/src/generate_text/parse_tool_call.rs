@@ -113,24 +113,6 @@ pub(crate) async fn try_parse(
     call: &ToolCall,
     ctx: &ParseContext<'_>,
 ) -> Result<ParsedToolCall, Error> {
-    if ctx.tools.is_empty() {
-        if call.provider_executed && call.dynamic {
-            let input = parse_raw_input(call)?;
-            return Ok(ParsedToolCall {
-                tool_call_id: call.tool_call_id.clone(),
-                tool_name: call.tool_name.clone(),
-                input,
-                provider_executed: true,
-                dynamic: true,
-                invalid: false,
-                error: None,
-                title: None,
-                tool_metadata: None,
-                provider_metadata: call.provider_metadata.clone(),
-            });
-        }
-        return Err(Error::no_such_tool(call.tool_name.clone(), Vec::new()));
-    }
     let error = match do_parse(call, ctx).await {
         Ok(parsed) => return Ok(parsed),
         Err(error) => error,
@@ -162,6 +144,24 @@ pub(crate) async fn try_parse(
 
 async fn do_parse(call: &ToolCall, ctx: &ParseContext<'_>) -> Result<ParsedToolCall, Error> {
     let Some(tool) = ctx.tools.get(call.tool_name.as_str()) else {
+        if call.provider_executed && call.dynamic {
+            let mut input = parse_raw_input(call)?;
+            if let Some(refine) = ctx.refine.get(call.tool_name.as_str()) {
+                input = refine(input).await?;
+            }
+            return Ok(ParsedToolCall {
+                tool_call_id: call.tool_call_id.clone(),
+                tool_name: call.tool_name.clone(),
+                input,
+                provider_executed: true,
+                dynamic: true,
+                invalid: false,
+                error: None,
+                title: None,
+                tool_metadata: None,
+                provider_metadata: call.provider_metadata.clone(),
+            });
+        }
         return Err(Error::no_such_tool(
             call.tool_name.clone(),
             ctx.tools.names().cloned().collect(),

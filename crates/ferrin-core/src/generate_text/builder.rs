@@ -57,6 +57,9 @@ impl<O: Send + 'static> IntoFuture for GenerateText<O> {
     type IntoFuture = BoxFuture<'static, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(run::run(self.config, self.output))
+        Box::pin(async move {
+            self.output.validate_configuration()?;
+            run::run(self.config, self.output).await
+        })
     }
 }

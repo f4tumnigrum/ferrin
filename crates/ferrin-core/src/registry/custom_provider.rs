@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use ferrin_spec::EmbeddingModelRef;
+use ferrin_spec::FilesRef;
 use ferrin_spec::ImageModelRef;
 use ferrin_spec::LanguageModelRef;
 use ferrin_spec::ModelKind;
@@ -12,6 +13,7 @@ use ferrin_spec::Provider;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ProviderRef;
 use ferrin_spec::RerankingModelRef;
+use ferrin_spec::SkillsRef;
 use ferrin_spec::SpeechModelRef;
 use ferrin_spec::SpeechTranslationModelRef;
 use ferrin_spec::TranscriptionModelRef;
@@ -31,6 +33,8 @@ pub fn custom_provider(id: impl Into<ProviderId>) -> CustomProviderBuilder {
             reranking_models: HashMap::new(),
             video_models: HashMap::new(),
             speech_translation_models: HashMap::new(),
+            files: None,
+            skills: None,
             fallback: None,
         },
     }
@@ -49,6 +53,8 @@ pub struct CustomProvider {
     reranking_models: HashMap<String, RerankingModelRef>,
     video_models: HashMap<String, VideoModelRef>,
     speech_translation_models: HashMap<String, SpeechTranslationModelRef>,
+    files: Option<FilesRef>,
+    skills: Option<SkillsRef>,
     fallback: Option<ProviderRef>,
 }
 
@@ -170,14 +176,18 @@ impl Provider for CustomProvider {
             .and_then(|fallback| fallback.realtime())
     }
 
-    fn files(&self) -> Option<ferrin_spec::FilesRef> {
-        self.fallback.as_ref().and_then(|fallback| fallback.files())
+    fn files(&self) -> Option<FilesRef> {
+        self.files
+            .clone()
+            .or_else(|| self.fallback.as_ref().and_then(|fallback| fallback.files()))
     }
 
-    fn skills(&self) -> Option<ferrin_spec::SkillsRef> {
-        self.fallback
-            .as_ref()
-            .and_then(|fallback| fallback.skills())
+    fn skills(&self) -> Option<SkillsRef> {
+        self.skills.clone().or_else(|| {
+            self.fallback
+                .as_ref()
+                .and_then(|fallback| fallback.skills())
+        })
     }
 
     fn batch(&self) -> Option<ferrin_spec::BatchRef> {
@@ -282,6 +292,20 @@ impl CustomProviderBuilder {
     #[must_use]
     pub fn fallback(mut self, provider: ProviderRef) -> Self {
         self.provider.fallback = Some(provider);
+        self
+    }
+
+    /// Sets the file service, taking precedence over the fallback provider.
+    #[must_use]
+    pub fn files(mut self, files: FilesRef) -> Self {
+        self.provider.files = Some(files);
+        self
+    }
+
+    /// Sets the skill service, taking precedence over the fallback provider.
+    #[must_use]
+    pub fn skills(mut self, skills: SkillsRef) -> Self {
+        self.provider.skills = Some(skills);
         self
     }
 

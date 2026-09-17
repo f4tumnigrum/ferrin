@@ -43,6 +43,15 @@ pub struct OutputContext {
 /// Implement this to add custom strategies; the built-in ones are exposed
 /// through [`Output`].
 pub trait OutputHandler<O>: Send + Sync + 'static {
+    /// Validates strategy settings before a model request is made.
+    ///
+    /// # Errors
+    ///
+    /// Returns an invalid-argument error when settings are contradictory.
+    fn validate_configuration(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
     /// The response format sent to the model.
     fn response_format(&self) -> Option<ResponseFormat>;
 
@@ -72,6 +81,17 @@ pub trait OutputHandler<O>: Send + Sync + 'static {
     /// Array strategies: the complete, validated elements contained in the
     /// partial text so far.
     fn parse_elements(&self, _text: &str) -> Option<Vec<JsonValue>> {
+        None
+    }
+
+    /// Returns completed typed array elements after schema validation.
+    fn parse_typed_elements(&self, text: &str) -> Option<O> {
+        self.parse_elements(text)
+            .and_then(|elements| self.typed_partial(&JsonValue::Array(elements)))
+    }
+
+    /// Maximum number of elements an array stream may publish.
+    fn max_elements(&self) -> Option<usize> {
         None
     }
 }

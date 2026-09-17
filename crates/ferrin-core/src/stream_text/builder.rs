@@ -1,9 +1,13 @@
 //! The `stream_text` builder.
 
+use futures_util::FutureExt;
 use std::fmt;
 use std::future::Future;
 use std::future::IntoFuture;
+use std::panic::AssertUnwindSafe;
+use std::panic::catch_unwind;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use ferrin_spec::BoxFuture;
 use ferrin_spec::LanguageModelRef;
@@ -59,6 +63,42 @@ pub(crate) struct StreamConfig {
     pub(crate) include_raw_chunks: bool,
     pub(crate) stream_retries: Option<u32>,
     pub(crate) on_error: Option<Arc<dyn OnErrorFn>>,
+    handled_errors: Mutex<Vec<StreamErrorInfo>>,
+}
+
+impl StreamConfig {
+    pub(crate) fn mark_error_handled(&self, error: StreamErrorInfo) {
+        self.handled_errors
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(error);
+    }
+
+    pub(crate) fn take_error_handled(&self, error: &StreamErrorInfo) -> bool {
+        let mut handled = self
+            .handled_errors
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(index) = handled.iter().position(|item| item == error) {
+            handled.remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) async fn error_decision(&self, error: StreamErrorInfo) -> ErrorDecision {
+        let Some(callback) = &self.on_error else {
+            return ErrorDecision::Continue;
+        };
+        let Ok(future) = catch_unwind(AssertUnwindSafe(|| callback.call(error))) else {
+            return ErrorDecision::Continue;
+        };
+        AssertUnwindSafe(future)
+            .catch_unwind()
+            .await
+            .unwrap_or(ErrorDecision::Continue)
+    }
 }
 
 impl fmt::Debug for StreamConfig {
@@ -86,6 +126,7 @@ pub fn stream_text(model: impl Into<LanguageModelRef>) -> StreamText<()> {
             include_raw_chunks: false,
             stream_retries: None,
             on_error: None,
+            handled_errors: Mutex::new(Vec::new()),
         },
     }
 }
@@ -134,7 +175,11 @@ impl<O> StreamText<O> {
         self
     }
 
-    /// Runs for every emitted event (after transforms).
+    /// Observes transformed events and provider errors considered for retry.
+    ///
+    /// A provider error is observed before `on_error`, including errors
+    /// swallowed by a successful retry. Retry boundaries bypass this hook;
+    /// a terminal provider error is not reported twice after transforms.
     #[must_use]
     pub fn on_chunk(mut self, f: impl HookFn<StreamEvent>) -> Self {
         self.config.hooks.on_chunk.push(Arc::new(f));
@@ -150,6 +195,8 @@ impl<O> StreamText<O> {
 
     /// Runs for every error that occurs while streaming; the returned
     /// decision may request a retry (see [`stream_retries`](Self::stream_retries)).
+    /// Synchronous and asynchronous callback panics are ignored, preserving
+    /// the original provider failure and configured automatic retry budget.
     #[must_use]
     pub fn on_error(mut self, f: impl OnErrorFn) -> Self {
         self.stream.on_error = Some(Arc::new(f));
@@ -171,6 +218,9 @@ impl<O: Send + 'static> IntoFuture for StreamText<O> {
     type IntoFuture = BoxFuture<'static, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(pipeline::start(self.config, self.output, self.stream))
+        Box::pin(async move {
+            self.output.validate_configuration()?;
+            pipeline::start(self.config, self.output, self.stream).await
+        })
     }
 }

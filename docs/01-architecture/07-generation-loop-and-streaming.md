@@ -59,7 +59,7 @@ impl StepResult {
 All client calls have output or denial (no pending approval or missing `execute`), there are client calls or outstanding deferred results, and no stop condition is met.
 
 9. On completion, sums `total_usage`. If `output` is configured, calls `Output::parse_complete` when the last finish reason is `stop`, or is not `tool-calls` and text is nonempty; otherwise skips parsing. Invokes `on_end`.
-10. `stop_when` defaults to `step_count(1)`; any satisfied condition stops the loop. Built-ins cover step limits, a named tool call, and natural loop completion.
+10. `stop_when` defaults to `step_count(1)`; evaluate configured predicates concurrently and await all before selecting whether any is true. `step_count(n)` matches exactly `n` completed steps, so `step_count(0)` does not stop a call after its first completed step. Other built-ins cover a named tool call and natural loop completion.
 
 [Decision] `generate_text::run` implements these rules; `should_continue(&LoopState) -> bool` has tests for pending approval, missing executors, outstanding deferred results, and satisfied stop conditions.
 
@@ -89,6 +89,8 @@ pub struct RetryPolicy {
 ```
 
 [Decision] Disable jitter by default for deterministic tests; offer `Jitter::Full`. Retry individual model calls only, never tool execution.
+
+[Decision] Reject negative or non-finite `backoff_factor` values before invoking a provider. Compute a retry delay only after the error is classified as retryable and the retry budget permits another attempt. Saturate duration arithmetic and keep waits beyond the runtime clock's range cancellable; public delay calculation must not panic on extreme values. This preserves the reference SDK's terminal-error ordering while making Rust duration conversion explicit. Sources: Vercel AI SDK `6c6c221`, `retry-with-exponential-backoff.ts`; core retry boundary regressions.
 
 ### 2.2 Timeouts
 
@@ -125,9 +127,9 @@ impl<O> GenerateTextResult<O> {
     pub fn last_step(&self) -> &StepResult;
     pub fn text(&self) -> String;
     pub fn finish_reason(&self) -> &FinishReason;
-    pub fn usage(&self) -> &Usage;            // last step
+    pub fn usage(&self) -> &Usage;            // summed across every step
     pub fn response_messages(&self) -> Vec<Message>;   // all steps
-    pub fn warnings(&self) -> &[Warning];     // last step
+    pub fn warnings(&self) -> Vec<&Warning>;  // all steps, in order
 }
 ```
 
@@ -148,21 +150,25 @@ impl<O> GenerateTextResult<O> {
 ```rust
 pub struct StreamTextResult<O = ()> {
     events: EventStream,                 // impl Stream<Item = StreamEvent>
-    completion: Completion<O>,           // resolves after the stream is fully drained
+    completion: Completion<O>,           // polling also drives the event pipeline
 }
 
 impl<O> StreamTextResult<O> {
     pub fn split(self) -> (EventStream, Completion<O>);
     pub fn events(&mut self) -> &mut EventStream;
+    pub fn full_stream(&mut self) -> EventStream;
+    pub fn into_completion(self) -> Completion<O>;
+    pub async fn final_result(self) -> Result<GenerateTextResult<O>, Error>;
     pub fn text_stream(self) -> impl Stream<Item = Result<String, Error>>;   // consumes the result, forwards text deltas
     pub fn partial_output_stream(self) -> impl Stream<Item = PartialOutput<O>>;
     pub async fn consume(self) -> Result<GenerateTextResult<O>, Error>;     // drain everything
 }
 
-pub struct Completion<O>(oneshot::Receiver<Result<GenerateTextResult<O>, Error>>);
+pub struct Completion<O> { /* final receiver and an owned event driver */ }
 ```
 
-Rust streams are pull-based and single-consumer. Automatically driving multiple tee views requires unbounded buffering and implicit ownership. `split` allows event forwarding and result waiting in separate tasks; applications needing fan-out may use `tokio::sync::broadcast`.
+[Decision] ADR 0026 adds owned tee views: `full_stream`, `text_view`, `partial_output_view` and `element_view` retain an independent cursor without consuming the result. `split` returns an event cursor and a completion that drives another cursor when awaited; `into_completion` and `final_result` drive progress without an event consumer. No task is detached: the final cursor/driver drop releases the processor and its owned task set. Dropping one cursor leaves other owners usable. Lagging cursors buffer their unread events, matching the reference SDK tee semantics; applications must drop views they no longer need. Final results retain owned `O` and errors without a `Clone` requirement, so completion resolves once; callers retain and borrow the returned result for repeated reads.
+
 
 ### 3.2 Event types
 
@@ -241,7 +247,7 @@ pub enum Chunking {
 }
 ```
 
-[Decision] Use `unicode-segmentation` word boundaries as the equivalent of `Intl.Segmenter`, without ICU data.
+[Decision] `UnicodeWords` uses locale-neutral `unicode-segmentation` word boundaries; custom `Detector` callbacks provide locale-tailored segmentation when required. No ICU dictionary data is bundled.
 
 ### 3.7 Event processor
 
@@ -279,7 +285,7 @@ The event processor alone owns mutable aggregation state: it accumulates step co
 
 [Decision] Both generation loops run the same required/named tool-choice completion check before executing queued tools, including when a provider returns text only or refuses the request.
 
-[Decision] Smoothing stores metadata with the buffered delta and emits it on that delta’s first resegmented chunk. A later metadata-bearing delta first flushes the preceding buffer with its own metadata; metadata-only deltas remain observable even when there is no text.
+[Fact] The earlier smoothing implementation emitted metadata on the first resegmented chunk and flushed before later metadata-bearing deltas. ADR 0026 replaces that behavior with the reference SDK’s latest-metadata-at-flush semantics, recorded below (2026-09-17; `tests/suite/stream_metadata.rs`).
 
 ## 7. Implementation record (2026-09-17)
 
@@ -288,3 +294,15 @@ The event processor alone owns mutable aggregation state: it accumulates step co
 [Decision] `runtime_context(JsonValue)` is application lifecycle state separate from validated tool context; it reaches approval policies and lifecycle hooks but is never passed to model options or tool executors. `StepOverrides::with_runtime_context` replaces it; no override retains the previous value, while JSON `null` is an explicit value. `StepResult` and `StreamEvent::StartStep` capture both contexts with optional serde defaults. Application hooks see these snapshots; telemetry copies include runtime context only with `TelemetryOptions::include_runtime_context` and tool context only with `include_tools_context` (both false by default). Approval replay uses initial invocation contexts before `prepare_step`.
 
 [Fact] Deterministic coverage is in `crates/ferrin-core/tests/suite/runtime_context.rs`: three-step compression and continued instructions/context in both loops, separate execution/approval contexts, per-call agent isolation, explicit null replacement, hook visibility, telemetry filtering and historical result deserialization. This does not verify live provider behavior.
+
+## Implementation record (2026-09-17): result consumption parity
+
+[Decision] `GenerateTextResult::usage` returns total usage; `warnings` collects references from all steps. Content, files, sources and static/dynamic tool call/result iterators span all steps, while text, reasoning, request/response, provider metadata and finish reason retain final-step semantics. The `final_step` alias uses the reference SDK name. Source: `generate-text-result.ts` and `stream-text.ts` in Vercel AI SDK `6c6c221`; core result aggregation regressions.
+
+[Decision] `into_shared_completion` is available when `O: Send + Sync + 'static`: cloneable waiters resolve to the same `Arc<Result<GenerateTextResult<O>, Error>>`, without cloning output or errors. Ordinary completion continues to return an owned result once. Full/text/partial/element views have independent cursors; the final result remains the authoritative terminal error channel for filtered views. Sources: `src/stream_text/result.rs`, `result/tee.rs`, `tests/suite/stream_views.rs`.
+
+[Decision] Retry attempt boundaries are intercepted outside user transforms. Each attempt creates fresh transform state; the boundary reaches the processor even when a user transform filters or reconstructs every event. `TransformContext::fail` stops the pipeline with the supplied error. Smoothing rejects empty regex matches and invalid detector byte lengths instead of silently accumulating text; cancellation interrupts smoothing delays. Source: Vercel AI SDK `6c6c221` retry segment and smoothing code, stream-transform parity regressions.
+
+[Decision] `on_chunk` observes transformed public events, except internal retry boundaries; provider stream errors are observed before `on_error` at the retry layer even when recovery suppresses the error event. Unchanged terminal errors are not observed twice; an error replaced by a transform is a separate event and invokes both callbacks. Callback panics are isolated, preserving the provider failure and automatic retry budget. Source: Vercel AI SDK `6c6c221`, `errorsHandledForStreamRetry` and stream callback regressions.
+
+[Decision] Smoothing retains the latest part metadata until its buffer flushes, including an empty metadata-only delta when a word/line already emptied the text buffer; ordinary split chunks do not carry that metadata. `UnicodeWords` emits the first UAX #29 segment immediately, including whitespace/punctuation segments, mirroring the reference segmenter strategy's first-segment behavior. It does not supply locale dictionaries or ICU tailoring; use a custom `Detector` for application-specific segmentation. Oversized delays remain cancellation-aware without clock overflow. Sources: Vercel AI SDK `smooth-stream.ts`, metadata and Unicode/timer regressions.

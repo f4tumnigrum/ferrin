@@ -2505,7 +2505,7 @@
     {
       "path": "ferrin_spec::embedding_model::Embedding",
       "kind": "type_alias",
-      "signature": "type = Vec<f32>"
+      "signature": "type = Vec<f64>"
     },
     {
       "path": "ferrin_spec::embedding_model::EmbeddingModel",

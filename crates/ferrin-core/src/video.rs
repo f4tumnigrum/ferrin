@@ -42,7 +42,7 @@ use tracing::Instrument;
 use crate::error::Error;
 use crate::modality::ModalityOptions;
 use crate::modality::impl_modality_builder;
-use crate::modality::merge_provider_metadata;
+use crate::modality_metadata::merge_video_metadata;
 use crate::prompt::DefaultDownloader;
 use crate::prompt::DownloadFn;
 use crate::prompt::DownloadRequest;
@@ -465,7 +465,7 @@ impl VideoCallTask {
                 } => {
                     warnings.extend(status_warnings);
                     if let Some(metadata) = status_metadata {
-                        merge_provider_metadata(
+                        merge_video_metadata(
                             provider_metadata.get_or_insert_with(ProviderMetadata::new),
                             &metadata,
                         );
@@ -484,7 +484,7 @@ impl VideoCallTask {
                 } => {
                     warnings.extend(status_warnings);
                     if let Some(metadata) = status_metadata {
-                        merge_provider_metadata(
+                        merge_video_metadata(
                             provider_metadata.get_or_insert_with(ProviderMetadata::new),
                             &metadata,
                         );
@@ -566,6 +566,29 @@ async fn run_calls(
         })
         .collect();
 
+    let mut warnings = Vec::new();
+    let input_references = if builder.frame_images.is_empty() {
+        builder.input_references.clone()
+    } else {
+        if !builder.input_references.is_empty() {
+            warnings.push(Warning::other(
+                "inputReferences were ignored because frameImages were provided; frameImages and inputReferences cannot be combined.",
+            ));
+        }
+        Vec::new()
+    };
+    let first_frame = builder
+        .frame_images
+        .iter()
+        .find(|frame| frame.frame_type == FrameType::FirstFrame)
+        .map(|frame| frame.image.clone());
+    if builder.image.is_some() && first_frame.is_some() {
+        warnings.push(Warning::other(
+            "prompt.image was ignored because a first_frame frameImage was provided; the first_frame frameImage takes precedence as the start image.",
+        ));
+    }
+    let image = first_frame.or_else(|| builder.image.clone());
+
     let template = VideoOptions {
         prompt: builder.prompt.clone(),
         n: 1,
@@ -574,9 +597,9 @@ async fn run_calls(
         duration: builder.duration,
         fps: builder.fps,
         seed: builder.seed,
-        image: builder.image.clone(),
+        image,
         frame_images: builder.frame_images.clone(),
-        input_references: builder.input_references.clone(),
+        input_references,
         generate_audio: builder.generate_audio,
         provider_options: builder.base.provider_options.clone(),
         headers: builder.base.request_headers(),
@@ -616,7 +639,6 @@ async fn run_calls(
 
     let mut downloader: Option<Arc<dyn DownloadFn>> = builder.download.clone();
     let mut videos: Vec<GeneratedVideo> = Vec::new();
-    let mut warnings: Vec<Warning> = Vec::new();
     let mut responses: Vec<ResponseMetadata> = Vec::new();
     let mut provider_metadata = ProviderMetadata::new();
     for result in results.into_iter().flatten() {
@@ -671,7 +693,7 @@ async fn run_calls(
         warnings.extend(result.warnings);
         responses.push(result.response);
         if let Some(metadata) = &result.provider_metadata {
-            merge_provider_metadata(&mut provider_metadata, metadata);
+            merge_video_metadata(&mut provider_metadata, metadata);
         }
     }
     if videos.is_empty() {

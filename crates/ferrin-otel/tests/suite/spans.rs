@@ -141,7 +141,9 @@ async fn a_stream_call_keeps_the_span_open_until_the_end_event() {
         .unwrap();
     assert!(harness.finished_spans().is_empty());
 
-    telemetry.on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))));
+    telemetry
+        .on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))))
+        .await;
     let spans = harness.finished_spans();
     assert_eq!(spans.len(), 1);
     let attributes = &spans[0].attributes;
@@ -173,10 +175,12 @@ async fn an_abort_ends_a_pending_stream_span_with_an_error() {
         )
         .await
         .unwrap();
-    telemetry.on_abort(&AbortEvent {
-        call_id: "call-1".to_owned(),
-        steps_completed: 1,
-    });
+    telemetry
+        .on_abort(&AbortEvent {
+            call_id: "call-1".to_owned(),
+            steps_completed: 1,
+        })
+        .await;
 
     let spans = harness.finished_spans();
     assert_eq!(spans.len(), 1);
@@ -203,11 +207,13 @@ async fn a_stream_error_ends_the_pending_span_with_the_error_kind() {
         .await
         .unwrap();
     let error = Error::NoOutputGenerated;
-    telemetry.on_error(&ErrorEvent {
-        call_id: "call-1",
-        error: &error,
-        phase: ErrorPhase::Stream,
-    });
+    telemetry
+        .on_error(&ErrorEvent {
+            call_id: "call-1",
+            error: &error,
+            phase: ErrorPhase::Stream,
+        })
+        .await;
     let spans = harness.finished_spans();
     assert_eq!(spans.len(), 1);
     assert_eq!(
@@ -293,6 +299,27 @@ async fn tool_content_is_recorded_when_enabled() {
         attr_str(&spans[0].attributes, "gen_ai.tool.call.result"),
         Some(r#"{"temperature":21}"#.to_owned())
     );
+}
+
+#[tokio::test]
+async fn tool_content_respects_call_output_recording() {
+    let harness = Harness::new();
+    let telemetry = harness.builder().record_tool_content().build();
+    let mut ctx = tool_context(None);
+    ctx.record_outputs = false;
+    telemetry
+        .execute_tool(
+            &ctx,
+            Box::pin(async {
+                Ok(ToolOutcome {
+                    output: json!({"secret": "redacted"}),
+                })
+            }),
+        )
+        .await
+        .unwrap();
+    let spans = harness.finished_spans();
+    assert_eq!(attr(&spans[0].attributes, "gen_ai.tool.call.result"), None);
 }
 
 #[tokio::test]

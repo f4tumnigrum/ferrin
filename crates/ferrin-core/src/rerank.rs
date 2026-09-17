@@ -1,8 +1,12 @@
 //! Reranking: [`rerank`] orders documents by relevance to a query.
 //!
 //! Design: `docs/01-architecture/11-other-modalities.md` §5.
+//!
+//! Lifecycle behavior is derived from the Vercel AI SDK (Apache-2.0,
+//! Copyright 2023 Vercel, Inc.), translated to Rust and modified; see NOTICE.
 
 use std::future::IntoFuture;
+use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
@@ -20,9 +24,14 @@ use serde_json::json;
 use tracing::Instrument;
 
 use crate::error::Error;
+use crate::hooks::Hooks;
 use crate::ids::default_id_generator;
 use crate::modality::ModalityOptions;
 use crate::modality::impl_modality_builder;
+use crate::modality_hooks::ModalityHooks;
+pub use crate::modality_hooks::RerankCallEndEvent;
+pub use crate::modality_hooks::RerankCallStartEvent;
+use crate::modality_hooks::impl_modality_hooks;
 use crate::registry::ProviderRegistry;
 use crate::registry::default::resolve_model;
 use crate::retry::retry;
@@ -75,6 +84,8 @@ pub struct Ranked<D> {
 /// Result of [`rerank`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct RerankResult<D> {
+    /// The complete original document list, in input order.
+    pub original_documents: Vec<D>,
     /// Documents in the order returned by the model (most relevant first).
     pub ranking: Vec<Ranked<D>>,
     /// Adapter warnings.
@@ -109,6 +120,7 @@ where
         documents,
         top_n: None,
         base: ModalityOptions::default(),
+        hooks: ModalityHooks::default(),
     }
 }
 
@@ -120,6 +132,7 @@ pub struct Rerank<D> {
     documents: Vec<D>,
     top_n: Option<usize>,
     base: ModalityOptions,
+    hooks: ModalityHooks<RerankCallStartEvent, RerankCallEndEvent>,
 }
 
 impl<D> Rerank<D> {
@@ -132,6 +145,7 @@ impl<D> Rerank<D> {
 }
 
 impl_modality_builder!(Rerank<D>);
+impl_modality_hooks!(Rerank<D>, RerankCallStartEvent, RerankCallEndEvent);
 
 impl<D> IntoFuture for Rerank<D>
 where
@@ -182,22 +196,30 @@ where
         query,
         documents,
         top_n,
+        hooks,
         ..
     } = builder;
+    let event_documents: Vec<RerankDocument> = documents.iter().cloned().map(Into::into).collect();
+    let start = Arc::new(RerankCallStartEvent {
+        runtime_context: Some(hooks.runtime_context.clone()),
+        call_id: call_id.clone(),
+        operation_id: "ai.rerank",
+        model: identity.clone(),
+        documents: Some(event_documents.clone()),
+        query: Some(query.clone()),
+        top_n,
+        max_retries: base.retry_policy.max_retries,
+        headers: base.headers.clone(),
+        provider_options: base.provider_options.clone(),
+    });
 
     if documents.is_empty() {
-        telemetry.on_rerank_start(&RerankStartEvent {
-            call_id: call_id.clone(),
-            model: identity.clone(),
-            document_count: 0,
-            query: telemetry.record_inputs().then(|| query.clone()),
-        });
-        telemetry.on_rerank_end(&RerankEndEvent {
-            call_id,
-            ranked_count: 0,
-            duration: std::time::Duration::ZERO,
-        });
-        return Ok(RerankResult {
+        tokio::join!(
+            Hooks::emit(&hooks.on_start, start.clone()),
+            telemetry.on_rerank_operation_start(&start),
+        );
+        let result = RerankResult {
+            original_documents: documents,
             ranking: Vec::new(),
             warnings: Vec::new(),
             response: ResponseMetadata {
@@ -206,12 +228,33 @@ where
                 ..ResponseMetadata::default()
             },
             provider_metadata: None,
+        };
+        let end = Arc::new(RerankCallEndEvent {
+            runtime_context: Some(hooks.runtime_context),
+            call_id,
+            operation_id: "ai.rerank",
+            model: identity,
+            documents: Some(event_documents),
+            query: Some(query),
+            ranking: Some(Vec::new()),
+            warnings: result.warnings.clone(),
+            provider_metadata: result.provider_metadata.clone(),
+            response: result.response.clone(),
         });
+        tokio::join!(
+            Hooks::emit(&hooks.on_end, end.clone()),
+            telemetry.on_rerank_operation_end(&end),
+        );
+        return Ok(result);
     }
 
     let model_documents = to_model_documents(&documents)?;
     base.run(|base, token| {
         async move {
+            tokio::join!(
+                Hooks::emit(&hooks.on_start, start.clone()),
+                telemetry.on_rerank_operation_start(&start),
+            );
             let headers = base.request_headers();
             let outcome = retry(&base.retry_policy, &token, |_| {
                 let options = RerankOptions {
@@ -228,18 +271,22 @@ where
                 let identity = &identity;
                 async move {
                     let started = Instant::now();
-                    telemetry.on_rerank_start(&RerankStartEvent {
-                        call_id: call_id.clone(),
-                        model: identity.clone(),
-                        document_count: options.documents.len(),
-                        query: telemetry.record_inputs().then(|| options.query.clone()),
-                    });
+                    telemetry
+                        .on_rerank_start(&RerankStartEvent {
+                            call_id: call_id.clone(),
+                            model: identity.clone(),
+                            document_count: options.documents.len(),
+                            query: telemetry.record_inputs().then(|| options.query.clone()),
+                        })
+                        .await;
                     let result = model.do_rerank(options).await.map_err(Error::from)?;
-                    telemetry.on_rerank_end(&RerankEndEvent {
-                        call_id: call_id.clone(),
-                        ranked_count: result.ranking.len(),
-                        duration: started.elapsed(),
-                    });
+                    telemetry
+                        .on_rerank_end(&RerankEndEvent {
+                            call_id: call_id.clone(),
+                            ranked_count: result.ranking.len(),
+                            duration: started.elapsed(),
+                        })
+                        .await;
                     Ok(result)
                 }
             })
@@ -247,11 +294,13 @@ where
             let result = match outcome {
                 Ok(result) => result,
                 Err(error) => {
-                    telemetry.on_error(&ErrorEvent {
-                        call_id: &call_id,
-                        error: &error,
-                        phase: ErrorPhase::ModelCall,
-                    });
+                    telemetry
+                        .on_error(&ErrorEvent {
+                            call_id: &call_id,
+                            error: &error,
+                            phase: ErrorPhase::ModelCall,
+                        })
+                        .await;
                     return Err(error);
                 }
             };
@@ -283,7 +332,32 @@ where
             if response.model_id.is_none() {
                 response.model_id = Some(identity.model_id.clone());
             }
+            let event_ranking = ranking
+                .iter()
+                .map(|ranked| Ranked {
+                    original_index: ranked.original_index,
+                    score: ranked.score,
+                    document: ranked.document.clone().into(),
+                })
+                .collect();
+            let end = Arc::new(RerankCallEndEvent {
+                runtime_context: Some(hooks.runtime_context),
+                call_id,
+                operation_id: "ai.rerank",
+                model: identity,
+                documents: Some(event_documents),
+                query: Some(query),
+                ranking: Some(event_ranking),
+                warnings: result.warnings.clone(),
+                provider_metadata: result.provider_metadata.clone(),
+                response: response.clone(),
+            });
+            tokio::join!(
+                Hooks::emit(&hooks.on_end, end.clone()),
+                telemetry.on_rerank_operation_end(&end),
+            );
             Ok(RerankResult {
+                original_documents: documents,
                 ranking,
                 warnings: result.warnings,
                 response,

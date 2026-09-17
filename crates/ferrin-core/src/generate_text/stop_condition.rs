@@ -26,7 +26,7 @@ where
     }
 }
 
-/// Stops when the number of steps reaches `n`.
+/// Stops when the number of completed steps equals `n`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StepCount(u32);
 
@@ -38,7 +38,7 @@ pub fn step_count(n: u32) -> StepCount {
 
 impl StopCondition for StepCount {
     fn should_stop<'a>(&'a self, steps: &'a [StepResult]) -> BoxFuture<'a, bool> {
-        let stop = u32::try_from(steps.len()).unwrap_or(u32::MAX) >= self.0;
+        let stop = u64::try_from(steps.len()).unwrap_or(u64::MAX) == u64::from(self.0);
         Box::pin(async move { stop })
     }
 }
@@ -90,10 +90,12 @@ pub(crate) async fn is_stop_condition_met(
     conditions: &[Arc<dyn StopCondition>],
     steps: &[StepResult],
 ) -> bool {
-    for condition in conditions {
-        if condition.should_stop(steps).await {
-            return true;
-        }
-    }
-    false
+    futures_util::future::join_all(
+        conditions
+            .iter()
+            .map(|condition| condition.should_stop(steps)),
+    )
+    .await
+    .into_iter()
+    .any(std::convert::identity)
 }

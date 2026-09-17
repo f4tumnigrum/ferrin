@@ -12,6 +12,7 @@ use super::approval::resolve_approval;
 use super::approval::signature;
 use super::response_messages::tool_error_output;
 use super::run::LoopContext;
+use super::tools::ToolEnvironment;
 use super::tools::execute_tools;
 use crate::cancel::CallCancellation;
 use crate::error::Error;
@@ -45,9 +46,9 @@ pub(crate) async fn replay_approvals(
             && !approval.tool_call.provider_executed
             && tool.is_executable()
         {
-            tool.validate_context(
+            tool.validate_named_context(
                 &approval.tool_call.tool_name,
-                ctx.config.tools_context.clone(),
+                ctx.config.tools_context.as_ref(),
             )
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
         }
@@ -134,7 +135,7 @@ pub(crate) async fn replay_approvals(
                 &call.tool_call_id,
                 &call.tool_name,
                 &messages_arc,
-                tools_context.as_ref(),
+                ToolEnvironment::for_replay(&ctx.config),
                 cancellation,
             )?,
             None => ToolContext::new(call.tool_call_id.clone()),
@@ -163,8 +164,7 @@ pub(crate) async fn replay_approvals(
             ctx,
             to_execute,
             messages_arc,
-            tools_context,
-            ctx.config.runtime_context.clone(),
+            ToolEnvironment::for_replay(&ctx.config),
             cancellation,
         )
         .await?,

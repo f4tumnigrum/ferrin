@@ -6,6 +6,7 @@ use ferrin_core::custom_provider;
 use ferrin_core::generate_text;
 use ferrin_core::registry::ProviderRegistry;
 use ferrin_core::registry::set_default_registry;
+use ferrin_spec::Provider;
 use ferrin_spec::ProviderRef;
 use ferrin_spec::error::ProviderError;
 use pretty_assertions::assert_eq;
@@ -37,7 +38,7 @@ fn unknown_providers_and_models_are_reported() {
     match registry.language_model("other:m1").unwrap_err() {
         Error::NoSuchProvider(details) => {
             assert_eq!(details.provider_id.as_str(), "other");
-            assert_eq!(details.model_id, "other:m1");
+            assert_eq!(details.model_id, "other");
             assert_eq!(
                 details
                     .available_providers
@@ -129,4 +130,138 @@ fn registry_middleware_wraps_embedding_and_image_models() {
     assert_eq!(image.model().unwrap().model_id().as_str(), "image-wrapped");
     assert!(registry.embedding_model("mock:missing").is_err());
     assert!(registry.image_model("other:i1").is_err());
+}
+
+#[test]
+fn malformed_model_id_is_not_an_unknown_provider() {
+    let error = registry().language_model("no-separator").unwrap_err();
+    assert!(matches!(
+        error.as_provider(),
+        Some(ProviderError::NoSuchModel(_))
+    ));
+}
+
+#[tokio::test]
+async fn replacing_provider_affects_new_lookups_only() {
+    let mut registry = registry();
+    let old = registry.language_model("mock:m1").unwrap();
+    registry.register_provider(
+        "mock",
+        Arc::new(
+            custom_provider("replacement")
+                .language_model("m1", text_model("replacement answer"))
+                .build(),
+        ),
+    );
+    let new = registry.language_model("mock:m1").unwrap();
+    assert_eq!(
+        (
+            generate_text(old).prompt("hi").await.unwrap().text(),
+            generate_text(new).prompt("hi").await.unwrap().text()
+        ),
+        ("from m1".to_owned(), "replacement answer".to_owned()),
+    );
+}
+
+struct Services(ferrin_spec::ProviderId);
+
+impl ferrin_spec::Files for Services {
+    fn provider(&self) -> &ferrin_spec::ProviderId {
+        &self.0
+    }
+
+    async fn upload_file(
+        &self,
+        _options: ferrin_spec::files::UploadFileOptions,
+    ) -> Result<ferrin_spec::files::UploadFileResult, ProviderError> {
+        Err(ProviderError::unsupported("fixture file upload"))
+    }
+}
+
+impl ferrin_spec::Skills for Services {
+    fn provider(&self) -> &ferrin_spec::ProviderId {
+        &self.0
+    }
+
+    async fn upload_skill(
+        &self,
+        _options: ferrin_spec::skills::UploadSkillOptions,
+    ) -> Result<ferrin_spec::skills::UploadSkillResult, ProviderError> {
+        Err(ProviderError::unsupported("fixture skill upload"))
+    }
+}
+
+#[test]
+fn custom_provider_services_override_fallback_and_resolve_through_registry() {
+    let fallback_files: ferrin_spec::FilesRef = Services("fallback-files".into()).into();
+    let fallback_skills: ferrin_spec::SkillsRef = Services("fallback-skills".into()).into();
+    let fallback: ProviderRef = Arc::new(
+        custom_provider("fallback")
+            .files(fallback_files.clone())
+            .skills(fallback_skills.clone())
+            .build(),
+    );
+    let inherited = custom_provider("inherited")
+        .fallback(fallback.clone())
+        .build();
+    assert!(Arc::ptr_eq(
+        inherited.files().unwrap().inner(),
+        fallback_files.inner()
+    ));
+    assert!(Arc::ptr_eq(
+        inherited.skills().unwrap().inner(),
+        fallback_skills.inner()
+    ));
+
+    let files: ferrin_spec::FilesRef = Services("files".into()).into();
+    let skills: ferrin_spec::SkillsRef = Services("skills".into()).into();
+    let provider = custom_provider("explicit")
+        .files(files.clone())
+        .skills(skills.clone())
+        .fallback(fallback)
+        .build();
+    let registry = ProviderRegistry::builder()
+        .provider("cloud:region", Arc::new(provider))
+        .build();
+    assert!(Arc::ptr_eq(
+        registry.files("cloud:region").unwrap().inner(),
+        files.inner()
+    ));
+    assert!(Arc::ptr_eq(
+        registry.skills("cloud:region").unwrap().inner(),
+        skills.inner()
+    ));
+}
+
+#[test]
+fn registry_services_distinguish_missing_providers_and_unsupported_services() {
+    let registry = registry();
+    for error in [
+        registry.files("other").err().unwrap(),
+        registry.skills("other").err().unwrap(),
+    ] {
+        let Error::NoSuchProvider(details) = error else {
+            panic!("expected unknown provider")
+        };
+        assert_eq!(
+            (
+                details.provider_id,
+                details.model_id,
+                details.available_providers
+            ),
+            ("other".into(), "other".into(), vec!["mock".into()])
+        );
+    }
+    for error in [
+        registry.files("mock").err().unwrap(),
+        registry.skills("mock").err().unwrap(),
+    ] {
+        assert!(
+            matches!(
+                error.as_provider(),
+                Some(ProviderError::UnsupportedFunctionality(_))
+            ),
+            "{error:?}"
+        );
+    }
 }

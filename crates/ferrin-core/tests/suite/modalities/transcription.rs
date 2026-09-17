@@ -231,3 +231,64 @@ async fn streams_without_a_finish_part_report_no_transcript() {
         "{error}"
     );
 }
+
+struct MislabelledDownload;
+
+impl ferrin_core::prompt::DownloadFn for MislabelledDownload {
+    fn download(
+        &self,
+        _requests: Vec<ferrin_core::prompt::DownloadRequest>,
+        _cancellation: tokio_util::sync::CancellationToken,
+    ) -> ferrin_spec::BoxFuture<'_, Result<Vec<Option<ferrin_core::prompt::DownloadedFile>>, Error>>
+    {
+        Box::pin(async {
+            Ok(vec![Some(ferrin_core::prompt::DownloadedFile {
+                data: Bytes::from_static(b"RIFF....WAVEfmt "),
+                media_type: Some("audio/ogg".into()),
+            })])
+        })
+    }
+}
+
+#[tokio::test]
+async fn downloaded_audio_is_detected_from_bytes_instead_of_http_media_type() {
+    let model = mock("hello");
+    transcribe(
+        Arc::clone(&model),
+        url::Url::parse("https://example.com/audio").unwrap(),
+    )
+    .download(Arc::new(MislabelledDownload))
+    .await
+    .unwrap();
+    assert_eq!(lock(&model.calls)[0].media_type.as_str(), "audio/wav");
+}
+
+#[tokio::test]
+async fn streaming_metadata_defaults_to_start_time_and_requested_model() {
+    let started_at = chrono::Utc::now();
+    let result = stream_transcribe(
+        streaming_mock(vec![TranscriptionStreamPart::Finish {
+            text: "Hello".into(),
+            segments: Vec::new(),
+            language: None,
+            duration_in_seconds: None,
+            provider_metadata: None,
+        }]),
+        stream::empty::<Bytes>(),
+        AudioFormat::new("pcm16"),
+    )
+    .await
+    .unwrap()
+    .consume()
+    .await
+    .unwrap();
+    assert!(
+        result.responses[0]
+            .timestamp
+            .is_some_and(|timestamp| timestamp >= started_at)
+    );
+    assert_eq!(
+        result.responses[0].model_id,
+        Some("transcription-mock".into())
+    );
+}

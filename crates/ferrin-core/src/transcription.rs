@@ -161,9 +161,9 @@ async fn fetch_audio(
     input: AudioInput,
     download: Option<Arc<dyn DownloadFn>>,
     cancellation: &tokio_util::sync::CancellationToken,
-) -> Result<(Bytes, Option<MediaType>), Error> {
+) -> Result<Bytes, Error> {
     match input {
-        AudioInput::Bytes(bytes) => Ok((bytes, None)),
+        AudioInput::Bytes(bytes) => Ok(bytes),
         AudioInput::Url(url) => {
             let downloader: Arc<dyn DownloadFn> = match download {
                 Some(download) => download,
@@ -179,7 +179,7 @@ async fn fetch_audio(
                 )
                 .await?;
             match downloaded.pop().flatten() {
-                Some(file) => Ok((file.data, file.media_type)),
+                Some(file) => Ok(file.data),
                 None => Err(Error::download(
                     url,
                     None,
@@ -197,11 +197,9 @@ async fn run(builder: Transcribe) -> Result<TranscribeResult, Error> {
     let base = builder.base.clone();
     base.run(|base, token| {
         async move {
-            let (audio, downloaded_media_type) =
-                fetch_audio(builder.audio, builder.download, &token).await?;
+            let audio = fetch_audio(builder.audio, builder.download, &token).await?;
             let media_type = builder
                 .media_type
-                .or(downloaded_media_type)
                 .or_else(|| detect_media_type_for(&audio, "audio"))
                 .unwrap_or_else(|| MediaType::new(DEFAULT_AUDIO_MEDIA_TYPE));
             let headers = base.request_headers();
@@ -301,6 +299,7 @@ impl IntoFuture for StreamTranscribe {
                     identity.model_id, identity.provider
                 ))));
             }
+            let started_at = chrono::Utc::now();
             let deadline = StreamDeadline::new(&self.base.cancellation, self.base.timeout);
             let result = deadline
                 .run(async {
@@ -317,6 +316,11 @@ impl IntoFuture for StreamTranscribe {
                         .map_err(Error::from)
                 })
                 .await?;
+            let mut response = result.response;
+            response.timestamp.get_or_insert(started_at);
+            response
+                .model_id
+                .get_or_insert_with(|| identity.model_id.clone());
             let log_identity = identity.clone();
             let parts = result.stream.inspect(move |part| {
                 if let TranscriptionStreamPart::StreamStart { warnings } = part {
@@ -325,7 +329,7 @@ impl IntoFuture for StreamTranscribe {
             });
             Ok(StreamTranscribeResult {
                 request: result.request,
-                response: result.response,
+                response,
                 parts: deadline.wrap(
                     Box::pin(parts),
                     |error| TranscriptionStreamPart::Error { error },

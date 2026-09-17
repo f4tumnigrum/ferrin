@@ -61,6 +61,7 @@ struct PendingCall {
 
 /// An embedding or rerank call between its start and end events.
 struct ModalityCall {
+    context: Context,
     operation: &'static str,
     model: ModelIdentity,
     started: Instant,
@@ -357,6 +358,7 @@ impl OtelTelemetry {
         let Some(call) = lock(&self.modality_calls).remove(call_id) else {
             return;
         };
+        end_with_error(&call.context, error_type);
         if let Some(metrics) = &self.metrics {
             metrics.record_operation(&Operation {
                 name: call.operation,
@@ -369,9 +371,20 @@ impl OtelTelemetry {
     }
 
     fn start_modality(&self, call_id: &str, operation: &'static str, model: &ModelIdentity) {
+        let context = self.start_span(
+            format!("{operation} {}", model.model_id),
+            SpanKind::Client,
+            vec![
+                KeyValue::new(semconv::GEN_AI_OPERATION_NAME, operation),
+                KeyValue::new(semconv::GEN_AI_PROVIDER_NAME, model.provider.to_string()),
+                KeyValue::new(semconv::GEN_AI_REQUEST_MODEL, model.model_id.to_string()),
+                KeyValue::new(semconv::FERRIN_CALL_ID, call_id.to_owned()),
+            ],
+        );
         lock(&self.modality_calls).insert(
             call_id.to_owned(),
             ModalityCall {
+                context,
                 operation,
                 model: model.clone(),
                 started: Instant::now(),
@@ -383,6 +396,13 @@ impl OtelTelemetry {
         let Some(call) = lock(&self.modality_calls).remove(call_id) else {
             return;
         };
+        if let Some(tokens) = tokens {
+            call.context.span().set_attribute(KeyValue::new(
+                semconv::GEN_AI_USAGE_INPUT_TOKENS,
+                token_value(tokens),
+            ));
+        }
+        call.context.span().end();
         if let Some(metrics) = &self.metrics {
             let operation = Operation {
                 name: call.operation,
@@ -424,69 +444,85 @@ impl fmt::Debug for OtelTelemetryBuilder {
 }
 
 impl Telemetry for OtelTelemetry {
-    fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {
-        let pending = lock(&self.pending).remove(&(event.call_id.clone(), event.step_number));
-        if let Some(pending) = pending {
-            record_response(
-                &pending.context,
-                &event.response,
-                &event.finish_reason,
-                &event.usage,
-            );
-            pending.context.span().end();
-        }
-        if let Some(metrics) = &self.metrics {
-            let operation = Operation {
-                name: semconv::OPERATION_CHAT,
-                model: &event.model,
-                response_model: event
-                    .response
-                    .model_id
-                    .as_ref()
-                    .map(ferrin_spec::ModelId::as_str),
-                duration: event.performance.response_time,
-                error_type: None,
-            };
-            metrics.record_operation(&operation);
-            metrics.record_usage(&operation, &event.usage);
-            if let Some(first) = event.performance.time_to_first_output {
-                metrics.record_time_to_first_chunk(&operation, first);
+    fn on_language_model_call_end<'a>(&'a self, event: &'a ModelCallEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let pending = lock(&self.pending).remove(&(event.call_id.clone(), event.step_number));
+            if let Some(pending) = pending {
+                record_response(
+                    &pending.context,
+                    &event.response,
+                    &event.finish_reason,
+                    &event.usage,
+                );
+                pending.context.span().end();
             }
-        }
+            if let Some(metrics) = &self.metrics {
+                let operation = Operation {
+                    name: semconv::OPERATION_CHAT,
+                    model: &event.model,
+                    response_model: event
+                        .response
+                        .model_id
+                        .as_ref()
+                        .map(ferrin_spec::ModelId::as_str),
+                    duration: event.performance.response_time,
+                    error_type: None,
+                };
+                metrics.record_operation(&operation);
+                metrics.record_usage(&operation, &event.usage);
+                if let Some(first) = event.performance.time_to_first_output {
+                    metrics.record_time_to_first_chunk(&operation, first);
+                }
+            }
+        })
     }
 
-    fn on_embed_start(&self, event: &EmbedStartEvent) {
-        self.start_modality(&event.call_id, semconv::OPERATION_EMBEDDINGS, &event.model);
+    fn on_embed_start<'a>(&'a self, event: &'a EmbedStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.start_modality(&event.call_id, semconv::OPERATION_EMBEDDINGS, &event.model);
+        })
     }
 
-    fn on_embed_end(&self, event: &EmbedEndEvent) {
-        self.end_modality(&event.call_id, event.duration, event.tokens);
+    fn on_embed_end<'a>(&'a self, event: &'a EmbedEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.end_modality(&event.call_id, event.duration, event.tokens);
+        })
     }
 
-    fn on_rerank_start(&self, event: &RerankStartEvent) {
-        self.start_modality(&event.call_id, semconv::OPERATION_RERANK, &event.model);
+    fn on_rerank_start<'a>(&'a self, event: &'a RerankStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.start_modality(&event.call_id, semconv::OPERATION_RERANK, &event.model);
+        })
     }
 
-    fn on_rerank_end(&self, event: &RerankEndEvent) {
-        self.end_modality(&event.call_id, event.duration, None);
+    fn on_rerank_end<'a>(&'a self, event: &'a RerankEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.end_modality(&event.call_id, event.duration, None);
+        })
     }
 
-    fn on_end(&self, event: &EndEvent) {
-        for call in self.take_pending(&event.call_id) {
-            call.context.span().end();
-        }
+    fn on_end<'a>(&'a self, event: &'a EndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            for call in self.take_pending(&event.call_id) {
+                call.context.span().end();
+            }
+        })
     }
 
-    fn on_abort(&self, event: &AbortEvent) {
-        self.fail_pending(&event.call_id, "cancelled");
+    fn on_abort<'a>(&'a self, event: &'a AbortEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.fail_pending(&event.call_id, "cancelled");
+        })
     }
 
-    fn on_error(&self, event: &ErrorEvent<'_>) {
-        let error_type = event.error.kind().as_str();
-        if matches!(event.phase, ErrorPhase::ModelCall | ErrorPhase::Stream) {
-            self.fail_pending(event.call_id, error_type);
-        }
-        self.fail_modality(event.call_id, error_type);
+    fn on_error<'a>(&'a self, event: &'a ErrorEvent<'_>) -> BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let error_type = event.error.kind().as_str();
+            if matches!(event.phase, ErrorPhase::ModelCall | ErrorPhase::Stream) {
+                self.fail_pending(event.call_id, error_type);
+            }
+            self.fail_modality(event.call_id, error_type);
+        })
     }
 
     fn execute_language_model_call<'a>(
@@ -563,7 +599,7 @@ impl Telemetry for OtelTelemetry {
             let result = call.with_context(context.clone()).await;
             let error_type = match &result {
                 Ok(outcome) => {
-                    if self.record_tool_content {
+                    if self.record_tool_content && ctx.record_outputs {
                         context.span().set_attribute(KeyValue::new(
                             semconv::GEN_AI_TOOL_CALL_RESULT,
                             outcome.output.to_string(),

@@ -9,6 +9,7 @@ mod attempt;
 mod parts;
 mod processor;
 mod stage;
+mod transforms;
 
 use std::sync::Arc;
 
@@ -99,12 +100,10 @@ pub(crate) async fn start<O: Send + 'static>(
     // Gate: once a transform calls `stop()`, no further event enters the
     // transforms and the stream ends (without `finish`).
     let stop = transform_ctx.stop_token();
-    let mut events: EventStream = Box::pin(
+    let events: EventStream = Box::pin(
         ReceiverStream::new(event_rx).take_while(move |_| std::future::ready(!stop.is_cancelled())),
     );
-    for transform in &stream.transforms {
-        events = transform.apply(events, transform_ctx.clone());
-    }
+    let events = transforms::apply(events, stream.transforms.clone(), transform_ctx.clone());
     let call_id = ctx.call_id.clone();
     let processor = processor::Processor::new(
         Arc::clone(&ctx),
@@ -113,7 +112,8 @@ pub(crate) async fn start<O: Send + 'static>(
         step_tx,
         outcome_rx,
         completion_tx,
-    );
+    )
+    .with_transform_context(transform_ctx, stream);
     Ok(StreamTextResult {
         call_id,
         events: Box::pin(processor::process(events, processor)),

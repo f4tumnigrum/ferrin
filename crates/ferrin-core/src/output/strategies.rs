@@ -237,6 +237,22 @@ impl<T> fmt::Debug for ArrayOutput<T> {
 }
 
 impl<T: DeserializeOwned + Send + Sync + 'static> OutputHandler<Vec<T>> for ArrayOutput<T> {
+    fn validate_configuration(&self) -> Result<(), Error> {
+        if let (Some(min), Some(max)) = (self.min_items, self.max_items)
+            && min > max
+        {
+            return Err(Error::invalid_argument(
+                "min_items",
+                "min_items must not exceed max_items",
+            ));
+        }
+        Ok(())
+    }
+
+    fn max_elements(&self) -> Option<usize> {
+        self.max_items
+    }
+
     fn response_format(&self) -> Option<ResponseFormat> {
         Some(ResponseFormat::Json {
             schema: Some(self.wrapper_schema()),
@@ -313,12 +329,28 @@ impl<T: DeserializeOwned + Send + Sync + 'static> OutputHandler<Vec<T>> for Arra
         };
         let mut validated = Vec::with_capacity(complete.len());
         for element in complete {
-            if self.element.validate(element.clone()).is_err() {
-                return None;
+            if self.element.validate(element.clone()).is_ok() {
+                validated.push(element.clone());
             }
-            validated.push(element.clone());
         }
         Some(validated)
+    }
+
+    fn parse_typed_elements(&self, text: &str) -> Option<Vec<T>> {
+        let (value, state) = partial_value(text)?;
+        let elements = Self::elements_of(&value)?;
+        let complete = match state {
+            PartialParseState::RepairedParse if !elements.is_empty() => {
+                &elements[..elements.len() - 1]
+            }
+            _ => elements.as_slice(),
+        };
+        Some(
+            complete
+                .iter()
+                .filter_map(|element| self.element.validate(element.clone()).ok())
+                .collect(),
+        )
     }
 }
 
@@ -484,6 +516,9 @@ impl OutputHandler<JsonValue> for JsonOutput {
     }
 
     fn typed_partial(&self, value: &JsonValue) -> Option<JsonValue> {
-        Some(value.clone())
+        match &self.schema {
+            Some(schema) => schema.validate(value.clone()).ok(),
+            None => Some(value.clone()),
+        }
     }
 }

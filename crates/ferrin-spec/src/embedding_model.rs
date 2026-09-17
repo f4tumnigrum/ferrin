@@ -16,7 +16,7 @@ use crate::shared::ProviderOptions;
 use crate::shared::Warning;
 
 /// An embedding vector.
-pub type Embedding = Vec<f32>;
+pub type Embedding = Vec<f64>;
 
 /// A model that turns text into embedding vectors.
 ///

@@ -115,3 +115,66 @@ fn merge_json_objects_overrides_arrays_and_scalars() {
         object(json!({ "a": [3], "b": { "c": null, "d": 2 }, "e": { "nested": true } }))
     );
 }
+
+#[test]
+fn reserved_override_keys_are_excluded_at_each_merge_level() {
+    let merged = merge_json_objects(
+        &object(json!({"nested":{"keep":true},"constructor":"base"})),
+        object(
+            json!({"__proto__":{"polluted":true},"prototype":1,"constructor":2,
+            "nested":{"__proto__":1,"constructor":2,"prototype":3,"safe":4}}),
+        ),
+    );
+    assert_eq!(
+        merged,
+        object(json!({"nested":{"keep":true,"safe":4},"constructor":"base"}))
+    );
+}
+
+#[test]
+fn json_response_format_merges_nested_defaults_with_call_precedence() {
+    use ferrin_spec::ResponseFormat;
+    let middleware = default_settings(CallDefaults {
+        response_format: Some(ResponseFormat::Json {
+            schema: Some(
+                json!({"type":"object","properties":{"default":{"type":"string"}},"required":["default"]}),
+            ),
+            name: Some("default-name".into()),
+            description: Some("default-description".into()),
+        }),
+        ..Default::default()
+    });
+    let mut call = options();
+    call.response_format = Some(ResponseFormat::Json {
+        schema: Some(json!({"properties":{"call":{"type":"number"}},"required":[]})),
+        name: Some("call-name".into()),
+        description: None,
+    });
+    assert_eq!(
+        middleware.apply(call).response_format,
+        Some(ResponseFormat::Json {
+            schema: Some(
+                json!({"type":"object","properties":{"default":{"type":"string"},"call":{"type":"number"}},"required":[]})
+            ),
+            name: Some("call-name".into()),
+            description: Some("default-description".into()),
+        })
+    );
+    let mut call = options();
+    call.response_format = Some(ResponseFormat::json_unconstrained());
+    let defaults = middleware.apply(call).response_format.unwrap();
+    assert!(matches!(
+        defaults,
+        ResponseFormat::Json {
+            schema: Some(_),
+            name: Some(_),
+            description: Some(_)
+        }
+    ));
+    let mut call = options();
+    call.response_format = Some(ResponseFormat::Text);
+    assert_eq!(
+        middleware.apply(call).response_format,
+        Some(ResponseFormat::Text)
+    );
+}

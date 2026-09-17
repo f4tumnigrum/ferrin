@@ -201,6 +201,7 @@ pub(crate) fn model_call_end(
 
 pub(crate) fn tool_context(input: Option<JsonValue>) -> ToolExecutionContext {
     ToolExecutionContext {
+        record_outputs: true,
         call_id: "call-1".to_owned(),
         tool_call_id: "tc-1".into(),
         tool_name: "get_weather".into(),

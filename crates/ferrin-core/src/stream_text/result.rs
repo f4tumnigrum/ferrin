@@ -1,4 +1,9 @@
 //! The result of `stream_text`: the event stream and the completion handle.
+//!
+//! Derived from the Vercel AI SDK (Apache-2.0, Copyright 2023 Vercel, Inc.),
+//! translated from TypeScript to Rust and modified; see `NOTICE`.
+
+mod tee;
 
 use std::collections::VecDeque;
 use std::fmt;
@@ -9,8 +14,12 @@ use std::task::Context;
 use std::task::Poll;
 
 use ferrin_spec::BoxStream;
+use ferrin_spec::JsonValue;
 use ferrin_spec::PartId;
+use ferrin_spec::error::ProviderError;
+use ferrin_spec::error::TypeValidationError;
 use futures_core::Stream;
+use futures_util::FutureExt;
 use futures_util::StreamExt;
 use futures_util::stream;
 use serde::de::DeserializeOwned;
@@ -26,18 +35,28 @@ use crate::output::PartialOutput;
 /// A boxed stream of [`StreamEvent`]s.
 pub type EventStream = BoxStream<'static, StreamEvent>;
 
-/// Resolves with the final result once the event stream has been drained.
+/// Drives the event pipeline and resolves with its final result.
 ///
-/// Dropping the event stream before it ends cancels the call; the
-/// completion then resolves to [`Error::Cancelled`]. Awaiting the completion
-/// without consuming the events stalls: the pipeline does not buffer.
+/// Other event views remain readable while this future runs or after it
+/// completes. Unread events are buffered for those views; drop unused views
+/// to release their buffers. Dropping every view and this future cancels the
+/// owned pipeline. The final result is owned and does not require `O: Clone`.
 pub struct Completion<O> {
     receiver: oneshot::Receiver<Result<GenerateTextResult<O>, Error>>,
+    driver: Option<EventStream>,
 }
 
 impl<O> Completion<O> {
     pub(crate) fn new(receiver: oneshot::Receiver<Result<GenerateTextResult<O>, Error>>) -> Self {
-        Self { receiver }
+        Self {
+            receiver,
+            driver: None,
+        }
+    }
+
+    fn driving(mut self, driver: EventStream) -> Self {
+        self.driver = Some(driver);
+        self
     }
 }
 
@@ -45,11 +64,33 @@ impl<O> Future for Completion<O> {
     type Output = Result<GenerateTextResult<O>, Error>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        match Pin::new(&mut self.receiver).poll(cx) {
-            Poll::Ready(Ok(result)) => Poll::Ready(result),
-            Poll::Ready(Err(_)) => Poll::Ready(Err(Error::Cancelled)),
-            Poll::Pending => Poll::Pending,
+        // Bound synchronous draining so an already-buffered stream cannot
+        // monopolize the executor while other cursors wait for progress.
+        for _ in 0..64 {
+            match Pin::new(&mut self.receiver).poll(cx) {
+                Poll::Ready(Ok(result)) => {
+                    self.driver = None;
+                    return Poll::Ready(result);
+                }
+                Poll::Ready(Err(_)) => {
+                    self.driver = None;
+                    return Poll::Ready(Err(Error::Cancelled));
+                }
+                Poll::Pending => {}
+            }
+            let Some(driver) = self.driver.as_mut() else {
+                return Poll::Pending;
+            };
+            match driver.as_mut().poll_next(cx) {
+                Poll::Ready(Some(_)) => {}
+                Poll::Ready(None) => {
+                    self.driver = None;
+                }
+                Poll::Pending => return Poll::Pending,
+            }
         }
+        cx.waker().wake_by_ref();
+        Poll::Pending
     }
 }
 
@@ -59,11 +100,12 @@ impl<O> fmt::Debug for Completion<O> {
     }
 }
 
-/// Result of a streaming call: one event stream plus a completion handle.
+/// Result of a streaming call with independent event views and a final result.
 ///
-/// The stream must be consumed for the call to progress. Use
-/// [`split`](Self::split) to forward events in one task and await the
-/// completion in another, or one of the consuming views.
+/// Reading a view or awaiting [`final_result`](Self::final_result) drives
+/// progress. Views created through [`full_stream`](Self::full_stream) keep
+/// their unread events until consumed or dropped; a slow view does not
+/// block another view. The final owner drop cancels the pipeline.
 pub struct StreamTextResult<O> {
     pub(crate) call_id: String,
     pub(crate) events: EventStream,
@@ -89,10 +131,51 @@ impl<O> StreamTextResult<O> {
     /// Splits the result into the event stream and the completion handle.
     #[must_use]
     pub fn split(self) -> (EventStream, Completion<O>) {
-        (self.events, self.completion)
+        let (events, driver) = tee::tee(self.events);
+        (events, self.completion.driving(driver))
     }
 
-    /// The event stream.
+    /// Creates an independent view starting at the current event cursor.
+    ///
+    /// Creating a view leaves the result's cursor in place, allowing later
+    /// views to read the same events. Lagging views retain unread events.
+    #[must_use]
+    pub fn full_stream(&mut self) -> EventStream {
+        let current = std::mem::replace(&mut self.events, Box::pin(stream::empty()));
+        let (view, retained) = tee::tee(current);
+        self.events = retained;
+        view
+    }
+
+    /// Returns a completion future that drives the pipeline without an event consumer.
+    #[must_use]
+    pub fn into_completion(self) -> Completion<O> {
+        self.completion.driving(self.events)
+    }
+
+    /// Drives the pipeline and returns its owned final result.
+    ///
+    /// # Errors
+    ///
+    /// Returns the error that ended the call. Retain the result to borrow its
+    /// text, usage, steps and output repeatedly after successful completion.
+    pub async fn final_result(self) -> Result<GenerateTextResult<O>, Error> {
+        self.into_completion().await
+    }
+
+    /// Creates an independent view yielding only text deltas.
+    ///
+    /// Inspect a full view or await the final result for terminal errors.
+    pub fn text_view(&mut self) -> impl Stream<Item = String> + Send + use<O> {
+        self.full_stream().filter_map(|event| async move {
+            match event {
+                StreamEvent::TextDelta { text, .. } => Some(text),
+                _ => None,
+            }
+        })
+    }
+
+    /// The result's current event cursor; consuming it advances future view starts.
     pub fn events(&mut self) -> &mut EventStream {
         &mut self.events
     }
@@ -103,9 +186,20 @@ impl<O> StreamTextResult<O> {
     ///
     /// Returns the error that ended the call.
     pub async fn consume(self) -> Result<GenerateTextResult<O>, Error> {
-        let (mut events, completion) = self.split();
-        while events.next().await.is_some() {}
-        completion.await
+        self.final_result().await
+    }
+}
+
+impl<O: Send + Sync + 'static> StreamTextResult<O> {
+    /// Returns cloneable final-result waiters that jointly drive the pipeline.
+    ///
+    /// The result and error are shared through `Arc`, so neither must be
+    /// cloneable. Each waiter resolves to the same allocation. Dropping all
+    /// waiters and event views cancels an unfinished call.
+    pub fn into_shared_completion(
+        self,
+    ) -> impl Future<Output = Arc<Result<GenerateTextResult<O>, Error>>> + Clone + Send {
+        self.into_completion().map(Arc::new).boxed().shared()
     }
 }
 
@@ -134,27 +228,42 @@ impl<O: Send + 'static> StreamTextResult<O> {
 
     /// Consumes the result, yielding the structured output as it grows.
     ///
-    /// Only the first text part of each step is parsed; a value is published
+    /// Only the first text part of the call (or retry attempt) is parsed; a value is published
     /// whenever the repaired partial JSON changes. Errors are not reported
     /// here: use [`consume`](Self::consume) or the completion for them.
     pub fn partial_output_stream(self) -> impl Stream<Item = PartialOutput<O>> + Send {
-        let state = PartialState {
-            events: self.events,
-            handler: self.output,
-            first_text: None,
-            text: String::new(),
-            last: None,
-        };
-        stream::unfold(Some(state), |state| async move {
-            let mut state = state?;
-            loop {
-                let event = state.events.next().await?;
-                if let Some(output) = state.handle(&event) {
-                    return Some((output, Some(state)));
-                }
-            }
-        })
+        partial_stream(self.events, self.output)
     }
+
+    /// Creates an independent view of changing structured output.
+    ///
+    /// Like the consuming view, this parses the first text part per attempt;
+    /// terminal errors remain available through the final result.
+    pub fn partial_output_view(&mut self) -> impl Stream<Item = PartialOutput<O>> + Send + use<O> {
+        partial_stream(self.full_stream(), self.output.clone())
+    }
+}
+
+fn partial_stream<O: Send + 'static>(
+    events: EventStream,
+    handler: Arc<dyn OutputHandler<O>>,
+) -> impl Stream<Item = PartialOutput<O>> + Send {
+    let state = PartialState {
+        events,
+        handler,
+        first_text: None,
+        text: String::new(),
+        last: None,
+    };
+    stream::unfold(Some(state), |state| async move {
+        let mut state = state?;
+        loop {
+            let event = state.events.next().await?;
+            if let Some(output) = state.handle(&event) {
+                return Some((output, Some(state)));
+            }
+        }
+    })
 }
 
 struct PartialState<O> {
@@ -162,7 +271,7 @@ struct PartialState<O> {
     handler: Arc<dyn OutputHandler<O>>,
     first_text: Option<PartId>,
     text: String,
-    last: Option<String>,
+    last: Option<JsonValue>,
 }
 
 impl<O: 'static> PartialState<O> {
@@ -174,7 +283,7 @@ impl<O: 'static> PartialState<O> {
 
     fn handle(&mut self, event: &StreamEvent) -> Option<PartialOutput<O>> {
         match event {
-            StreamEvent::StartStep { .. } | StreamEvent::RetryAttempt { .. } => {
+            StreamEvent::RetryAttempt { .. } => {
                 self.reset();
                 None
             }
@@ -190,11 +299,10 @@ impl<O: 'static> PartialState<O> {
                 }
                 self.text.push_str(text);
                 let value = self.handler.parse_partial(&self.text)?;
-                let serialized = value.to_string();
-                if self.last.as_deref() == Some(serialized.as_str()) {
+                if self.last.as_ref() == Some(&value) {
                     return None;
                 }
-                self.last = Some(serialized);
+                self.last = Some(value.clone());
                 let typed = self.handler.typed_partial(&value);
                 Some(PartialOutput { value, typed })
             }
@@ -205,40 +313,68 @@ impl<O: 'static> PartialState<O> {
 
 impl<O> StreamTextResult<O>
 where
-    O: ArrayElements + Send + 'static,
+    O: ArrayElements + IntoIterator<Item = <O as ArrayElements>::Element> + Send + 'static,
     O::Element: DeserializeOwned + Send,
 {
     /// Consumes the result, yielding each element of an array output as soon
     /// as it is complete. The final item is an error when the call failed.
     pub fn element_stream(self) -> impl Stream<Item = Result<O::Element, Error>> + Send {
-        let state = ElementState {
-            events: self.events,
-            completion: Some(self.completion),
-            handler: self.output,
-            first_text: None,
-            text: String::new(),
-            published: 0,
-            pending: VecDeque::new(),
-        };
-        stream::unfold(Some(state), |state| async move {
-            let mut state = state?;
-            loop {
-                if let Some(item) = state.pending.pop_front() {
-                    return Some((item, Some(state)));
-                }
-                match state.events.next().await {
-                    Some(event) => state.handle(&event),
-                    None => {
-                        let completion = state.completion.take()?;
-                        return match completion.await {
-                            Ok(_) => None,
-                            Err(error) => Some((Err(error), None)),
-                        };
-                    }
+        elements(self.events, Some(self.completion), self.output)
+    }
+
+    /// Creates an independent view of completed array elements.
+    ///
+    /// Element decoding errors appear in this view; inspect the final result
+    /// for terminal provider or pipeline errors.
+    pub fn element_view(
+        &mut self,
+    ) -> impl Stream<Item = Result<O::Element, Error>> + Send + use<O> {
+        elements(self.full_stream(), None, self.output.clone())
+    }
+}
+
+fn elements<O>(
+    events: EventStream,
+    completion: Option<Completion<O>>,
+    handler: Arc<dyn OutputHandler<O>>,
+) -> impl Stream<Item = Result<O::Element, Error>> + Send
+where
+    O: ArrayElements + IntoIterator<Item = <O as ArrayElements>::Element> + Send + 'static,
+    O::Element: DeserializeOwned + Send,
+{
+    let state = ElementState {
+        events,
+        completion,
+        handler,
+        first_text: None,
+        text: String::new(),
+        published: 0,
+        pending: VecDeque::new(),
+        failed: false,
+    };
+    stream::unfold(Some(state), |state| async move {
+        let mut state = state?;
+        loop {
+            if let Some(item) = state.pending.pop_front() {
+                let next = if state.failed && state.pending.is_empty() {
+                    None
+                } else {
+                    Some(state)
+                };
+                return Some((item, next));
+            }
+            match state.events.next().await {
+                Some(event) => state.handle(&event),
+                None => {
+                    let completion = state.completion.take()?;
+                    return match completion.await {
+                        Ok(_) => None,
+                        Err(error) => Some((Err(error), None)),
+                    };
                 }
             }
-        })
-    }
+        }
+    })
 }
 
 struct ElementState<O: ArrayElements> {
@@ -249,19 +385,21 @@ struct ElementState<O: ArrayElements> {
     text: String,
     published: usize,
     pending: VecDeque<Result<O::Element, Error>>,
+    failed: bool,
 }
 
 impl<O> ElementState<O>
 where
-    O: ArrayElements + 'static,
+    O: ArrayElements + IntoIterator<Item = <O as ArrayElements>::Element> + 'static,
     O::Element: DeserializeOwned,
 {
     fn handle(&mut self, event: &StreamEvent) {
         match event {
-            StreamEvent::StartStep { .. } | StreamEvent::RetryAttempt { .. } => {
+            StreamEvent::RetryAttempt { .. } => {
                 self.first_text = None;
                 self.text.clear();
-                self.published = 0;
+                // Already-published array prefixes cannot be retracted. Keep
+                // the count, as in the reference element transform.
             }
             StreamEvent::TextStart { id, .. } => {
                 if self.first_text.is_none() {
@@ -273,13 +411,37 @@ where
                     return;
                 }
                 self.text.push_str(text);
-                let Some(elements) = self.handler.parse_elements(&self.text) else {
-                    return;
-                };
+                let elements: Vec<Result<O::Element, Error>> =
+                    if let Some(typed) = self.handler.parse_typed_elements(&self.text) {
+                        typed.into_iter().map(Ok).collect()
+                    } else if let Some(raw) = self.handler.parse_elements(&self.text) {
+                        raw.into_iter()
+                            .map(|value| serde_json::from_value(value).map_err(Error::other))
+                            .collect()
+                    } else {
+                        return;
+                    };
                 for element in elements.into_iter().skip(self.published) {
+                    if let Some(max) = self.handler.max_elements()
+                        && self.published >= max
+                    {
+                        let value = self
+                            .handler
+                            .parse_partial(&self.text)
+                            .unwrap_or(JsonValue::Null);
+                        let error = TypeValidationError::new(
+                            value,
+                            std::io::Error::other(format!(
+                                "elements array must contain at most {max} items"
+                            )),
+                        );
+                        self.pending
+                            .push_back(Err(Error::from(ProviderError::from(error))));
+                        self.failed = true;
+                        break;
+                    }
                     self.published += 1;
-                    self.pending
-                        .push_back(serde_json::from_value(element).map_err(Error::other));
+                    self.pending.push_back(element);
                 }
             }
             _ => {}

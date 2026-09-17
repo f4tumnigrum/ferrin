@@ -97,14 +97,42 @@ pub(crate) struct CallApproval {
     pub(crate) blocked: bool,
 }
 
+/// Effective contexts and sandbox for one step or approval replay.
+#[derive(Clone, Copy)]
+pub(crate) struct ToolEnvironment<'a> {
+    pub(crate) tools_context: Option<&'a JsonValue>,
+    pub(crate) runtime_context: Option<&'a JsonValue>,
+    #[cfg(feature = "sandbox")]
+    pub(crate) sandbox: Option<&'a Arc<dyn ferrin_tool::Sandbox>>,
+}
+
+impl<'a> ToolEnvironment<'a> {
+    pub(crate) fn for_step(inputs: &'a super::inputs::StepInputs) -> Self {
+        Self {
+            tools_context: inputs.tools_context.as_ref(),
+            runtime_context: inputs.runtime_context.as_ref(),
+            #[cfg(feature = "sandbox")]
+            sandbox: inputs.sandbox.as_ref(),
+        }
+    }
+
+    pub(crate) fn for_replay(config: &'a super::config::CallConfig) -> Self {
+        Self {
+            tools_context: config.tools_context.as_ref(),
+            runtime_context: config.runtime_context.as_ref(),
+            #[cfg(feature = "sandbox")]
+            sandbox: config.sandbox.as_ref(),
+        }
+    }
+}
+
 /// Resolves the approval status of one tool call; `None` for invalid calls
 /// and calls that need no approval.
 pub(crate) async fn resolve_call_approval(
     ctx: &LoopContext,
     call: &ParsedToolCall,
     messages: &Arc<[Message]>,
-    tools_context: Option<&JsonValue>,
-    runtime_context: Option<&JsonValue>,
+    environment: ToolEnvironment<'_>,
     cancellation: &CallCancellation,
 ) -> Result<Option<CallApproval>, Error> {
     if call.invalid {
@@ -112,8 +140,8 @@ pub(crate) async fn resolve_call_approval(
     }
     let approval_ctx = ApprovalContext {
         messages,
-        tools_context,
-        runtime_context,
+        tools_context: environment.tools_context,
+        runtime_context: environment.runtime_context,
     };
     let tool = ctx.execution_tools.get(call.tool_name.as_str());
     let tool_context = match tool {
@@ -122,7 +150,7 @@ pub(crate) async fn resolve_call_approval(
             &call.tool_call_id,
             &call.tool_name,
             messages,
-            tools_context,
+            environment,
             cancellation,
         )?,
         None => ToolContext::new(call.tool_call_id.clone()),
@@ -195,21 +223,13 @@ pub(crate) async fn resolve_approvals(
     ctx: &LoopContext,
     calls: &[ParsedToolCall],
     messages: &Arc<[Message]>,
-    tools_context: Option<&JsonValue>,
-    runtime_context: Option<&JsonValue>,
+    environment: ToolEnvironment<'_>,
     cancellation: &CallCancellation,
 ) -> Result<StepApprovals, Error> {
     let mut approvals = StepApprovals::default();
     for call in calls {
-        let Some(approval) = resolve_call_approval(
-            ctx,
-            call,
-            messages,
-            tools_context,
-            runtime_context,
-            cancellation,
-        )
-        .await?
+        let Some(approval) =
+            resolve_call_approval(ctx, call, messages, environment, cancellation).await?
         else {
             continue;
         };
@@ -253,8 +273,7 @@ pub(crate) async fn execute_tools(
     ctx: &LoopContext,
     calls: Vec<ParsedToolCall>,
     messages: Arc<[Message]>,
-    tools_context: Option<JsonValue>,
-    runtime_context: Option<JsonValue>,
+    environment: ToolEnvironment<'_>,
     cancellation: &CallCancellation,
 ) -> Result<Vec<StepContent>, Error> {
     let mut results: Vec<Option<StepContent>> = (0..calls.len()).map(|_| None).collect();
@@ -270,14 +289,7 @@ pub(crate) async fn execute_tools(
             let Some((index, call, tool)) = pending.next() else {
                 return Ok(false);
             };
-            let mut task = ctx.tool_task(
-                &tool,
-                &call,
-                &messages,
-                tools_context.as_ref(),
-                cancellation,
-            )?;
-            task.runtime_context = runtime_context.clone();
+            let task = ctx.tool_task(&tool, &call, &messages, environment, cancellation)?;
             let span = spans::tool_span(call.tool_name.as_str(), call.tool_call_id.as_str());
             tasks.spawn(
                 async move {
@@ -328,7 +340,7 @@ pub(crate) async fn run_tool_call(
         tool_name: call.tool_name.clone(),
         input: record_inputs.then(|| call.input.clone()),
     });
-    task.telemetry.on_tool_execution_start(&start);
+    task.telemetry.on_tool_execution_start(&start).await;
     Hooks::emit(&task.hooks.on_tool_execution_start, start).await;
 
     let exec_ctx = ToolExecutionContext {
@@ -336,6 +348,7 @@ pub(crate) async fn run_tool_call(
         tool_call_id: call.tool_call_id.clone(),
         tool_name: call.tool_name.clone(),
         input: record_inputs.then(|| call.input.clone()),
+        record_outputs,
     };
     let execution = execute_tool(&tool, call.input.clone(), task.tool_context, task.timeout);
     let preliminary_template = ToolResult {
@@ -433,7 +446,7 @@ pub(crate) async fn run_tool_call(
         error,
         duration,
     });
-    task.telemetry.on_tool_execution_end(&end);
+    task.telemetry.on_tool_execution_end(&end).await;
     Hooks::emit(&task.hooks.on_tool_execution_end, end).await;
     content
 }

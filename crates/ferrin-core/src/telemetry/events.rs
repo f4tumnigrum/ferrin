@@ -48,7 +48,7 @@ impl ModelIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordedInputs {
     /// System instructions.
-    pub system: Option<String>,
+    pub system: Option<crate::prompt::Instructions>,
     /// The initial messages.
     pub messages: Arc<[Message]>,
 }

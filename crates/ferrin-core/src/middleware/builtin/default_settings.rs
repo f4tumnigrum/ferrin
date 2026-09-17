@@ -87,6 +87,11 @@ impl DefaultSettings {
             seed,
             tool_choice,
         );
+        if let (Some(default), Some(response_format)) =
+            (&defaults.response_format, &mut options.response_format)
+        {
+            merge_response_format(default, response_format);
+        }
         if options.tools.is_empty() && !defaults.tools.is_empty() {
             options.tools = defaults.tools.clone();
         }
@@ -103,6 +108,36 @@ impl DefaultSettings {
     }
 }
 
+fn merge_response_format(default: &ResponseFormat, response_format: &mut ResponseFormat) {
+    if let (
+        ResponseFormat::Json {
+            schema: base_schema,
+            name: base_name,
+            description: base_description,
+        },
+        ResponseFormat::Json {
+            schema,
+            name,
+            description,
+        },
+    ) = (default, response_format)
+    {
+        if schema.is_none() {
+            *schema = base_schema.clone();
+        } else if let (Some(JsonValue::Object(base)), Some(JsonValue::Object(overrides))) =
+            (base_schema, schema.as_mut())
+        {
+            *overrides = merge_json_objects(base, std::mem::take(overrides));
+        }
+        if name.is_none() {
+            *name = base_name.clone();
+        }
+        if description.is_none() {
+            *description = base_description.clone();
+        }
+    }
+}
+
 impl LanguageModelMiddleware for DefaultSettings {
     fn transform_params<'a>(
         &'a self,
@@ -114,12 +149,15 @@ impl LanguageModelMiddleware for DefaultSettings {
     }
 }
 
-pub(super) fn merge_provider_options(
+pub(crate) fn merge_provider_options(
     base: &ProviderOptions,
     overrides: ProviderOptions,
 ) -> ProviderOptions {
     let mut merged = base.clone();
     for (provider, options) in overrides {
+        if matches!(provider.as_str(), "__proto__" | "constructor" | "prototype") {
+            continue;
+        }
         match merged.remove(&provider) {
             Some(existing) => {
                 merged.insert(provider, merge_json_objects(&existing, options));
@@ -139,6 +177,9 @@ pub(super) fn merge_provider_options(
 pub fn merge_json_objects(base: &JsonObject, overrides: JsonObject) -> JsonObject {
     let mut merged = base.clone();
     for (key, value) in overrides {
+        if matches!(key.as_str(), "__proto__" | "constructor" | "prototype") {
+            continue;
+        }
         match (merged.remove(&key), value) {
             (Some(JsonValue::Object(existing)), JsonValue::Object(incoming)) => {
                 merged.insert(

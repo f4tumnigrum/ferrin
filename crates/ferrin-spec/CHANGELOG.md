@@ -7,6 +7,10 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- SPEC: Use `f64` embedding components to preserve the reference SDK's number
+  precision ([ADR 0026](../../docs/04-decisions/2026-09-17-0026-reference-sdk-parity.md));
+  downstream `Vec<f32>` values must be converted explicitly.
+
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
 ## [0.1.2] - 2026-09-16

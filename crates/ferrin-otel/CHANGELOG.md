@@ -7,10 +7,16 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- Implement the core's awaited telemetry callback contract (ADR 0026).
 - Update telemetry integration regression fixtures for the core's optional runtime
   context event field (ADR 0021).
-
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
+### Fixed
+
+- Apply call-level `record_outputs` to tool result attributes, including the
+  execution-wrapper path.
+- Emit successful and failed embedding/reranking `CLIENT` spans alongside metrics.
 
 ## [0.1.2] - 2026-09-16
 

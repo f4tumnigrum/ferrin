@@ -67,7 +67,7 @@ fn mock(audio: &'static [u8], media_type: Option<&'static str>) -> Arc<SpeechMoc
 
 #[tokio::test]
 async fn generates_speech_and_derives_the_format() {
-    let model = mock(b"RIFF....WAVEfmt ", Some("audio/wav"));
+    let model = mock(b"RIFF....WAVEfmt ", Some("audio/ogg"));
     let result = generate_speech(Arc::clone(&model), "Hello")
         .voice("alloy")
         .speed(1.25)
@@ -86,9 +86,9 @@ async fn generates_speech_and_derives_the_format() {
 
 #[tokio::test]
 async fn unknown_media_type_defaults_to_mp3() {
-    let model = mock(b"\x00\x01\x02\x03", None);
+    let model = mock(b"\x00\x01\x02\x03", Some("audio/wav"));
     let result = generate_speech(model, "Hello").await.unwrap();
-    assert_eq!(result.audio.media_type.as_str(), "audio/mpeg");
+    assert_eq!(result.audio.media_type.as_str(), "audio/mp3");
     assert_eq!(result.audio.format, "mp3");
 }
 

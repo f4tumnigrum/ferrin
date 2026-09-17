@@ -24,7 +24,7 @@ impl EmbedMany {
 }
 
 pub struct EmbedManyResult {
-    pub embeddings: Vec<Embedding>,       // Embedding = Vec<f32>
+    pub embeddings: Vec<Embedding>,       // Embedding = Vec<f64>
     pub usage: EmbeddingUsage,            // { tokens: Option<u64> }
     pub responses: Vec<ResponseMetadata>,
     pub provider_metadata: Option<ProviderMetadata>,
@@ -32,9 +32,9 @@ pub struct EmbedManyResult {
 }
 ```
 
-【决策】嵌入向量类型为 `Vec<f32>`。依据：主流供应商返回 32 位精度即可满足的浮点数组，`f32` 减少一半内存；需要更高精度的供应商通过 `provider_metadata` 暴露原始值。
+【决策】嵌入向量采用 `Vec<f64>`，余弦相似度使用 `f64` 运算，与参考 SDK 的 JavaScript `number` 精度一致（ADR 0026，2026-09-17）。此决定替换此前为节省内存而使用 `f32` 的选择，避免 JSON 响应转换时静默舍入或溢出。
 
-`ferrin_core::embed::cosine_similarity(&[f32], &[f32]) -> f32` 作为辅助函数提供。（2026-09-13：实现返回 `Result<f32, Error>`，见第 13 节。）
+`ferrin_core::embed::cosine_similarity(&[f64], &[f64]) -> f64` 作为辅助函数提供。（2026-09-13：实现返回 `Result<f64, Error>`，见第 13 节。）
 
 ## 2. 图像生成
 
@@ -165,7 +165,7 @@ pub struct ResponseMetadata {
 
 ### 13.1 共同规则
 
-- 【决策】每个模态调用创建一个 `ferrin.modality` span，操作名放在 `gen_ai.operation.name` 字段（[ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md) 第 5 项）；不提供 `on_start`/`on_end` 生命周期回调，遥测集成只通过 `Telemetry` 的 `on_embed_*`、`on_rerank_*`、`on_error` 事件。依据：非文本模态是单次调用，没有步骤与工具执行，`Telemetry` 事件已足够表达开始、结束与失败。
+- 【决策】每个模态调用创建一个 `ferrin.modality` span，操作名放在 `gen_ai.operation.name` 字段（[ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md) 第 5 项）；嵌入和重排提供参考行为对齐章节记录的操作级 `on_start`/`on_end` 回调；`Telemetry::on_embed_*` 和 `on_rerank_*` 保留单次模型尝试事件。
 - 【决策】`provider_metadata` 跨多次调用合并时按供应商键做浅合并，同键下的数组拼接、其他值后者覆盖（`modality::merge_provider_metadata`）。依据：数组字段（如各次调用返回的 `images`）需要保留全部元素，标量字段取最后一次即可；不对费用一类字段求和，因为其语义因供应商而异。
 - 【事实】`ResponseMetadata`（`ferrin_spec`）的 `id`、`timestamp`、`model_id`、`headers`、`body` 均为 `Option`（第 11 节草案中的 `timestamp`、`model_id` 非可选写法以规范层实现为准）。
 
@@ -173,7 +173,7 @@ pub struct ResponseMetadata {
 
 - 【事实】`embed(model, value: impl Into<String>) -> Embed`；`embed_many(model, values: impl IntoIterator<Item: Into<String>>) -> EmbedMany`（`max_parallel_calls(n)`，最小 1）。`EmbedResult { value, embedding, usage: EmbeddingUsage { tokens: Option<u64> }, warnings, response, provider_metadata }`，`EmbedManyResult { values, embeddings, usage, warnings, responses, provider_metadata }`。
 - 【决策】`ferrin_spec::EmbeddingModel` 增加 `max_input_bytes_per_call() -> Option<usize>`（默认 `None`）；分块按 PV-011 规则以 `str::len()` 计字节；上限为 `Some(0)` 时返回 `Error::InvalidArgument`。任一调用缺少 `usage` 时合计 `tokens` 为 `None`。返回的向量数与输入数不符时报 `ProviderError::InvalidResponseData`。
-- 【决策】`cosine_similarity(a, b) -> Result<f32, Error>`：长度不同返回 `Error::InvalidArgument { argument: "vectors" }`，任一范数为 0 返回 `0.0`。依据：长度不同是调用方错误，以 `Result` 而非 panic 表达。
+- 【决策】`cosine_similarity(a, b) -> Result<f64, Error>`：长度不同返回 `Error::InvalidArgument { argument: "vectors" }`，任一范数为 0 返回 `0.0`。依据：长度不同是调用方错误，以 `Result` 而非 panic 表达。
 
 ### 13.3 图像
 
@@ -203,6 +203,8 @@ pub struct ResponseMetadata {
 - 【决策】批处理请求为核心层类型 `BatchRequest::{Text(Box<TextBatchRequest>), Image(Box<ImageBatchRequest>)}`：`TextBatchRequest::new(id, model_id)` 提供 `system`/`prompt`/`messages`/`tools`/`tool_choice`/`active_tools`/`tool_order`/`tools_context`/`settings`/`response_format`，`ImageBatchRequest::new(id, model_id, prompt)` 提供 `n`/`size`/`aspect_ratio`/`seed`/`files`/`mask`/`provider_options`。依据：批处理请求不含回调与取消令牌，复用 `GenerateText` 构建器会暴露无意义的方法；装箱使枚举变体大小接近。
 - 【事实】`start_batch(batch, requests) -> StartBatch`（`webhook_url`、`download`）校验 ID 非空且唯一、同名工具定义一致，文本请求经 `standardize` → `CallSettings::validate` → `prepare_tools` → `convert_to_prompt`（以批处理服务的 `supported_urls` 决定 URL 直传）。`get_batch_status(batch, id)`、`get_batch_results(batch, id)`（`tools(ToolSet)` 用于解析结果中的工具调用；流项 `BatchResultItem::{Text(Box<BatchItem<TextBatchResult>>), Image(Box<BatchItem<ImageBatchResult>>)}`）、`cancel_batch`、`list_batches(batch)`（`limit`、`cursor`）；取消与列表不支持时 `UnsupportedFunctionality`。
 
+- 【决策】依据 ADR 0026，批处理结果检索使用贯穿流建立与消费的统一截止时间，包含重试和结果项转换。取消或丢弃结果流会取消其提供者令牌；超时与取消只产生一个终止错误，不取消调用方令牌。图像批处理请求将显式给出的零图像数量传递给提供者，按参考实现准备参数，不在核心层增加校验（来源：`6c6c221` 的 `packages/ai/src/batch/batch.ts`，2026-09-17 对照）。
+
 ### 13.8 实时会话
 
 - 【决策】（[ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md) 第 3 项）`realtime_session(model) -> RealtimeSessionBuilder`（`client_secret`、`expires_after_seconds`、`config`、`instructions`、`voice`、`tools(ToolSet)`、`tools_context`、`cancellation`、`event_buffer`），`connect()`（或 `.await`）返回 `RealtimeSession`。未提供 `client_secret` 时通过 `do_create_client_secret` 创建；`websocket_config(token, url)` 给出的子协议写入 `Sec-WebSocket-Protocol`；连接后立即发送经 `serialize_client_event` 序列化的 `SessionUpdate`。
@@ -210,6 +212,7 @@ pub struct ResponseMetadata {
 - 【事实】本地工具执行：`FunctionCallArgumentsDone` 事件对应的工具存在且可执行时，解析并校验参数与上下文，解析 `NeedsApproval`，仅在无需审批时在会话内执行，输出以 `FunctionCallOutput` 提交（2026-09-15，`tests/suite/realtime.rs`）。需要审批时通过事件流返回错误，调用保持待处理，应用负责取得批准、执行并通过 `add_tool_output` 提交结果；Realtime 没有内置审批恢复协议，审批解析随会话取消；工具存在但无执行函数时不自动处理（应用调用 `add_tool_output`）；工具不存在为 `Err(Error::NoSuchTool)`；参数不合法为 `Err(Error::InvalidToolInput)`。同一响应内的多个工具调用全部提交输出且收到 `ResponseDone` 后，只发送一次 `ResponseCreate`。`health_check_response` 有返回时先回复再解析事件。
 - 【决策】WebSocket TLS 使用 `tokio-tungstenite` 的 `rustls-tls-native-roots`（系统根证书）；不提供自定义连接器。依据：与 HTTP 传输的系统信任库策略一致，且不在 `ferrin-core` 引入 `rustls-platform-verifier` 直接依赖。
 - 【事实】`realtime_tool_definitions(&ToolSet, tools_context) -> Vec<RealtimeToolDefinition>` 只转换函数与动态工具，跳过供应商工具。
+- 【决策】依据 ADR 0026，实时事件在并发发送方之间按顺序序列化，序列化后的 JSON null 表示提供者无需发送消息。格式错误的工具参数返回错误，但不加入待输出集合，避免阻塞合法调用的后续响应。JSON 字符串消息按字符串内容发送。原生会话保留显式事件流与工具执行器；浏览器音频采集、播放和 UI 消息归约器仍不属于此模块范围（来源：`6c6c221` 的 `packages/ai/src/realtime/browser-realtime-transport.ts`、`realtime-session.ts` 与 `realtime-event-reducer.ts`，2026-09-17 对照）。
 
 ### 13.9 语音翻译
 
@@ -218,3 +221,11 @@ pub struct ResponseMetadata {
 【事实】 流式转写和语音翻译从等待 builder 到终止流事件采用同一个总期限，涵盖提供商建立流的过程。建立时超时返回 `Error::Timeout { scope: Total }`，流中超时发出一个 `error_type: "timeout"` 的终止错误事件；调用方取消发出 `error_type: "cancelled"`。完成、超时、取消及丢弃流均取消派生的提供商 token，不取消调用方 token（2026-09-15，`tests/suite/modalities/stream_timeout.rs`）。
 
 【事实】 视频轮询期限同样约束每次状态请求、重试退避及 webhook 后的状态请求；到期返回总超时并取消请求 token。调用方取消会立即中断挂起的状态请求（2026-09-15，`tests/suite/modalities/video.rs`）。
+
+## 参考行为对齐（2026-09-17）
+
+【决策】`embed`、`embed_many` 和 `rerank` 接受 `runtime_context`、`on_start` 和 `on_end`。操作级回调包含原始输入、请求配置、共享调用 ID、模型标识和运行上下文（默认为空对象）；结束回调还包含聚合后的成功结果。开始回调在任何供应商尝试之前执行一次，结束回调在所有分批和重试成功后执行一次，失败时不执行结束回调。空重排输入仍发出两个操作事件，但不发出供应商事件。通过现有 `Hooks::emit` 实现并发等待回调，并隔离展开式 panic。Rust 枚举保留参考 SDK 的单值和多值嵌入事件形状（来源：`6c6c221` 的 `packages/ai/src/embed/embed.ts`、`embed-many.ts`、`embed-events.ts`、`rerank/rerank.ts` 和 `rerank-events.ts`；ADR 0026）。
+
+【决策】依据 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，嵌入调用按输入分批顺序浅合并供应商元数据，数组采用后值替换而非拼接。没有分批限制的模型对空输入仍调用一次；有限制的模型对空输入不产生批次。图像聚合拼接每张图像的元数据，并在不转浮点数的情况下求和 gateway 十进制费用字符串。视频元数据仅拼接 `videos`，其他字段使用后值。重排结果同时保留完整原始文档与排序后的子集（参考：`6c6c221` 的 `packages/ai/src/embed/embed-many.ts`、`generate-image/generate-image.ts`、`generate-video/generate-video.ts`、`rerank/rerank.ts`）。
+
+【决策】视频归一化中 `frame_images` 优先于 `input_references`，`FirstFrame` 条目优先于单独的输入图像；忽略非空输入时每次逻辑调用生成一次警告。语音输出媒体类型采用字节检测，无法识别时回退 `audio/mp3`；转录依次采用调用方显式媒体类型、字节检测、`audio/wav`，不使用下载响应头决定类型。流式音频响应补全缺失的时间戳和模型 ID。语音翻译提供结果收集，保留源文本、译文、时长、用量、警告、请求与响应、供应商元数据；纯音频输出有效，空输出或缺少完成事件返回 `NoTranslationGenerated`（参考：`6c6c221` 的 `packages/ai/src/generate-video`、`generate-speech`、`transcribe`、`translate`；ADR 0026）。

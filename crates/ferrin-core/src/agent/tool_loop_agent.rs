@@ -1,38 +1,31 @@
 //! The built-in tool-loop agent.
 
 use std::fmt;
-use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use ferrin_spec::BoxFuture;
-use ferrin_spec::JsonValue;
 use ferrin_spec::LanguageModelRef;
-use ferrin_spec::ToolChoice;
-use ferrin_spec::ToolName;
 use ferrin_tool::ToolSet;
 
 use super::Agent;
 use super::AgentCall;
 use super::AgentInput;
 use super::AgentStreamCall;
+use super::PrepareCall;
+use super::PrepareCallInput;
+use super::PreparedCall;
+use super::options::CallOptionsValidator;
 use crate::error::Error;
 use crate::generate_text::GenerateText;
 use crate::generate_text::GenerateTextResult;
-use crate::generate_text::Include;
-use crate::generate_text::StopCondition;
 use crate::generate_text::config::CallConfig;
 use crate::generate_text::step_count;
 use crate::output::NoOutput;
 use crate::output::Output;
 use crate::output::OutputHandler;
-use crate::prompt::CallSettings;
 use crate::prompt::Instructions;
-use crate::retry::RetryPolicy;
 use crate::stream_text::StreamText;
 use crate::stream_text::StreamTextResult;
-use crate::telemetry::TelemetryOptions;
-use crate::timeout::Timeout;
 
 /// User-Agent product appended to agent requests.
 pub const AGENT_USER_AGENT: &str = "ferrin-agent/tool-loop";
@@ -40,110 +33,12 @@ pub const AGENT_USER_AGENT: &str = "ferrin-agent/tool-loop";
 /// Default stop condition when none is configured.
 const DEFAULT_MAX_STEPS: u32 = 20;
 
-/// The effective settings of one call, as seen by [`PrepareCall`].
-///
-/// Every field starts with the agent's configuration (with the call's
-/// input and timeout applied); the prepare function may rewrite any of
-/// them. `None` means "not set".
-#[derive(Clone)]
-pub struct PreparedCall {
-    /// The prompt or conversation.
-    pub input: AgentInput,
-    /// System instructions.
-    pub instructions: Option<Instructions>,
-    /// Whether system messages are allowed inside the conversation.
-    pub allow_system_in_messages: bool,
-    /// The model.
-    pub model: LanguageModelRef,
-    /// The tools.
-    pub tools: ToolSet,
-    /// Tool choice.
-    pub tool_choice: Option<ToolChoice>,
-    /// Tools sent to the model (all when `None`).
-    pub active_tools: Option<Vec<ToolName>>,
-    /// Tool order sent to the model.
-    pub tool_order: Vec<ToolName>,
-    /// Shared tool context.
-    pub tools_context: Option<JsonValue>,
-    /// Application state for the generation lifecycle, separate from tool context.
-    pub runtime_context: Option<JsonValue>,
-    /// Sampling settings, headers and provider options.
-    pub settings: CallSettings,
-    /// Stop conditions (default: twenty steps).
-    pub stop_conditions: Vec<Arc<dyn StopCondition>>,
-    /// Timeouts.
-    pub timeout: Timeout,
-    /// Retry policy.
-    pub retry_policy: RetryPolicy,
-    /// Payloads copied into step results.
-    pub include: Include,
-    /// Tool concurrency limit.
-    pub max_tool_concurrency: Option<usize>,
-    /// Telemetry options.
-    pub telemetry: TelemetryOptions,
-}
-
-impl fmt::Debug for PreparedCall {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PreparedCall")
-            .field("input", &self.input)
-            .field("instructions", &self.instructions)
-            .field("allow_system_in_messages", &self.allow_system_in_messages)
-            .field("model", &self.model)
-            .field("tools", &self.tools.names().collect::<Vec<_>>())
-            .field("tool_choice", &self.tool_choice)
-            .field("active_tools", &self.active_tools)
-            .field("tool_order", &self.tool_order)
-            .field("tools_context", &self.tools_context)
-            .field("runtime_context", &self.runtime_context.is_some())
-            .field("settings", &self.settings)
-            .field("stop_conditions", &self.stop_conditions.len())
-            .field("timeout", &self.timeout)
-            .field("retry_policy", &self.retry_policy)
-            .field("include", &self.include)
-            .field("max_tool_concurrency", &self.max_tool_concurrency)
-            .finish_non_exhaustive()
-    }
-}
-
-/// Input of [`PrepareCall`].
-#[derive(Debug)]
-pub struct PrepareCallInput<Opt> {
-    /// The per-call options.
-    pub options: Opt,
-    /// The effective settings of the call, to be returned (possibly
-    /// modified).
-    pub defaults: PreparedCall,
-}
-
-/// Rewrites the settings of a call from its options (templated
-/// instructions, per-tenant tools, ...).
-pub trait PrepareCall<Opt>: Send + Sync {
-    /// Produces the settings to use.
-    fn prepare_call(
-        &self,
-        input: PrepareCallInput<Opt>,
-    ) -> BoxFuture<'_, Result<PreparedCall, Error>>;
-}
-
-impl<Opt, F, Fut> PrepareCall<Opt> for F
-where
-    F: Fn(PrepareCallInput<Opt>) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<PreparedCall, Error>> + Send + 'static,
-{
-    fn prepare_call(
-        &self,
-        input: PrepareCallInput<Opt>,
-    ) -> BoxFuture<'_, Result<PreparedCall, Error>> {
-        Box::pin(self(input))
-    }
-}
-
 struct Settings<Opt, Out> {
     id: Option<String>,
     config: CallConfig,
     output: Arc<dyn OutputHandler<Out>>,
     prepare_call: Option<Arc<dyn PrepareCall<Opt>>>,
+    call_options_validator: Option<CallOptionsValidator<Opt>>,
 }
 
 /// An agent that runs the tool loop of `generate_text`/`stream_text` with
@@ -166,6 +61,10 @@ impl<Opt, Out> fmt::Debug for ToolLoopAgent<Opt, Out> {
             .field("id", &self.settings.id)
             .field("config", &self.settings.config)
             .field("has_prepare_call", &self.settings.prepare_call.is_some())
+            .field(
+                "has_call_options_schema",
+                &self.settings.call_options_validator.is_some(),
+            )
             .finish()
     }
 }
@@ -179,6 +78,7 @@ impl ToolLoopAgent {
             config: CallConfig::new(model.into()),
             output: Arc::new(NoOutput),
             prepare_call: None,
+            call_options_validator: None,
             _options: PhantomData,
         }
     }
@@ -199,16 +99,20 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
             tool_order: config.tool_order.clone(),
             tools_context: config.tools_context.clone(),
             runtime_context: config.runtime_context.clone(),
+            tool_approval: config.tool_approval.clone(),
+            tool_approval_secret: config.tool_approval_secret.clone(),
+            tool_callers: config.tool_callers.clone(),
+            prepare_step: config.prepare_step.clone(),
+            repair_tool_call: config.repair_tool_call.clone(),
+            refine_tool_inputs: config.refine_tool_inputs.clone(),
+            download: config.download.clone(),
             settings: config.settings.clone(),
             stop_conditions: if config.stop_conditions.is_empty() {
                 vec![Arc::new(step_count(DEFAULT_MAX_STEPS))]
             } else {
                 config.stop_conditions.clone()
             },
-            timeout: call
-                .timeout
-                .clone()
-                .unwrap_or_else(|| config.timeout.clone()),
+            timeout: config.timeout.clone(),
             retry_policy: config.retry_policy.clone(),
             include: config.include,
             max_tool_concurrency: config.max_tool_concurrency,
@@ -222,16 +126,23 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
         let AgentCall {
             options,
             cancellation,
+            timeout,
             hooks,
             #[cfg(feature = "sandbox")]
             sandbox,
             ..
         } = call;
+        let options = match &self.settings.call_options_validator {
+            Some(validate) => validate(options)?,
+            None => options,
+        };
         if let Some(prepare_call) = &self.settings.prepare_call {
             prepared = prepare_call
                 .prepare_call(PrepareCallInput {
                     options,
                     defaults: prepared,
+                    #[cfg(feature = "sandbox")]
+                    sandbox: sandbox.clone(),
                 })
                 .await?;
         }
@@ -255,13 +166,20 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
         config.tool_order = prepared.tool_order;
         config.tools_context = prepared.tools_context;
         config.runtime_context = prepared.runtime_context;
+        config.tool_approval = prepared.tool_approval;
+        config.tool_approval_secret = prepared.tool_approval_secret;
+        config.tool_callers = prepared.tool_callers;
+        config.prepare_step = prepared.prepare_step;
+        config.repair_tool_call = prepared.repair_tool_call;
+        config.refine_tool_inputs = prepared.refine_tool_inputs;
+        config.download = prepared.download;
         config.settings = prepared.settings;
         config.settings.headers = config
             .settings
             .headers
             .with_user_agent_suffix([AGENT_USER_AGENT]);
         config.stop_conditions = prepared.stop_conditions;
-        config.timeout = prepared.timeout;
+        config.timeout = timeout.unwrap_or(prepared.timeout);
         config.retry_policy = prepared.retry_policy;
         config.include = prepared.include;
         config.max_tool_concurrency = prepared.max_tool_concurrency;
@@ -270,7 +188,7 @@ impl<Opt: Send + 'static, Out: Send + 'static> ToolLoopAgent<Opt, Out> {
             config.telemetry.function_id = self.settings.id.clone();
         }
         config.cancellation = cancellation;
-        // Agent hooks run before the call's hooks.
+        // Agent hooks begin before call hooks; all run concurrently to completion.
         config.hooks = self.settings.config.hooks.clone().merged(hooks);
         #[cfg(feature = "sandbox")]
         if let Some(sandbox) = sandbox {
@@ -320,6 +238,7 @@ pub struct ToolLoopAgentBuilder<Opt, Out> {
     pub(crate) config: CallConfig,
     output: Arc<dyn OutputHandler<Out>>,
     prepare_call: Option<Arc<dyn PrepareCall<Opt>>>,
+    call_options_validator: Option<CallOptionsValidator<Opt>>,
     _options: PhantomData<fn() -> Opt>,
 }
 
@@ -329,6 +248,10 @@ impl<Opt, Out> fmt::Debug for ToolLoopAgentBuilder<Opt, Out> {
             .field("id", &self.id)
             .field("config", &self.config)
             .field("has_prepare_call", &self.prepare_call.is_some())
+            .field(
+                "has_call_options_schema",
+                &self.call_options_validator.is_some(),
+            )
             .finish()
     }
 }
@@ -358,12 +281,13 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
             config: self.config,
             output: output.handler(),
             prepare_call: self.prepare_call,
+            call_options_validator: self.call_options_validator,
             _options: PhantomData,
         }
     }
 
-    /// Sets the per-call options type. Resets any prepare function set
-    /// before (it was typed for the previous options).
+    /// Sets the per-call options type, resetting preparation and validation
+    /// callbacks configured for the previous type.
     #[must_use]
     pub fn call_options<O>(self) -> ToolLoopAgentBuilder<O, Out> {
         ToolLoopAgentBuilder {
@@ -371,6 +295,7 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
             config: self.config,
             output: self.output,
             prepare_call: None,
+            call_options_validator: None,
             _options: PhantomData,
         }
     }
@@ -379,6 +304,37 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
     #[must_use]
     pub fn prepare_call(mut self, prepare: impl PrepareCall<Opt> + 'static) -> Self {
         self.prepare_call = Some(Arc::new(prepare));
+        self
+    }
+
+    /// Validates and normalizes call options before preparing a generation or stream.
+    ///
+    /// The schema receives serialized options and its validated value replaces them.
+    /// Validation failures return [`Error::InvalidArgument`] before callbacks or model
+    /// calls start. Without this option, call options need not implement `Serialize`.
+    /// Changing the option type with [`Self::call_options`] clears this schema.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ferrin_core::ToolLoopAgent;
+    /// use ferrin_schema::Schema;
+    /// use serde_json::{Value, json};
+    ///
+    /// let agent = ToolLoopAgent::builder("provider:model")
+    ///     .call_options::<Value>()
+    ///     .call_options_schema(Schema::from_json_schema(json!({
+    ///         "type": "object", "required": ["tenant"],
+    ///         "properties": { "tenant": { "type": "string" } }
+    ///     })))
+    ///     .build();
+    /// ```
+    #[must_use]
+    pub fn call_options_schema(mut self, schema: ferrin_schema::Schema<Opt>) -> Self
+    where
+        Opt: serde::Serialize + 'static,
+    {
+        self.call_options_validator = Some(super::options::validator(schema));
         self
     }
 
@@ -391,6 +347,7 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
                 config: self.config,
                 output: self.output,
                 prepare_call: self.prepare_call,
+                call_options_validator: self.call_options_validator,
             }),
         }
     }

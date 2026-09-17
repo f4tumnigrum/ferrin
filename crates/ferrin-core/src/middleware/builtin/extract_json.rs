@@ -126,14 +126,17 @@ impl LanguageModelMiddleware for ExtractJson {
 #[must_use]
 pub fn strip_json_fences(text: &str) -> String {
     strip_fence_suffix(strip_fence_prefix(text))
-        .trim()
+        .trim_matches(is_json_fence_whitespace)
         .to_owned()
 }
 
 /// Removes ```` ``` ```` or ```` ```json ```` and the following whitespace.
 fn strip_fence_prefix(text: &str) -> &str {
     match text.strip_prefix("```") {
-        Some(rest) => rest.strip_prefix("json").unwrap_or(rest).trim_start(),
+        Some(rest) => rest
+            .strip_prefix("json")
+            .unwrap_or(rest)
+            .trim_start_matches(is_json_fence_whitespace),
         None => text,
     }
 }
@@ -141,7 +144,7 @@ fn strip_fence_prefix(text: &str) -> &str {
 /// Removes a trailing ```` ``` ```` (with trailing whitespace and one
 /// preceding newline).
 fn strip_fence_suffix(text: &str) -> &str {
-    let trimmed = text.trim_end();
+    let trimmed = text.trim_end_matches(is_json_fence_whitespace);
     match trimmed.strip_suffix("```") {
         Some(rest) => rest.strip_suffix('\n').unwrap_or(rest),
         None => text,
@@ -149,7 +152,15 @@ fn strip_fence_suffix(text: &str) -> &str {
 }
 
 fn strip_markdown_code_fence_suffix(text: &str) -> String {
-    strip_fence_suffix(text).trim_end().to_owned()
+    strip_fence_suffix(text)
+        .trim_end_matches(is_json_fence_whitespace)
+        .to_owned()
+}
+
+fn is_json_fence_whitespace(ch: char) -> bool {
+    matches!(ch, '\u{0009}'..='\u{000d}' | ' ' | '\u{00a0}' | '\u{1680}'
+        | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}'
+        | '\u{205f}' | '\u{3000}' | '\u{feff}')
 }
 
 /// Length of a complete opening fence line (```` ```json ```` plus
@@ -160,7 +171,7 @@ fn fence_prefix_len(text: &str) -> Option<usize> {
     let consumed = text.len() - rest.len();
     let whitespace_len = rest
         .char_indices()
-        .find(|(_, c)| !c.is_whitespace())
+        .find(|(_, c)| !is_json_fence_whitespace(*c))
         .map_or(rest.len(), |(index, _)| index);
     let whitespace = &rest[..whitespace_len];
     let last_newline = whitespace.rfind('\n')?;
@@ -206,12 +217,16 @@ impl StreamState {
                     },
                 );
             }
-            StreamPart::TextDelta { id, delta, .. } => {
+            StreamPart::TextDelta {
+                id,
+                delta,
+                provider_metadata,
+            } => {
                 let Some(block) = self.blocks.get_mut(&id) else {
                     out.push(StreamPart::TextDelta {
                         id,
                         delta,
-                        provider_metadata: None,
+                        provider_metadata,
                     });
                     return out;
                 };

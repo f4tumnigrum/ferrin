@@ -43,10 +43,7 @@ pub fn simulate_parts(result: &GenerateResult) -> Vec<StreamPart> {
     let mut next_id = 0u32;
     for part in &result.content {
         match part {
-            Content::Text {
-                text,
-                provider_metadata,
-            } => {
+            Content::Text { text, .. } => {
                 if text.is_empty() {
                     continue;
                 }
@@ -54,7 +51,7 @@ pub fn simulate_parts(result: &GenerateResult) -> Vec<StreamPart> {
                 next_id += 1;
                 parts.push(StreamPart::TextStart {
                     id: id.clone(),
-                    provider_metadata: provider_metadata.clone(),
+                    provider_metadata: None,
                 });
                 parts.push(StreamPart::TextDelta {
                     id: id.clone(),

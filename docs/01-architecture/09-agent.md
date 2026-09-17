@@ -39,9 +39,9 @@ pub struct AgentCall<O> {
 
 [Decision] `ToolLoopAgent` behavior:
 
-- Settings `include` `model`, `instructions` (system prompt), `allow_system_in_messages`, `tools`, `tool_choice`, `stop_when` (default `step_count(20)`), `telemetry`, `active_tools`, `tool_order`, `output`, `runtime_context`, `tool_approval`, `tool_callers`, `tool_approval_secret`, `prepare_step`, `repair_tool_call`, `refine_tool_input`, all lifecycle hooks, `provider_options`, `download`, `include`, `prepare_call`, and all sampling/request options.
+- Settings `include` `model`, `instructions` (system prompt), `allow_system_in_messages`, `tools`, `tool_choice`, `stop_when` (default `step_count(20)`), `telemetry`, `active_tools`, `tool_order`, `output`, `runtime_context`, `tool_approval`, `tool_callers`, `tool_approval_secret`, `prepare_step`, `repair_tool_call`, `refine_tool_input`, all lifecycle hooks, `provider_options`, `download`, `include`, `call_options_schema`, `prepare_call`, and all sampling/request options.
 - `prepare_call` derives settings from call options, for example localized `instructions`. Explicitly cleared fields remove outer settings.
-- Merge agent-level hooks before call-level hooks, preserving order.
+- Invoke agent-level and call-level hooks in registration order, poll them concurrently, and wait for every hook to settle; completion order is not guaranteed (ADR 0026).
 - Append User-Agent suffix `ferrin-agent/tool-loop`.
 - Delegate `generate` and `stream` to `generate_text` and `stream_text`.
 
@@ -58,8 +58,9 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
     pub fn tools(self, tools: ToolSet) -> Self;
     pub fn stop_when(self, condition: impl StopCondition + 'static) -> Self;
     pub fn output<T>(self, output: Output<T>) -> ToolLoopAgentBuilder<Opt, T>;
-    pub fn call_options<O: Send + 'static>(self) -> ToolLoopAgentBuilder<O, Out>;   // 2026-09-13: bounds relaxed, see §6
-    pub fn prepare_call(self, f: impl Fn(PrepareCallInput<Opt>) -> BoxFuture<'static, Result<PreparedCall, Error>> + Send + Sync + 'static) -> Self;
+    pub fn call_options<O>(self) -> ToolLoopAgentBuilder<O, Out>;
+    pub fn call_options_schema(self, schema: Schema<Opt>) -> Self where Opt: Serialize + 'static;
+    pub fn prepare_call(self, f: impl PrepareCall<Opt> + 'static) -> Self;
     pub fn prepare_step(self, f: impl PrepareStep + 'static) -> Self;
     pub fn tool_approval(self, policy: impl ApprovalPolicy + 'static) -> Self;
     pub fn tool_approval_secret(self, secret: SecretBox<[u8]>) -> Self;
@@ -110,10 +111,20 @@ Applications may implement `Agent` to combine models or external planning. The c
 ## 6. Implementation record (2026-09-13)
 
 - [Decision] ([ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md), item 1) `Agent::Options: Send + 'static`; `call_options::<O>()` requires neither `DeserializeOwned` nor `JsonSchema`.
-- [Decision] (ADR 0013, item 2) `PrepareCall<Opt>::prepare_call(&self, PrepareCallInput<Opt> { options, defaults: PreparedCall }) -> BoxFuture<'_, Result<PreparedCall, Error>>`. `defaults` holds merged effective agent/call values: `instructions`, `model`, `tools`, `tool_choice`, `active_tools`, `tool_order`, `tools_context`, `settings: CallSettings`, `stop_conditions`, `timeout`, `retry_policy`, `include`, `max_tool_concurrency`, and `telemetry`. Setting a field to `None` removes it. Closures returning `Future<Output = Result<PreparedCall, Error>> + Send + 'static` implement the trait through a blanket implementation.
-- [Decision] Default to `step_count(20)`. Call-level `timeout` replaces the entire agent `timeout` without field merging. `Hooks::merged` appends call hooks after agent hooks. Default empty `telemetry.function_id` to the agent ID. Twenty steps bound ordinary loops; agent hooks log before call-specific behavior; whole-`timeout` replacement avoids ambiguous merging.
+- [Decision] (ADR 0013, item 2) `PrepareCall<Opt>::prepare_call(&self, PrepareCallInput<Opt> { options, defaults: PreparedCall }) -> BoxFuture<'_, Result<PreparedCall, Error>>`. `defaults` holds merged effective agent/call values: `instructions`, `model`, `tools`, `tool_choice`, `active_tools`, `tool_order`, `tools_context`, `settings: CallSettings`, `stop_conditions`, `timeout`, `retry_policy`, `include`, `max_tool_concurrency`, and `telemetry`. Setting an optional field to `None` removes it; section 8 lists the additional per-call override fields. Closures returning `Future<Output = Result<PreparedCall, Error>> + Send + 'static` implement the trait through a blanket implementation.
+- [Decision] Default to `step_count(20)`. Call-level `timeout` replaces the entire agent `timeout` without field merging. `Hooks::merged` appends call hooks after agent hooks. Default empty `telemetry.function_id` to the agent ID. Twenty steps bound ordinary loops; hook invocation starts in registration order, while completion is concurrent; whole-`timeout` replacement avoids ambiguous merging.
 - [Fact] `AgentCall<O>` offers `new/prompt/messages` on `AgentCall<()>`, `options<P>()` to change the option type, `cancellation`, `timeout`, `hooks`, `on_step_end`, `on_end`, and `streaming() -> AgentStreamCall<O>`. `AgentStreamCall<O>` adds `transform`, `include_raw_chunks`, `stream_retries`, `on_error`, `on_chunk`, and `on_abort`. Append the agent User-Agent suffix before the core appends `ferrin/<version>`.
 
 ## 7. Implementation record (2026-09-17)
 
 [Decision] The shared builder accepts `runtime_context(JsonValue)`, and `PreparedCall::runtime_context` lets `prepare_call` set or clear invocation state independently of `tools_context`. Agent settings are cloned for each invocation; step overrides mutate only that invocation's evolving state. Generation and streaming have identical retention behavior under [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md).
+
+## 8. Reference SDK parity (2026-09-17)
+
+[Decision] Under proposed [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md), `call_options_schema(Schema<Opt>)` optionally validates and normalizes serialized options before `prepare_call`, for both generation and streaming. Only this opt-in method requires `Opt: Serialize`; ordinary typed options retain the unconstrained Rust API. Invalid options fail before preparation, hooks or model invocation, without exposing input payloads. The schema's validator defines validation and normalization; raw JSON Schema constraints follow the schema crate's validation feature.
+
+[Decision] `PreparedCall` exposes approval policy/secret, tool callers, step preparation, repair/refinement and downloader settings, allowing per-call replacement or explicit clearing. An explicit `AgentCall::timeout` takes precedence over the result of `prepare_call`; otherwise the prepared timeout applies. Preparation remains outside generation timeout/cancellation handling, matching the reference wrapper.
+
+[Decision] Lifecycle hook dispatch waits for all concurrent hooks and isolates unwinding panics from callback creation and polling. Hooks keep their `Future<Output = ()>` contract; applications handle fallible work internally. Panic isolation cannot intercept `panic = abort`, and the process panic handler may still run. This replaces the earlier sequential completion guarantee; applications needing order must combine dependent work inside one hook.
+
+[Fact] `crates/ferrin-core/tests/suite/agent_options.rs` covers both paths for validation rejection, normalization, serialization failures and timeout precedence; `agent_overrides.rs` covers setting/clearing policies, signing keys, step preparation, repairs, refinements, callers and downloaders, plus sandbox visibility during preparation. `hooks.rs` uses a rendezvous to verify concurrent waiting and tests synchronous/asynchronous panic isolation in generation and streaming. Source: local mock tests on 2026-09-17.

@@ -5,9 +5,11 @@ pub(crate) mod common;
 mod embed;
 mod files;
 mod image;
+mod metadata;
 mod rerank;
 mod speech;
 mod transcription;
+mod translation;
 mod video;
 
 mod stream_timeout;

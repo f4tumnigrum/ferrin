@@ -1,9 +1,11 @@
 //! Telemetry: lifecycle callbacks, options and the built-in `tracing` spans.
 //!
-//! Callbacks are synchronous (they run on the pipeline hot path); the two
-//! `execute_*` wrappers are asynchronous because they must wrap the actual
-//! call. Integrations are injected per call through
+//! Lifecycle callbacks are awaited concurrently and isolate unwinding panics.
+//! The two `execute_*` wrappers preserve the actual call result.
+//! Integrations are injected per call through
 //! [`TelemetryOptions::integrations`]; there is no global registry.
+//! Callback settlement and wrapper ordering follow the Vercel AI SDK
+//! (`packages/ai/src/telemetry/create-telemetry-dispatcher.ts`); see `NOTICE`.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -70,6 +72,8 @@ pub struct ToolExecutionContext {
     pub tool_name: ToolName,
     /// Input (only when `record_inputs`).
     pub input: Option<JsonValue>,
+    /// Whether an integration may record the tool's output.
+    pub record_outputs: bool,
 }
 
 /// Result of a model call as seen by [`Telemetry::execute_language_model_call`].
@@ -82,39 +86,74 @@ pub enum ModelCallOutcome {
     Stream(Box<StreamResult>),
 }
 
-/// A telemetry integration.
+macro_rules! callback {
+    ($name:ident, $event:ty, $doc:literal) => {
+        #[doc = $doc]
+        fn $name<'a>(&'a self, _event: &'a $event) -> BoxFuture<'a, ()> {
+            Box::pin(async {})
+        }
+    };
+}
+
+/// A telemetry integration with awaited lifecycle callbacks.
 ///
-/// Every method has a no-op default; implement the ones you need. Callbacks
-/// must not block: hand events to your own channel when processing is slow.
+/// Every method has a no-op default. Integrations for the same event run
+/// concurrently; unwinding callback panics cannot interrupt the operation.
 pub trait Telemetry: Send + Sync + 'static {
-    /// A call started.
-    fn on_start(&self, _event: &StartEvent) {}
-    /// A step started.
-    fn on_step_start(&self, _event: &StepStartEvent) {}
-    /// A model call is about to be made.
-    fn on_language_model_call_start(&self, _event: &ModelCallStartEvent) {}
-    /// A model call finished.
-    fn on_language_model_call_end(&self, _event: &ModelCallEndEvent) {}
-    /// A tool execution started.
-    fn on_tool_execution_start(&self, _event: &ToolExecutionStartEvent) {}
-    /// A tool execution finished.
-    fn on_tool_execution_end(&self, _event: &ToolExecutionEndEvent) {}
-    /// A step finished.
-    fn on_step_end(&self, _event: &StepEndEvent) {}
-    /// An embedding call started.
-    fn on_embed_start(&self, _event: &EmbedStartEvent) {}
-    /// An embedding call finished.
-    fn on_embed_end(&self, _event: &EmbedEndEvent) {}
-    /// A rerank call started.
-    fn on_rerank_start(&self, _event: &RerankStartEvent) {}
-    /// A rerank call finished.
-    fn on_rerank_end(&self, _event: &RerankEndEvent) {}
-    /// A call finished.
-    fn on_end(&self, _event: &EndEvent) {}
-    /// A streaming call was aborted.
-    fn on_abort(&self, _event: &AbortEvent) {}
-    /// An error occurred.
-    fn on_error(&self, _event: &ErrorEvent<'_>) {}
+    callback!(on_start, StartEvent, "A call started.");
+    callback!(on_step_start, StepStartEvent, "A step started.");
+    callback!(
+        on_language_model_call_start,
+        ModelCallStartEvent,
+        "A model call is about to be made."
+    );
+    callback!(
+        on_language_model_call_end,
+        ModelCallEndEvent,
+        "A model call finished."
+    );
+    callback!(
+        on_tool_execution_start,
+        ToolExecutionStartEvent,
+        "A tool execution started."
+    );
+    callback!(
+        on_tool_execution_end,
+        ToolExecutionEndEvent,
+        "A tool execution finished."
+    );
+    callback!(on_step_end, StepEndEvent, "A step finished.");
+    callback!(
+        on_embed_start,
+        EmbedStartEvent,
+        "An embedding call started."
+    );
+    callback!(on_embed_end, EmbedEndEvent, "An embedding call finished.");
+    callback!(on_rerank_start, RerankStartEvent, "A rerank call started.");
+    callback!(on_rerank_end, RerankEndEvent, "A rerank call finished.");
+    callback!(
+        on_embed_operation_start,
+        crate::embed::EmbedCallStartEvent,
+        "An embedding operation started before its attempts."
+    );
+    callback!(
+        on_embed_operation_end,
+        crate::embed::EmbedCallEndEvent,
+        "An embedding operation completed all its attempts."
+    );
+    callback!(
+        on_rerank_operation_start,
+        crate::rerank::RerankCallStartEvent,
+        "A reranking operation started before its attempts."
+    );
+    callback!(
+        on_rerank_operation_end,
+        crate::rerank::RerankCallEndEvent,
+        "A reranking operation completed all its attempts."
+    );
+    callback!(on_end, EndEvent, "A call finished.");
+    callback!(on_abort, AbortEvent, "A streaming call was aborted.");
+    callback!(on_error, ErrorEvent<'_>, "An error occurred.");
 
     /// Runs a model call inside integration-specific context (for example an
     /// OpenTelemetry span). The default runs `call` unchanged.

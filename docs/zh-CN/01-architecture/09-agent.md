@@ -39,9 +39,9 @@ pub struct AgentCall<O> {
 
 【决策】`ToolLoopAgent` 的行为：
 
-- 设置项包含 `model`、`instructions`（系统提示）、`allow_system_in_messages`、`tools`、`tool_choice`、`stop_when`（默认 `step_count(20)`）、`telemetry`、`active_tools`、`tool_order`、`output`、`runtime_context`、`tool_approval`、`tool_callers`、`tool_approval_secret`、`prepare_step`、`repair_tool_call`、`refine_tool_input`、全部生命周期回调、`provider_options`、`download`、`include`、`prepare_call`，以及全部采样参数与请求选项。
+- 设置项包含 `model`、`instructions`（系统提示）、`allow_system_in_messages`、`tools`、`tool_choice`、`stop_when`（默认 `step_count(20)`）、`telemetry`、`active_tools`、`tool_order`、`output`、`runtime_context`、`tool_approval`、`tool_callers`、`tool_approval_secret`、`prepare_step`、`repair_tool_call`、`refine_tool_input`、全部生命周期回调、`provider_options`、`download`、`include`、`call_options_schema`、`prepare_call`，以及全部采样参数与请求选项。
 - `prepare_call` 允许根据调用选项生成模板化设置（例如按用户语言改写 `instructions`）；返回值中显式清除的字段会移除外层设置。
-- 调用时 Agent 级回调与调用级回调顺序合并（Agent 级先执行）。
+- Agent 级与调用级回调按注册顺序启动，并发轮询且等待全部完成；不保证完成顺序（ADR 0026）。
 - 请求头追加 User-Agent 后缀 `ferrin-agent/tool-loop`。
 - `generate` 与 `stream` 分别委托给 `generate_text` 与 `stream_text`。
 
@@ -58,8 +58,9 @@ impl<Opt, Out> ToolLoopAgentBuilder<Opt, Out> {
     pub fn tools(self, tools: ToolSet) -> Self;
     pub fn stop_when(self, condition: impl StopCondition + 'static) -> Self;
     pub fn output<T>(self, output: Output<T>) -> ToolLoopAgentBuilder<Opt, T>;
-    pub fn call_options<O: Send + 'static>(self) -> ToolLoopAgentBuilder<O, Out>;   // 2026-09-13: bounds relaxed, see §6
-    pub fn prepare_call(self, f: impl Fn(PrepareCallInput<Opt>) -> BoxFuture<'static, Result<PreparedCall, Error>> + Send + Sync + 'static) -> Self;
+    pub fn call_options<O>(self) -> ToolLoopAgentBuilder<O, Out>;
+    pub fn call_options_schema(self, schema: Schema<Opt>) -> Self where Opt: Serialize + 'static;
+    pub fn prepare_call(self, f: impl PrepareCall<Opt> + 'static) -> Self;
     pub fn prepare_step(self, f: impl PrepareStep + 'static) -> Self;
     pub fn tool_approval(self, policy: impl ApprovalPolicy + 'static) -> Self;
     pub fn tool_approval_secret(self, secret: SecretBox<[u8]>) -> Self;
@@ -110,10 +111,20 @@ let result = agent
 ## 6. 实现记录（2026-09-13）
 
 - 【决策】（[ADR 0013](../04-decisions/2026-09-13-0013-core-implementation-revisions.md) 第 1 项）`Agent::Options: Send + 'static`，`call_options::<O>()` 不要求 `DeserializeOwned + JsonSchema`。
-- 【决策】（ADR 0013 第 2 项）`PrepareCall<Opt>` trait 的 `prepare_call(&self, PrepareCallInput<Opt> { options, defaults: PreparedCall }) -> BoxFuture<'_, Result<PreparedCall, Error>>`；`defaults` 为 Agent 设置与调用参数合并后的有效值（`instructions`、`model`、`tools`、`tool_choice`、`active_tools`、`tool_order`、`tools_context`、`settings: CallSettings`、`stop_conditions`、`timeout`、`retry_policy`、`include`、`max_tool_concurrency`、`telemetry`），字段置 `None` 即移除。返回 `Future<Output = Result<PreparedCall, Error>> + Send + 'static` 的闭包通过 blanket impl 实现该 trait。
-- 【决策】未配置 `stop_when` 时默认 `step_count(20)`；调用级 `timeout` 整体替换 Agent 级 `timeout`（不按字段合并）；调用级 `Hooks` 追加在 Agent 级之后执行（`Hooks::merged`）；`telemetry.function_id` 为空时取 Agent `id`。依据：20 步足以覆盖多数工具循环而不致失控；Agent 级回调先执行使通用日志先于调用特定逻辑；超时整体替换避免两级配置的字段级合并歧义。
+- 【决策】（ADR 0013 第 2 项）`PrepareCall<Opt>` trait 的 `prepare_call(&self, PrepareCallInput<Opt> { options, defaults: PreparedCall }) -> BoxFuture<'_, Result<PreparedCall, Error>>`；`defaults` 为 Agent 设置与调用参数合并后的有效值（`instructions`、`model`、`tools`、`tool_choice`、`active_tools`、`tool_order`、`tools_context`、`settings: CallSettings`、`stop_conditions`、`timeout`、`retry_policy`、`include`、`max_tool_concurrency`、`telemetry`），可选字段置 `None` 即移除；第 8 节记录新增的按调用覆盖字段。返回 `Future<Output = Result<PreparedCall, Error>> + Send + 'static` 的闭包通过 blanket impl 实现该 trait。
+- 【决策】未配置 `stop_when` 时默认 `step_count(20)`；调用级 `timeout` 整体替换 Agent 级 `timeout`（不按字段合并）；调用级 `Hooks` 追加在 Agent 级之后启动，所有 future 并发等待（`Hooks::merged`）；`telemetry.function_id` 为空时取 Agent `id`。依据：20 步足以覆盖多数工具循环而不致失控；回调按注册顺序启动，但并发完成；超时整体替换避免两级配置的字段级合并歧义。
 - 【事实】`AgentCall<O>` 提供 `new/prompt/messages`（`AgentCall<()>`）、`options<P>()`（切换选项类型）、`cancellation`、`timeout`、`hooks`、`on_step_end`、`on_end`、`streaming() -> AgentStreamCall<O>`；`AgentStreamCall<O>` 增加 `transform`、`include_raw_chunks`、`stream_retries`、`on_error`、`on_chunk`、`on_abort`。请求头追加 `ferrin-agent/tool-loop` 后缀后再由核心层追加 `ferrin/<version>`。
 
 ## 7. 实现记录（2026-09-17）
 
 【决策】共享构建器支持 `runtime_context(JsonValue)`；`PreparedCall::runtime_context` 允许 `prepare_call` 独立于 `tools_context` 设置或清除调用状态。每次调用复制 Agent 配置，步骤覆盖只修改该次调用的演进状态。生成与流式路径遵循 [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) 的相同延续语义。
+
+## 8. 参考 SDK 对齐（2026-09-17）
+
+【决策】按 proposed 状态的 [ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)，可选 `call_options_schema(Schema<Opt>)` 在 `prepare_call` 之前校验并规范化序列化后的调用选项，生成及流式均适用。仅启用此方法时要求 `Opt: Serialize`，普通类型化选项保留原 Rust API。无效选项在准备回调、钩子和模型调用之前失败，错误不包含输入内容。校验和规范化由 schema 验证器定义；原始 JSON Schema 约束遵循 schema crate 的校验 feature。
+
+【决策】`PreparedCall` 开放审批策略及密钥、工具调用者、步骤准备、修复及精炼和下载器配置，支持按调用替换或显式清除。显式 `AgentCall::timeout` 优先于 `prepare_call` 返回值；未指定时使用准备后的超时。准备过程保持在生成超时及取消处理之外，与参考包装器一致。
+
+【决策】生命周期钩子并发调度，等待全部完成，并隔离回调创建及轮询中的 unwind panic。钩子仍返回 `Future<Output = ()>`，可失败的工作由应用自行处理。此机制不能拦截 `panic = abort`，进程 panic handler 仍可能运行。此前的顺序完成保证被替换，需要顺序的工作必须合并到单一钩子内部。
+
+【事实】`crates/ferrin-core/tests/suite/agent_options.rs` 覆盖两种路径中的校验失败、规范化、序列化失败和超时优先级；`agent_overrides.rs` 覆盖按调用设置及清除策略、签名密钥、步骤准备、修复、精炼、调用者和下载器，以及沙箱输入可见性；`hooks.rs` 使用同步 rendezvous 验证并发等待，并验证生成及流式的同步和异步 panic 隔离。来源：2026-09-17 本地 mock 测试。

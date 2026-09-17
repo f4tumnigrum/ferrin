@@ -9,10 +9,13 @@ use bytes::Bytes;
 use ferrin_spec::AudioFormat;
 use ferrin_spec::BoxFuture;
 use ferrin_spec::BoxStream;
+use ferrin_spec::ProviderMetadata;
+use ferrin_spec::RequestMetadata;
+use ferrin_spec::ResponseMetadata;
 use ferrin_spec::SpeechTranslationModelRef;
+use ferrin_spec::Warning;
 use ferrin_spec::speech_translation_model::SpeechTranslationStreamOptions;
 pub use ferrin_spec::speech_translation_model::SpeechTranslationStreamPart;
-pub use ferrin_spec::speech_translation_model::SpeechTranslationStreamResult;
 pub use ferrin_spec::speech_translation_model::SpeechTranslationUsage;
 use futures_core::Stream;
 use futures_util::StreamExt;
@@ -112,6 +115,7 @@ impl IntoFuture for StreamSpeechTranslation {
                     "must not be empty",
                 ));
             }
+            let started_at = chrono::Utc::now();
             let deadline = StreamDeadline::new(&self.base.cancellation, self.base.timeout);
             let result = deadline
                 .run(async {
@@ -131,6 +135,11 @@ impl IntoFuture for StreamSpeechTranslation {
                         .map_err(Error::from)
                 })
                 .await?;
+            let mut response = result.response;
+            response.timestamp.get_or_insert(started_at);
+            response
+                .model_id
+                .get_or_insert_with(|| identity.model_id.clone());
             let stream = result.stream.inspect(move |part| {
                 if let SpeechTranslationStreamPart::StreamStart { warnings } = part {
                     spans::log_warnings(warnings, &identity);
@@ -149,8 +158,117 @@ impl IntoFuture for StreamSpeechTranslation {
                     },
                 ),
                 request: result.request,
-                response: result.response,
+                response,
             })
+        })
+    }
+}
+
+/// Final speech translation collected by [`SpeechTranslationStreamResult::consume`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpeechTranslationResult {
+    /// Complete transcript in the source language.
+    pub source_text: String,
+    /// Complete translated text; audio-only output may leave this empty.
+    pub translation_text: String,
+    /// Audio duration in seconds.
+    pub duration_in_seconds: Option<f64>,
+    /// Provider-reported token usage.
+    pub usage: Option<SpeechTranslationUsage>,
+    /// Adapter warnings.
+    pub warnings: Vec<Warning>,
+    /// Request metadata.
+    pub request: RequestMetadata,
+    /// Final response metadata.
+    pub response: ResponseMetadata,
+    /// Provider-specific metadata, empty when absent.
+    pub provider_metadata: ProviderMetadata,
+}
+
+/// Owned speech translation stream with final-result collection.
+pub struct SpeechTranslationStreamResult {
+    /// Provider parts; one consumer owns the live stream.
+    pub stream: BoxStream<'static, SpeechTranslationStreamPart>,
+    /// Request metadata.
+    pub request: RequestMetadata,
+    /// Response metadata known at stream start.
+    pub response: ResponseMetadata,
+}
+
+impl fmt::Debug for SpeechTranslationStreamResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SpeechTranslationStreamResult")
+            .field("request", &self.request)
+            .field("response", &self.response)
+            .finish_non_exhaustive()
+    }
+}
+
+impl SpeechTranslationStreamResult {
+    /// Drains the owned stream and collects the final translation and metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Stream`] for provider errors and
+    /// [`Error::NoTranslationGenerated`] when no finish part arrives or the
+    /// finished stream contains neither translated text nor an audio part.
+    pub async fn consume(mut self) -> Result<SpeechTranslationResult, Error> {
+        let mut warnings = Vec::new();
+        let mut has_audio = false;
+        while let Some(part) = self.stream.next().await {
+            match part {
+                SpeechTranslationStreamPart::StreamStart { warnings: started } => {
+                    warnings.extend(started);
+                }
+                SpeechTranslationStreamPart::ResponseMetadata {
+                    timestamp,
+                    model_id,
+                    headers,
+                    body,
+                } => {
+                    if timestamp.is_some() {
+                        self.response.timestamp = timestamp;
+                    }
+                    if model_id.is_some() {
+                        self.response.model_id = model_id;
+                    }
+                    if headers.is_some() {
+                        self.response.headers = headers;
+                    }
+                    if body.is_some() {
+                        self.response.body = body;
+                    }
+                }
+                SpeechTranslationStreamPart::Audio { .. } => has_audio = true,
+                SpeechTranslationStreamPart::Finish {
+                    source_text,
+                    output_text,
+                    duration_in_seconds,
+                    usage,
+                    provider_metadata,
+                } => {
+                    if !has_audio && output_text.is_empty() {
+                        return Err(Error::NoTranslationGenerated {
+                            response: Box::new(self.response),
+                        });
+                    }
+                    return Ok(SpeechTranslationResult {
+                        source_text,
+                        translation_text: output_text,
+                        duration_in_seconds,
+                        usage,
+                        warnings,
+                        request: self.request,
+                        response: self.response,
+                        provider_metadata: provider_metadata.unwrap_or_default(),
+                    });
+                }
+                SpeechTranslationStreamPart::Error { error } => return Err(Error::stream(error)),
+                _ => {}
+            }
+        }
+        Err(Error::NoTranslationGenerated {
+            response: Box::new(self.response),
         })
     }
 }

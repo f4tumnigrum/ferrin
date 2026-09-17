@@ -31,26 +31,28 @@ type ErrorSummary = (ErrorKind, Option<u16>, bool, Option<(u32, usize)>, String)
 #[derive(Default)]
 struct ErrorRecorder(Mutex<Vec<ErrorSummary>>);
 impl Telemetry for ErrorRecorder {
-    fn on_error(&self, event: &ErrorEvent<'_>) {
-        let mut rendered = format!("{:?} {}", event.error, event.error);
-        let mut cause = std::error::Error::source(event.error);
-        while let Some(source) = cause {
-            rendered.push_str(&format!(" {source:?} {source}"));
-            cause = source.source();
-        }
-        let attempts = match event.error {
-            Error::Retry {
-                attempts, errors, ..
-            } => Some((*attempts, errors.len())),
-            _ => None,
-        };
-        self.0.lock().unwrap().push((
-            event.error.kind(),
-            event.error.status_code().map(|status| status.as_u16()),
-            event.error.is_retryable(),
-            attempts,
-            rendered,
-        ));
+    fn on_error<'a>(&'a self, event: &'a ErrorEvent<'_>) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            let mut rendered = format!("{:?} {}", event.error, event.error);
+            let mut cause = std::error::Error::source(event.error);
+            while let Some(source) = cause {
+                rendered.push_str(&format!(" {source:?} {source}"));
+                cause = source.source();
+            }
+            let attempts = match event.error {
+                Error::Retry {
+                    attempts, errors, ..
+                } => Some((*attempts, errors.len())),
+                _ => None,
+            };
+            self.0.lock().unwrap().push((
+                event.error.kind(),
+                event.error.status_code().map(|status| status.as_u16()),
+                event.error.is_retryable(),
+                attempts,
+                rendered,
+            ));
+        })
     }
 }
 
@@ -98,7 +100,7 @@ async fn structured_output_error_events_remove_text_body_and_validation_causes()
                 assert_eq!(details.text.as_deref(), Some(text));
                 assert!(details.cause.is_some());
                 let errors = recorder.0.lock().unwrap();
-                assert_eq!(errors.len(), usize::from(streaming));
+                assert_eq!(errors.len(), 1);
                 for (kind, _, _, _, rendered) in errors.iter() {
                     assert_eq!(*kind, ErrorKind::Output);
                     assert_eq!(

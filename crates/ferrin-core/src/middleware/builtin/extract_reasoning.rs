@@ -137,7 +137,7 @@ impl ExtractReasoning {
             });
             transformed.push(Content::Text {
                 text: remaining,
-                provider_metadata,
+                provider_metadata: None,
             });
         }
         result.content = transformed;

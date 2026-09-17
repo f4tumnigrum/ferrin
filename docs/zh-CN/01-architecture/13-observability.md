@@ -10,20 +10,48 @@
 
 ```rust
 pub trait Telemetry: Send + Sync + 'static {
-    fn on_start(&self, event: &StartEvent) {}
-    fn on_step_start(&self, event: &StepStartEvent) {}
-    fn on_language_model_call_start(&self, event: &ModelCallStartEvent) {}
-    fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {}
-    fn on_tool_execution_start(&self, event: &ToolExecutionStartEvent) {}
-    fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {}
-    fn on_step_end(&self, event: &StepEndEvent) {}
-    fn on_embed_start(&self, event: &EmbedStartEvent) {}
-    fn on_embed_end(&self, event: &EmbedEndEvent) {}
-    fn on_rerank_start(&self, event: &RerankStartEvent) {}
-    fn on_rerank_end(&self, event: &RerankEndEvent) {}
-    fn on_end(&self, event: &EndEvent) {}
-    fn on_abort(&self, event: &AbortEvent) {}
-    fn on_error(&self, event: &ErrorEvent) {}
+    fn on_start<'a>(&'a self, event: &'a StartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_step_start<'a>(&'a self, event: &'a StepStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_language_model_call_start<'a>(&'a self, event: &'a ModelCallStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_language_model_call_end<'a>(&'a self, event: &'a ModelCallEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_tool_execution_start<'a>(&'a self, event: &'a ToolExecutionStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_tool_execution_end<'a>(&'a self, event: &'a ToolExecutionEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_step_end<'a>(&'a self, event: &'a StepEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_embed_start<'a>(&'a self, event: &'a EmbedStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_embed_end<'a>(&'a self, event: &'a EmbedEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_rerank_start<'a>(&'a self, event: &'a RerankStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_rerank_end<'a>(&'a self, event: &'a RerankEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_end<'a>(&'a self, event: &'a EndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_abort<'a>(&'a self, event: &'a AbortEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_error<'a>(&'a self, event: &'a ErrorEvent<'_>) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
 
     /// Runs a model call inside integration-specific context (e.g. an OTel span).
     fn execute_language_model_call<'a>(
@@ -52,7 +80,7 @@ pub struct TelemetryOptions {
 }
 ```
 
-【决策】回调为同步方法（不返回 Future）。依据：回调在管线热路径上执行，异步回调会把外部延迟引入流处理；需要异步处理的集成应在回调内把事件投递到自己的通道。`execute_*` 包装函数保留异步形态，因为它们必须包裹实际调用。
+【决策】（[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)）生命周期回调返回借用集成与事件的 `BoxFuture<'a, ()>`。分发器按注册顺序调用集成，并发等待全部 Future 完成；调用或轮询期间的展开式 panic 在执行 panic handler 后被隔离。执行包装器保留携带结果的 Future，最后注册的集成位于最外层。依据：参考版本 `6c6c221` 的 `packages/ai/src/telemetry/create-telemetry-dispatcher.ts` 与 `util/merge-callbacks.ts`；`panic = "abort"` 无法隔离。
 
 【决策】不提供全局遥测注册表。集成通过 `TelemetryOptions::integrations` 按调用、按 Agent 或按注册表中间件注入。依据：与“无全局可变状态”原则一致；需要进程级默认的应用可在自己的构建器封装中固定 `TelemetryOptions`。
 
@@ -165,3 +193,15 @@ let result = ferrin::generate_text(&model)
 ## 运行上下文记录（2026-09-17）
 
 【决策】应用开始、步骤、模型调用、工具执行和结束钩子接收运行状态。遥测集成副本仅在 `include_runtime_context` 启用时保留它。步骤快照的工具上下文独立受 `include_tools_context` 控制；两项默认均关闭，且独立于输入、输出记录选项。参见 [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md)。
+
+## 参考回调对齐（2026-09-17）
+
+【决策】Embedding/rerank 操作事件通过 `on_embed_operation_start/end` 与 `on_rerank_operation_start/end` 暴露，与请求尝试回调区分。应用 hooks 与集成按逻辑操作并发分发一次。集成副本遵守输入、输出记录和运行上下文开关；应用 hooks 保留完整载荷。这样将模态生命周期接入同一集成边界，同时保留分块重试与逻辑操作的区别。
+
+【事实】回调分发与执行包装器组合已对照参考版本 `6c6c221` 的 `packages/ai/src/telemetry/{telemetry,create-telemetry-dispatcher}.ts` 与 `util/merge-callbacks.ts`。Ferrin 并发等待所有集成回调，最后注册的模型与工具包装器位于最外层。回归用例位于 `crates/ferrin-core/tests/suite/telemetry_async.rs`。
+
+【事实】非流式生成现在会在操作失败后发出 `on_error`，包括结构化输出解析失败，对应参考实现 `generate-text/generate-text.ts` 的错误边界。分发器仍应用错误记录限制；`telemetry_errors.rs` 覆盖两种生成模式。
+
+【决策】工具执行上下文增加 `record_outputs`，让 OpenTelemetry 包装器在收到实际执行结果时仍能应用调用的输出记录限制。Embedding 与 rerank 模型开始/结束回调除指标外也创建、结束 `CLIENT` span，对应 `packages/otel/src/open-telemetry.ts` 的模型调用 span。失败的模态 span 使用现有脱敏错误类别。
+
+【事实】本轮回调修复不代表 OpenTelemetry 已完全对齐：Ferrin 仍缺少参考实现的操作/步骤 span 层级、补充属性组、span 扩展回调和 GenAI 消息格式化。遥测还保留显式按调用注册、默认关闭内容记录及整个上下文的包含开关；参考实现另外提供全局注册表、输入/输出记录默认值和逐属性上下文过滤。这些属于具体剩余差异，并非已验证的等价行为。

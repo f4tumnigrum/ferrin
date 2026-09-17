@@ -5,15 +5,18 @@ use std::fmt;
 use std::sync::Arc;
 
 use ferrin_spec::EmbeddingModelRef;
+use ferrin_spec::FilesRef;
 use ferrin_spec::ImageModelRef;
 use ferrin_spec::LanguageModelRef;
 use ferrin_spec::ModelKind;
 use ferrin_spec::NoSuchModelError;
 use ferrin_spec::Provider;
+use ferrin_spec::ProviderError;
 use ferrin_spec::ProviderId;
 use ferrin_spec::ProviderRef;
 use ferrin_spec::RealtimeModelRef;
 use ferrin_spec::RerankingModelRef;
+use ferrin_spec::SkillsRef;
 use ferrin_spec::SpeechModelRef;
 use ferrin_spec::SpeechTranslationModelRef;
 use ferrin_spec::TranscriptionModelRef;
@@ -88,30 +91,66 @@ impl ProviderRegistry {
     }
 
     fn split<'a>(&self, id: &'a str, kind: ModelKind) -> Result<(&ProviderRef, &'a str), Error> {
-        let not_found = |provider_id: &str| {
+        let Some((provider_id, model_id)) = id.split_once(self.separator.as_str()) else {
+            return Err(NoSuchModelError::new(id, kind)
+                .with_message(format!("invalid registry model id `{id}`: expected a provider and model separated by `{}`", self.separator))
+                .into());
+        };
+        let provider = self.get_provider(provider_id, kind)?;
+        Ok((provider, model_id))
+    }
+
+    fn get_provider(&self, id: &str, kind: ModelKind) -> Result<&ProviderRef, Error> {
+        self.providers.get(id).ok_or_else(|| {
             Error::no_such_provider(NoSuchProviderDetails {
-                provider_id: ProviderId::new(provider_id),
+                provider_id: ProviderId::new(id),
                 available_providers: self.providers.keys().map(ProviderId::new).collect(),
                 model_id: id.to_owned(),
                 model_kind: kind,
             })
-        };
-        let Some((provider_id, model_id)) = id.split_once(self.separator.as_str()) else {
-            return Err(not_found(id));
-        };
-        let provider = self
-            .providers
-            .get(provider_id)
-            .ok_or_else(|| not_found(provider_id))?;
-        Ok((provider, model_id))
+        })
+    }
+
+    /// Resolves a file service by provider ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::NoSuchProvider`] for an unknown provider or a provider
+    /// [`ProviderError::UnsupportedFunctionality`] when file uploads are unavailable.
+    pub fn files(&self, provider_id: &str) -> Result<FilesRef, Error> {
+        self.get_provider(provider_id, ModelKind::Language)?
+            .files()
+            .ok_or_else(|| {
+                ProviderError::unsupported(format!("file uploads for provider `{provider_id}`"))
+                    .into()
+            })
+    }
+
+    /// Resolves a skill service by provider ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::NoSuchProvider`] for an unknown provider or a provider
+    /// [`ProviderError::UnsupportedFunctionality`] when skills are unavailable.
+    pub fn skills(&self, provider_id: &str) -> Result<SkillsRef, Error> {
+        self.get_provider(provider_id, ModelKind::Language)?
+            .skills()
+            .ok_or_else(|| {
+                ProviderError::unsupported(format!("skills for provider `{provider_id}`")).into()
+            })
+    }
+
+    /// Registers or replaces a provider for subsequent model resolutions.
+    pub fn register_provider(&mut self, id: impl Into<String>, provider: ProviderRef) {
+        self.providers.insert(id.into(), provider);
     }
 
     /// Resolves a language model, applying the registry middleware.
     ///
     /// # Errors
     ///
-    /// [`Error::NoSuchProvider`] for unknown providers or malformed ids,
-    /// [`Error::Provider`] (`NoSuchModel`) from the provider.
+    /// [`Error::NoSuchProvider`] for unknown providers,
+    /// [`Error::Provider`] (`NoSuchModel`) for malformed ids or unknown models.
     pub fn language_model(&self, id: &str) -> Result<LanguageModelRef, Error> {
         let (provider, model_id) = self.split(id, ModelKind::Language)?;
         let model = provider.language_model(model_id)?;
@@ -242,7 +281,7 @@ impl ProviderRegistry {
 fn to_no_such_model(error: Error, id: &str, kind: ModelKind) -> NoSuchModelError {
     match error {
         Error::Provider(provider) => match *provider {
-            ferrin_spec::ProviderError::NoSuchModel(inner) => *inner,
+            ProviderError::NoSuchModel(inner) => *inner,
             other => NoSuchModelError::new(id, kind).with_message(other.to_string()),
         },
         other => NoSuchModelError::new(id, kind).with_message(other.to_string()),

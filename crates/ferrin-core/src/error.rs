@@ -185,6 +185,13 @@ pub enum Error {
         responses: Vec<ResponseMetadata>,
     },
 
+    /// The speech translation stream produced no translated text or audio.
+    #[error("no translation generated")]
+    NoTranslationGenerated {
+        /// Response metadata accumulated before the stream ended.
+        response: Box<ResponseMetadata>,
+    },
+
     /// Every video call returned no video.
     #[error("no video generated")]
     NoVideoGenerated {
@@ -530,6 +537,7 @@ impl Error {
             | Self::NoImageGenerated { .. }
             | Self::NoSpeechGenerated { .. }
             | Self::NoTranscriptGenerated { .. }
+            | Self::NoTranslationGenerated { .. }
             | Self::NoVideoGenerated { .. } => ErrorKind::Output,
             Self::NoSuchProvider(_) | Self::NoDefaultRegistry { .. } => ErrorKind::NotFound,
             Self::Mcp(_) => ErrorKind::Mcp,

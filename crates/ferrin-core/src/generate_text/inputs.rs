@@ -59,6 +59,8 @@ pub(crate) struct StepInputs {
     pub(crate) tool_choice: Option<ferrin_spec::ToolChoice>,
     pub(crate) options: CallOptions,
     pub(crate) tool_contract: Option<crate::middleware::tool_contract::ToolContract>,
+    #[cfg(feature = "sandbox")]
+    pub(crate) sandbox: Option<Arc<dyn ferrin_tool::Sandbox>>,
 }
 
 /// Applies `prepare_step`, prepares tools and converts the prompt.
@@ -84,19 +86,24 @@ pub(crate) async fn prepare_step_inputs(
     let mut tools_context = state.tools_context.clone();
     let mut runtime_context = state.runtime_context.clone();
     let mut settings: CallSettings = ctx.config.settings.clone();
+    #[cfg(feature = "sandbox")]
+    let mut sandbox = ctx.config.sandbox.clone();
 
     if let Some(prepare) = &ctx.config.prepare_step {
         let overrides = prepare
             .prepare_step(PrepareStepContext {
                 steps,
                 step_number,
-                model: &identity,
+                model: &model,
                 instructions: instructions.as_ref(),
+                initial_instructions: ctx.instructions.as_ref(),
                 messages: &messages,
                 initial_messages: &ctx.initial_messages,
                 response_messages,
                 tools_context: tools_context.as_ref(),
                 runtime_context: runtime_context.as_ref(),
+                #[cfg(feature = "sandbox")]
+                sandbox: ctx.config.sandbox.as_ref(),
             })
             .await?;
         if let Some(override_model) = overrides.model {
@@ -124,6 +131,10 @@ pub(crate) async fn prepare_step_inputs(
         if overrides.runtime_context.is_some() {
             runtime_context = overrides.runtime_context;
         }
+        #[cfg(feature = "sandbox")]
+        if overrides.sandbox.is_some() {
+            sandbox = overrides.sandbox;
+        }
         if let Some(override_settings) = overrides.settings {
             settings.merge(&override_settings);
             settings.validate()?;
@@ -145,7 +156,7 @@ pub(crate) async fn prepare_step_inputs(
             .record_inputs()
             .then(|| Arc::from(messages.clone())),
     });
-    ctx.telemetry.on_step_start(&step_start);
+    ctx.telemetry.on_step_start(&step_start).await;
     Hooks::emit(&ctx.hooks.on_step_start, step_start).await;
 
     let tools = active_tools.as_ref().map_or_else(
@@ -159,7 +170,7 @@ pub(crate) async fn prepare_step_inputs(
         tool_choice: tool_choice.clone(),
         tools_context: tools_context.as_ref(),
         #[cfg(feature = "sandbox")]
-        sandbox: ctx.config.sandbox.clone(),
+        sandbox: sandbox.clone(),
     })
     .await?;
     let supported_urls = model.supported_urls().await;
@@ -194,6 +205,8 @@ pub(crate) async fn prepare_step_inputs(
         tools,
         tool_choice: prepared.tool_choice,
         tool_contract: None,
+        #[cfg(feature = "sandbox")]
+        sandbox,
         options,
     })
 }
@@ -210,7 +223,7 @@ pub(crate) async fn emit_model_call_start(ctx: &LoopContext, inputs: &StepInputs
             .record_inputs()
             .then(|| inputs.options.to_recordable()),
     });
-    ctx.telemetry.on_language_model_call_start(&event);
+    ctx.telemetry.on_language_model_call_start(&event).await;
     Hooks::emit(&ctx.hooks.on_language_model_call_start, event).await;
 }
 

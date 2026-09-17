@@ -1,10 +1,16 @@
 //! Fans telemetry events out to the configured integrations and to
 //! `tracing`.
 
+mod modalities;
+
+use std::panic::AssertUnwindSafe;
+use std::panic::catch_unwind;
 use std::sync::Arc;
 
 use ferrin_spec::BoxFuture;
 use ferrin_tool::ToolError;
+use futures_util::FutureExt;
+use futures_util::future::join_all;
 
 use super::AbortEvent;
 use super::EmbedEndEvent;
@@ -36,20 +42,18 @@ pub(crate) struct TelemetryDispatcher {
 
 macro_rules! dispatch {
     ($name:ident, $event:ty) => {
-        pub(crate) fn $name(&self, event: &$event) {
+        pub(crate) async fn $name(&self, event: &$event) {
             if !self.options.enabled {
                 return;
             }
-            for integration in &self.options.integrations {
-                integration.$name(event);
-            }
+            self.dispatch(|integration| integration.$name(event)).await;
         }
     };
 }
 
 macro_rules! dispatch_with_context {
     ($name:ident, $event:ty) => {
-        pub(crate) fn $name(&self, event: &$event) {
+        pub(crate) async fn $name(&self, event: &$event) {
             if !self.options.enabled {
                 return;
             }
@@ -57,14 +61,25 @@ macro_rules! dispatch_with_context {
             if !self.options.include_runtime_context {
                 recorded.runtime_context = None;
             }
-            for integration in &self.options.integrations {
-                integration.$name(&recorded);
-            }
+            self.dispatch(|integration| integration.$name(&recorded))
+                .await;
         }
     };
 }
 
 impl TelemetryDispatcher {
+    async fn dispatch<'a>(
+        &'a self,
+        callback: impl Fn(&'a dyn Telemetry) -> BoxFuture<'a, ()> + Send + Sync,
+    ) {
+        let futures = self.options.integrations.iter().filter_map(|integration| {
+            catch_unwind(AssertUnwindSafe(|| callback(integration.as_ref())))
+                .ok()
+                .map(|future| AssertUnwindSafe(future).catch_unwind())
+        });
+        let _ = join_all(futures).await;
+    }
+
     pub(crate) fn new(options: TelemetryOptions) -> Self {
         Self {
             options: Arc::new(options),
@@ -84,7 +99,7 @@ impl TelemetryDispatcher {
     dispatch_with_context!(on_language_model_call_start, ModelCallStartEvent);
 
     dispatch_with_context!(on_tool_execution_start, ToolExecutionStartEvent);
-    pub(crate) fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {
+    pub(crate) async fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {
         if !self.options.enabled {
             return;
         }
@@ -98,14 +113,13 @@ impl TelemetryDispatcher {
                 .error
                 .map(|_| crate::generate_text::ToolErrorInfo::text(super::redact::REDACTED));
         }
-        for integration in &self.options.integrations {
-            integration.on_tool_execution_end(&recorded);
-        }
+        self.dispatch(|integration| integration.on_tool_execution_end(&recorded))
+            .await;
     }
 
     dispatch!(on_abort, AbortEvent);
 
-    pub(crate) fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {
+    pub(crate) async fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {
         if !self.options.enabled {
             return;
         }
@@ -120,12 +134,11 @@ impl TelemetryDispatcher {
             recorded.content = None;
             recorded.response.body = None;
         }
-        for integration in &self.options.integrations {
-            integration.on_language_model_call_end(&recorded);
-        }
+        self.dispatch(|integration| integration.on_language_model_call_end(&recorded))
+            .await;
     }
 
-    pub(crate) fn on_step_end(&self, event: &StepEndEvent) {
+    pub(crate) async fn on_step_end(&self, event: &StepEndEvent) {
         if !self.options.enabled {
             return;
         }
@@ -133,12 +146,11 @@ impl TelemetryDispatcher {
             call_id: event.call_id.clone(),
             step: Arc::new(self.recorded_step(&event.step)),
         };
-        for integration in &self.options.integrations {
-            integration.on_step_end(&recorded);
-        }
+        self.dispatch(|integration| integration.on_step_end(&recorded))
+            .await;
     }
 
-    pub(crate) fn on_end(&self, event: &EndEvent) {
+    pub(crate) async fn on_end(&self, event: &EndEvent) {
         if !self.options.enabled {
             return;
         }
@@ -160,9 +172,8 @@ impl TelemetryDispatcher {
                 .then(|| event.output_recorded.clone())
                 .flatten(),
         };
-        for integration in &self.options.integrations {
-            integration.on_end(&recorded);
-        }
+        self.dispatch(|integration| integration.on_end(&recorded))
+            .await;
     }
 
     /// Filters the telemetry copy without changing application hooks or results.
@@ -193,7 +204,7 @@ impl TelemetryDispatcher {
         recorded
     }
 
-    pub(crate) fn on_error(&self, event: &ErrorEvent<'_>) {
+    pub(crate) async fn on_error(&self, event: &ErrorEvent<'_>) {
         if !self.options.enabled {
             return;
         }
@@ -204,13 +215,12 @@ impl TelemetryDispatcher {
             error: error.as_ref().unwrap_or(event.error),
             phase: event.phase,
         };
-        for integration in &self.options.integrations {
-            integration.on_error(&recorded);
-        }
+        self.dispatch(|integration| integration.on_error(&recorded))
+            .await;
     }
 
     /// Wraps `call` with every integration's `execute_language_model_call`;
-    /// the first integration becomes the outermost wrapper.
+    /// the last integration becomes the outermost wrapper.
     pub(crate) fn execute_language_model_call<'a>(
         &'a self,
         ctx: &'a ModelCallContext,
@@ -222,7 +232,6 @@ impl TelemetryDispatcher {
         self.options
             .integrations
             .iter()
-            .rev()
             .fold(call, |inner, integration| {
                 integration.execute_language_model_call(ctx, inner)
             })
@@ -240,7 +249,6 @@ impl TelemetryDispatcher {
         self.options
             .integrations
             .iter()
-            .rev()
             .fold(call, |inner, integration| {
                 integration.execute_tool(ctx, inner)
             })

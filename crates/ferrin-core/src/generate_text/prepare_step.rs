@@ -1,7 +1,11 @@
 //! Per-step overrides.
 
+use std::fmt;
+use std::sync::Arc;
+
 use ferrin_message::Message;
 use ferrin_spec::BoxFuture;
+use ferrin_spec::DynLanguageModel;
 use ferrin_spec::JsonValue;
 use ferrin_spec::LanguageModelRef;
 use ferrin_spec::ToolChoice;
@@ -11,19 +15,19 @@ use super::StepResult;
 use crate::error::Error;
 use crate::prompt::CallSettings;
 use crate::prompt::Instructions;
-use crate::telemetry::ModelIdentity;
 
 /// Information available to a [`PrepareStep`] callback.
-#[derive(Debug)]
 pub struct PrepareStepContext<'a> {
     /// Steps completed so far.
     pub steps: &'a [StepResult],
     /// Zero-based index of the step about to run.
     pub step_number: u32,
     /// The model configured for the call.
-    pub model: &'a ModelIdentity,
+    pub model: &'a Arc<dyn DynLanguageModel>,
     /// Instructions retained from the preceding step, initially configured on the call.
     pub instructions: Option<&'a Instructions>,
+    /// Instructions originally configured for this invocation.
+    pub initial_instructions: Option<&'a Instructions>,
     /// Current messages, including new responses since the latest message override.
     pub messages: &'a [Message],
     /// The initial messages of the call.
@@ -34,11 +38,26 @@ pub struct PrepareStepContext<'a> {
     pub tools_context: Option<&'a JsonValue>,
     /// Application state retained from the preceding step.
     pub runtime_context: Option<&'a JsonValue>,
+    /// The sandbox configured for the invocation before this step's override.
+    #[cfg(feature = "sandbox")]
+    pub sandbox: Option<&'a Arc<dyn ferrin_tool::Sandbox>>,
+}
+
+impl fmt::Debug for PrepareStepContext<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PrepareStepContext")
+            .field("step_number", &self.step_number)
+            .field("provider", self.model.provider())
+            .field("model_id", self.model.model_id())
+            .field("steps", &self.steps.len())
+            .field("messages", &self.messages.len())
+            .finish_non_exhaustive()
+    }
 }
 
 /// Overrides returned by a [`PrepareStep`] callback. Unset fields keep the
 /// prior state for messages, instructions and contexts; other fields keep call defaults.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct StepOverrides {
     /// Model for this step.
     pub model: Option<LanguageModelRef>,
@@ -56,8 +75,27 @@ pub struct StepOverrides {
     pub tools_context: Option<JsonValue>,
     /// Application state for this and subsequent steps (`None` preserves the prior value).
     pub runtime_context: Option<JsonValue>,
+    /// Sandbox for this step only; an unset value uses the invocation sandbox.
+    #[cfg(feature = "sandbox")]
+    pub sandbox: Option<Arc<dyn ferrin_tool::Sandbox>>,
     /// Sampling settings overlaid on the call settings.
     pub settings: Option<CallSettings>,
+}
+
+impl fmt::Debug for StepOverrides {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StepOverrides")
+            .field("model", &self.model)
+            .field("tool_choice", &self.tool_choice)
+            .field("active_tools", &self.active_tools)
+            .field("tool_order", &self.tool_order)
+            .field("instructions", &self.instructions)
+            .field("messages", &self.messages)
+            .field("has_tools_context", &self.tools_context.is_some())
+            .field("has_runtime_context", &self.runtime_context.is_some())
+            .field("settings", &self.settings)
+            .finish_non_exhaustive()
+    }
 }
 
 impl StepOverrides {
@@ -123,6 +161,14 @@ impl StepOverrides {
     #[must_use]
     pub fn with_runtime_context(mut self, context: JsonValue) -> Self {
         self.runtime_context = Some(context);
+        self
+    }
+
+    /// Uses a sandbox for this step only.
+    #[cfg(feature = "sandbox")]
+    #[must_use]
+    pub fn with_sandbox(mut self, sandbox: Arc<dyn ferrin_tool::Sandbox>) -> Self {
+        self.sandbox = Some(sandbox);
         self
     }
 

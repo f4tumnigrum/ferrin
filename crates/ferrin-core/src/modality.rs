@@ -5,8 +5,6 @@ use std::future::Future;
 use std::time::Duration;
 
 use ferrin_spec::Headers;
-use ferrin_spec::JsonValue;
-use ferrin_spec::ProviderMetadata;
 use ferrin_spec::ProviderOptions;
 use tokio_util::sync::CancellationToken;
 
@@ -147,36 +145,6 @@ macro_rules! impl_modality_builder {
     };
 }
 pub(crate) use impl_modality_builder;
-
-/// Merges `source` into `target` provider by provider: objects are merged
-/// key by key (later values win) and arrays under the same key are
-/// concatenated, so per-item lists such as `images` stay aligned with the
-/// combined results.
-pub(crate) fn merge_provider_metadata(target: &mut ProviderMetadata, source: &ProviderMetadata) {
-    for (provider, metadata) in source {
-        let entry = target.entry(provider.clone()).or_default();
-        for (key, value) in metadata {
-            match (entry.get_mut(key), value) {
-                (Some(JsonValue::Array(existing)), JsonValue::Array(incoming)) => {
-                    existing.extend(incoming.iter().cloned());
-                }
-                _ => {
-                    entry.insert(key.clone(), value.clone());
-                }
-            }
-        }
-    }
-}
-
-/// Merges optional provider metadata into an accumulator.
-pub(crate) fn accumulate_provider_metadata(
-    target: &mut Option<ProviderMetadata>,
-    source: Option<&ProviderMetadata>,
-) {
-    if let Some(source) = source {
-        merge_provider_metadata(target.get_or_insert_with(ProviderMetadata::new), source);
-    }
-}
 
 /// Adds two optional counters; `None` counts as absent, not as zero.
 pub(crate) fn add_optional(a: Option<u64>, b: Option<u64>) -> Option<u64> {

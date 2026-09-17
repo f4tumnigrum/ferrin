@@ -145,3 +145,52 @@ async fn empty_effective_tools_clear_required_choice_in_both_loops() {
         }
     }
 }
+
+#[tokio::test]
+async fn nested_provider_options_merge_per_step_without_mutating_call_defaults() {
+    use ferrin_core::CallSettings;
+    let model = mock()
+        .generate(tool_call_result(
+            "one",
+            "get_weather",
+            &json!({"city":"Bern"}),
+        ))
+        .generate(text_result("done"))
+        .build_shared();
+    generate_text(Arc::clone(&model))
+        .prompt("weather")
+        .tools(weather_tools())
+        .stop_when(step_count(2))
+        .provider_options(
+            serde_json::from_value(json!({"mock":{"nested":{"keep":1,"change":1},"list":[1,2]}}))
+                .unwrap(),
+        )
+        .prepare_step(|ctx: &PrepareStepContext<'_>| {
+            if ctx.step_number == 0 {
+                StepOverrides::none().with_settings(CallSettings {
+                    provider_options: serde_json::from_value(
+                        json!({"mock":{"nested":{"change":2},"list":[3]}}),
+                    )
+                    .unwrap(),
+                    ..CallSettings::default()
+                })
+            } else {
+                StepOverrides::none()
+            }
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        model
+            .generate_calls()
+            .iter()
+            .map(|call| call.provider_options.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            serde_json::from_value(json!({"mock":{"nested":{"keep":1,"change":2},"list":[3]}}))
+                .unwrap(),
+            serde_json::from_value(json!({"mock":{"nested":{"keep":1,"change":1},"list":[1,2]}}))
+                .unwrap(),
+        ]
+    );
+}

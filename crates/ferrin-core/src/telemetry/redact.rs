@@ -124,6 +124,9 @@ pub(super) fn redact_error(error: &Error, options: &TelemetryOptions) -> Error {
                 .map(|item| response(item, options))
                 .collect(),
         },
+        Error::NoTranslationGenerated { response: metadata } => Error::NoTranslationGenerated {
+            response: Box::new(response(metadata, options)),
+        },
         Error::NoVideoGenerated { responses } => Error::NoVideoGenerated {
             responses: responses
                 .iter()

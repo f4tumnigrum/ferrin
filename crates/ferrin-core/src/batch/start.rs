@@ -174,9 +174,6 @@ async fn run_start(builder: StartBatch) -> Result<BatchStartResult, Error> {
                     }
                     BatchRequest::Image(request) => {
                         let request = *request;
-                        if request.n == 0 {
-                            return Err(Error::invalid_argument("n", "must be at least 1"));
-                        }
                         model_ids.insert(request.id.clone(), request.model_id.clone());
                         normalized.push(ModelBatchRequest::Image {
                             id: request.id,

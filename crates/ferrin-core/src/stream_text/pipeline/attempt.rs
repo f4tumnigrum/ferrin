@@ -2,6 +2,7 @@
 //! retries, tool-part buffering and the model-call-end bookkeeping. The
 //! mapping of individual parts lives in `parts.rs`.
 
+use crate::generate_text::tools::ToolEnvironment;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::pin::Pin;
@@ -209,7 +210,7 @@ impl Attempt {
             tool_call_id,
             tool_name,
             &self.step_messages,
-            self.inputs.tools_context.as_ref(),
+            ToolEnvironment::for_step(&self.inputs),
             &self.cancellation,
         )
     }
@@ -518,15 +519,23 @@ impl Attempt {
         error: StreamError,
     ) -> Result<AttemptOutcome, Error> {
         let error = Error::stream(error);
-        self.ctx.telemetry.on_error(&ErrorEvent {
-            call_id: &self.ctx.call_id,
-            error: &error,
-            phase: ErrorPhase::Stream,
-        });
-        let decision = match &self.stream.on_error {
-            Some(callback) => callback.call(StreamErrorInfo::from_error(&error)).await,
-            None => ErrorDecision::Continue,
-        };
+        self.ctx
+            .telemetry
+            .on_error(&ErrorEvent {
+                call_id: &self.ctx.call_id,
+                error: &error,
+                phase: ErrorPhase::Stream,
+            })
+            .await;
+        let info = StreamErrorInfo::from_error(&error);
+        Hooks::emit(
+            &self.ctx.hooks.on_chunk,
+            Arc::new(StreamEvent::Error {
+                error: info.clone(),
+            }),
+        )
+        .await;
+        let decision = self.stream.error_decision(info.clone()).await;
         self.error_reported = true;
 
         let retries = self.stream.stream_retries;
@@ -537,6 +546,7 @@ impl Attempt {
             && matches!(decision, ErrorDecision::Retry)
             && self.callback_retries < 1;
         if !automatic && !callback_retry {
+            self.stream.mark_error_handled(info);
             self.flush_buffer(emitter).await?;
             return Err(error);
         }
@@ -636,7 +646,7 @@ impl Attempt {
             performance: performance.clone(),
             warnings: self.state.warnings.clone(),
         });
-        self.ctx.telemetry.on_language_model_call_end(&event);
+        self.ctx.telemetry.on_language_model_call_end(&event).await;
         Hooks::emit(&self.ctx.hooks.on_language_model_call_end, event).await;
 
         self.check_tool_choice()?;

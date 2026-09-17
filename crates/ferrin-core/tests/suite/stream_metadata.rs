@@ -19,7 +19,7 @@ fn metadata(value: &str) -> Option<ProviderMetadata> {
 }
 
 #[tokio::test]
-async fn smoothing_keeps_metadata_with_its_delta_and_preserves_empty_deltas() {
+async fn smoothing_flushes_latest_metadata_with_the_remainder() {
     let parts = vec![
         StreamPart::stream_start(),
         StreamPart::TextStart {
@@ -92,23 +92,11 @@ async fn smoothing_keeps_metadata_with_its_delta_and_preserves_empty_deltas() {
     assert_eq!(
         deltas,
         vec![
+            ("text", PartId::new("text"), "first ".into(), None),
             (
                 "text",
                 PartId::new("text"),
-                "first ".into(),
-                metadata("first")
-            ),
-            (
-                "text",
-                PartId::new("text"),
-                "buffer".into(),
-                metadata("buffer")
-            ),
-            ("text", PartId::new("text"), "next".into(), metadata("next")),
-            (
-                "text",
-                PartId::new("text"),
-                String::new(),
+                "buffernext".into(),
                 metadata("empty")
             ),
             (

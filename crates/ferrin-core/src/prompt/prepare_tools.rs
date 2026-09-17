@@ -45,7 +45,7 @@ pub(crate) async fn prepare_tools(input: PrepareToolsInput<'_>) -> Result<Prepar
     let mut definitions = Vec::with_capacity(filtered.len());
     for (name, tool) in filtered.ordered(input.tool_order) {
         let tool_context = tool
-            .validate_context(name, input.tools_context.cloned())
+            .validate_named_context(name, input.tools_context)
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
         let ctx = tool_context.map_or_else(
             DescriptionContext::default,

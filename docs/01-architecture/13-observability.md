@@ -10,20 +10,48 @@ Core telemetry lives in `ferrin-core::telemetry`; OpenTelemetry export lives in 
 
 ```rust
 pub trait Telemetry: Send + Sync + 'static {
-    fn on_start(&self, event: &StartEvent) {}
-    fn on_step_start(&self, event: &StepStartEvent) {}
-    fn on_language_model_call_start(&self, event: &ModelCallStartEvent) {}
-    fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {}
-    fn on_tool_execution_start(&self, event: &ToolExecutionStartEvent) {}
-    fn on_tool_execution_end(&self, event: &ToolExecutionEndEvent) {}
-    fn on_step_end(&self, event: &StepEndEvent) {}
-    fn on_embed_start(&self, event: &EmbedStartEvent) {}
-    fn on_embed_end(&self, event: &EmbedEndEvent) {}
-    fn on_rerank_start(&self, event: &RerankStartEvent) {}
-    fn on_rerank_end(&self, event: &RerankEndEvent) {}
-    fn on_end(&self, event: &EndEvent) {}
-    fn on_abort(&self, event: &AbortEvent) {}
-    fn on_error(&self, event: &ErrorEvent) {}
+    fn on_start<'a>(&'a self, event: &'a StartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_step_start<'a>(&'a self, event: &'a StepStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_language_model_call_start<'a>(&'a self, event: &'a ModelCallStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_language_model_call_end<'a>(&'a self, event: &'a ModelCallEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_tool_execution_start<'a>(&'a self, event: &'a ToolExecutionStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_tool_execution_end<'a>(&'a self, event: &'a ToolExecutionEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_step_end<'a>(&'a self, event: &'a StepEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_embed_start<'a>(&'a self, event: &'a EmbedStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_embed_end<'a>(&'a self, event: &'a EmbedEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_rerank_start<'a>(&'a self, event: &'a RerankStartEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_rerank_end<'a>(&'a self, event: &'a RerankEndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_end<'a>(&'a self, event: &'a EndEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_abort<'a>(&'a self, event: &'a AbortEvent) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+    fn on_error<'a>(&'a self, event: &'a ErrorEvent<'_>) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
 
     /// Runs a model call inside integration-specific context (e.g. an OTel span).
     fn execute_language_model_call<'a>(
@@ -52,7 +80,7 @@ pub struct TelemetryOptions {
 }
 ```
 
-[Decision] Callbacks are synchronous to avoid external latency on hot stream paths. Integrations needing async work should enqueue events themselves. Execution wrappers remain async because they wrap actual calls.
+[Decision] ([ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md)) Lifecycle callbacks return `BoxFuture<'a, ()>`, borrowing the integration and event. Dispatch invokes integrations in registration order and awaits all futures concurrently; unwinding invocation or polling panics are isolated after the panic handler runs. Execution wrappers retain their result-bearing futures, with the last integration outermost. This follows `packages/ai/src/telemetry/create-telemetry-dispatcher.ts` and `util/merge-callbacks.ts` at reference revision `6c6c221`; `panic = "abort"` cannot be isolated.
 
 [Decision] No global telemetry registry. Inject integrations through call, agent, or registry-middleware `TelemetryOptions::integrations`. Applications can set process defaults in their own builder wrappers, keeping global mutable state out of the library.
 
@@ -165,3 +193,15 @@ let result = ferrin::generate_text(&model)
 ## Runtime context recording (2026-09-17)
 
 [Decision] Application start, step, model-call and tool-execution hooks and the end hook receive runtime state. Telemetry integration copies omit it unless `include_runtime_context` is enabled. Step snapshots independently retain tool context only with `include_tools_context`; both options default to false and are independent of input/output recording. See [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md).
+
+## Reference callback alignment (2026-09-17)
+
+[Decision] Embedding/reranking operation events are exposed as `on_embed_operation_start/end` and `on_rerank_operation_start/end`, distinct from attempt callbacks. Dispatch application hooks and integrations concurrently once per logical operation. Integration copies obey input/output recording and runtime-context switches; application hooks retain their complete payloads. This connects modality lifecycle hooks to the same integration boundary without conflating chunk retries with operations.
+
+[Fact] Callback dispatch and execution-wrapper composition were compared with reference revision `6c6c221`, `packages/ai/src/telemetry/{telemetry,create-telemetry-dispatcher}.ts` and `util/merge-callbacks.ts`. Ferrin awaits all integration callbacks concurrently and uses the last registered model/tool wrapper as the outermost context. Regression cases are in `crates/ferrin-core/tests/suite/telemetry_async.rs`.
+
+[Fact] Non-streaming generation now emits `on_error` after a failed operation, including structured-output parsing failures, matching the reference `generate-text/generate-text.ts` error boundary. Error recording restrictions remain enforced in the dispatcher; `telemetry_errors.rs` covers both generation modes.
+
+[Decision] Tool execution context includes `record_outputs` so the OpenTelemetry wrapper can apply the call's output restriction even though it receives the actual execution result. Embedding/reranking model start/end callbacks create and finish `CLIENT` spans as well as metrics, corresponding to `packages/otel/src/open-telemetry.ts` model-call spans. Failed modality spans use the existing redacted error categories.
+
+[Fact] This callback pass does not establish complete OpenTelemetry parity: Ferrin still lacks the reference operation/step span hierarchy, supplemental attribute groups, span enrichment callback and GenAI message formatting. Telemetry also retains explicit per-call registration, opt-in content recording and whole-context inclusion switches; the reference additionally has a global registry, input/output recording defaults and per-property context filters. These are concrete remaining differences, not verified equivalents.

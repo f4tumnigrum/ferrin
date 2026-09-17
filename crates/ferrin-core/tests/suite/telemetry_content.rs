@@ -25,14 +25,23 @@ struct Recorder {
     ends: Mutex<Vec<EndEvent>>,
 }
 impl Telemetry for Recorder {
-    fn on_language_model_call_end(&self, event: &ModelCallEndEvent) {
-        self.model_ends.lock().unwrap().push(event.clone());
+    fn on_language_model_call_end<'a>(
+        &'a self,
+        event: &'a ModelCallEndEvent,
+    ) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.model_ends.lock().unwrap().push(event.clone());
+        })
     }
-    fn on_step_end(&self, event: &StepEndEvent) {
-        self.steps.lock().unwrap().push((*event.step).clone());
+    fn on_step_end<'a>(&'a self, event: &'a StepEndEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.steps.lock().unwrap().push((*event.step).clone());
+        })
     }
-    fn on_end(&self, event: &EndEvent) {
-        self.ends.lock().unwrap().push(event.clone());
+    fn on_end<'a>(&'a self, event: &'a EndEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.ends.lock().unwrap().push(event.clone());
+        })
     }
 }
 

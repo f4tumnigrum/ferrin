@@ -7,8 +7,10 @@
 
 mod smooth;
 
+use crate::error::Error;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use ferrin_tool::ToolSet;
 use tokio_util::sync::CancellationToken;
@@ -27,6 +29,7 @@ pub struct TransformContext {
     tools: Arc<ToolSet>,
     cancellation: CancellationToken,
     stop: CancellationToken,
+    failure: Arc<Mutex<Option<Error>>>,
 }
 
 impl TransformContext {
@@ -35,6 +38,7 @@ impl TransformContext {
             tools,
             cancellation,
             stop: CancellationToken::new(),
+            failure: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -42,6 +46,33 @@ impl TransformContext {
     /// pipeline gates further events on it.
     pub(crate) fn stop_token(&self) -> CancellationToken {
         self.stop.clone()
+    }
+
+    pub(crate) fn take_failure(&self) -> Option<Error> {
+        self.failure
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+    }
+
+    pub(crate) fn cancellation(&self) -> &CancellationToken {
+        &self.cancellation
+    }
+
+    /// Stops the call with an application-supplied transform error.
+    ///
+    /// The first failure wins. End the transform's output stream after this
+    /// call; final-result waiters receive this error rather than cancellation.
+    pub fn fail(&self, error: Error) {
+        let mut failure = self
+            .failure
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if failure.is_none() {
+            *failure = Some(error);
+        }
+        drop(failure);
+        self.stop();
     }
 
     /// The tools available to the call.

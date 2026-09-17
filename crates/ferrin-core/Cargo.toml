@@ -39,7 +39,7 @@ tokio = { workspace = true, features = ["rt", "sync", "time", "macros", "fs"] }
 tokio-util = { workspace = true }
 tokio-stream = { workspace = true }
 futures-core = { workspace = true }
-futures-util = { workspace = true }
+futures-util = { workspace = true, features = ["std"] }
 pin-project-lite = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

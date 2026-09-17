@@ -1,5 +1,6 @@
 //! Mapping of provider stream parts to stream events and attempt state.
 
+use crate::generate_text::tools::ToolEnvironment;
 use std::collections::HashSet;
 
 use ferrin_spec::JsonValue;
@@ -409,8 +410,7 @@ impl Attempt {
             &self.ctx,
             &parsed,
             &self.step_messages,
-            self.inputs.tools_context.as_ref(),
-            self.inputs.runtime_context.as_ref(),
+            ToolEnvironment::for_step(&self.inputs),
             &self.cancellation,
         )
         .await?

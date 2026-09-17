@@ -31,6 +31,8 @@ use crate::hooks::Hooks;
 use crate::output::OutputHandler;
 use crate::stream_text::EventStream;
 use crate::stream_text::StreamEvent;
+use crate::stream_text::TransformContext;
+use crate::stream_text::builder::StreamConfig;
 use crate::telemetry::AbortEvent;
 use crate::telemetry::ErrorEvent;
 use crate::telemetry::ErrorPhase;
@@ -50,6 +52,8 @@ pub(super) struct Processor<O> {
     current: Option<StepAccumulator>,
     total_usage: Usage,
     aborted: bool,
+    transform_context: Option<TransformContext>,
+    stream_config: Option<Arc<StreamConfig>>,
 }
 
 /// Content of the step in progress.
@@ -161,7 +165,19 @@ impl<O: Send + 'static> Processor<O> {
             current: None,
             total_usage: Usage::default(),
             aborted: false,
+            transform_context: None,
+            stream_config: None,
         }
+    }
+
+    pub(super) fn with_transform_context(
+        mut self,
+        context: TransformContext,
+        stream: Arc<StreamConfig>,
+    ) -> Self {
+        self.transform_context = Some(context);
+        self.stream_config = Some(stream);
+        self
     }
 
     fn push_content(&mut self, content: StepContent) {
@@ -354,7 +370,7 @@ impl<O: Send + 'static> Processor<O> {
             call_id: self.ctx.call_id.clone(),
             steps_completed: u32::try_from(self.steps.len()).unwrap_or(u32::MAX),
         });
-        self.ctx.telemetry.on_abort(&event);
+        self.ctx.telemetry.on_abort(&event).await;
         Hooks::emit(&self.ctx.hooks.on_abort, event).await;
     }
 
@@ -366,6 +382,25 @@ impl<O: Send + 'static> Processor<O> {
 
     /// Finalizes after the (transformed) stream ended.
     async fn finish(&mut self) {
+        if let Some(error) = self
+            .transform_context
+            .as_ref()
+            .and_then(TransformContext::take_failure)
+        {
+            self.fail(error).await;
+            return;
+        }
+        // The producer can finish while a transform is still buffering output.
+        // Cancellation during that drain must not turn into partial success.
+        if self.ctx.cancellation.is_cancelled() {
+            self._tasks.abort_all();
+            let error = self.ctx.cancellation.error();
+            if error.is_cancelled() && !self.aborted {
+                self.emit_abort().await;
+            }
+            self.complete(Err(error));
+            return;
+        }
         let outcome = match self.outcome_rx.take().map(|mut rx| rx.try_recv()) {
             Some(Ok(outcome)) => outcome,
             // The producer is still running: the stream was cut short (by a
@@ -403,11 +438,14 @@ impl<O: Send + 'static> Processor<O> {
                         output,
                     }),
                     Err(error) => {
-                        self.ctx.telemetry.on_error(&ErrorEvent {
-                            call_id: &self.ctx.call_id,
-                            error: &error,
-                            phase: ErrorPhase::Output,
-                        });
+                        self.ctx
+                            .telemetry
+                            .on_error(&ErrorEvent {
+                                call_id: &self.ctx.call_id,
+                                error: &error,
+                                phase: ErrorPhase::Output,
+                            })
+                            .await;
                         Err(error)
                     }
                 };
@@ -418,11 +456,14 @@ impl<O: Send + 'static> Processor<O> {
 
     async fn fail(&mut self, error: Error) {
         self._tasks.abort_all();
-        self.ctx.telemetry.on_error(&ErrorEvent {
-            call_id: &self.ctx.call_id,
-            error: &error,
-            phase: ErrorPhase::Stream,
-        });
+        self.ctx
+            .telemetry
+            .on_error(&ErrorEvent {
+                call_id: &self.ctx.call_id,
+                error: &error,
+                phase: ErrorPhase::Stream,
+            })
+            .await;
         self.complete(Err(error));
     }
 }
@@ -438,8 +479,21 @@ pub(super) fn process<O: Send + 'static>(
         |(mut events, mut processor)| async move {
             match events.next().await {
                 Some(event) => {
-                    if !processor.ctx.hooks.on_chunk.is_empty() {
+                    let handled = match &event {
+                        StreamEvent::Error { error } => processor
+                            .stream_config
+                            .as_ref()
+                            .is_some_and(|stream| stream.take_error_handled(error)),
+                        StreamEvent::RetryAttempt { .. } => true,
+                        _ => false,
+                    };
+                    if !handled {
                         Hooks::emit(&processor.ctx.hooks.on_chunk, Arc::new(event.clone())).await;
+                        if let StreamEvent::Error { error } = &event
+                            && let Some(stream) = &processor.stream_config
+                        {
+                            let _ = stream.error_decision(error.clone()).await;
+                        }
                     }
                     match processor.handle(&event).await {
                         Ok(()) => Some((event, (events, processor))),

@@ -26,11 +26,13 @@ fn point_with<'a>(points: &'a [HistogramPoint], key: &str, value: &str) -> &'a H
         .unwrap_or_else(|| panic!("no data point with {key}={value}: {points:?}"))
 }
 
-#[test]
-fn model_call_end_records_usage_duration_and_time_to_first_chunk() {
+#[tokio::test]
+async fn model_call_end_records_usage_duration_and_time_to_first_chunk() {
     let harness = Harness::new();
     let telemetry = harness.telemetry();
-    telemetry.on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))));
+    telemetry
+        .on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))))
+        .await;
 
     let usage = harness.histogram_points("gen_ai.client.token.usage");
     assert_eq!(usage.len(), 2);
@@ -66,11 +68,13 @@ fn model_call_end_records_usage_duration_and_time_to_first_chunk() {
     assert!((first_chunk[0].sum - 0.3).abs() < 1e-9);
 }
 
-#[test]
-fn a_non_streamed_call_records_no_time_to_first_chunk() {
+#[tokio::test]
+async fn a_non_streamed_call_records_no_time_to_first_chunk() {
     let harness = Harness::new();
     let telemetry = harness.telemetry();
-    telemetry.on_language_model_call_end(&model_call_end(0, None));
+    telemetry
+        .on_language_model_call_end(&model_call_end(0, None))
+        .await;
     assert!(
         harness
             .histogram_points("gen_ai.client.operation.time_to_first_chunk")
@@ -84,33 +88,41 @@ fn a_non_streamed_call_records_no_time_to_first_chunk() {
     );
 }
 
-#[test]
-fn embed_and_rerank_events_record_operation_metrics() {
+#[tokio::test]
+async fn embed_and_rerank_events_record_operation_metrics() {
     let harness = Harness::new();
     let telemetry = harness.telemetry();
-    telemetry.on_embed_start(&EmbedStartEvent {
-        call_id: "embed-1".to_owned(),
-        model: model(),
-        value_count: 3,
-        values: None,
-    });
-    telemetry.on_embed_end(&EmbedEndEvent {
-        call_id: "embed-1".to_owned(),
-        embedding_count: 3,
-        tokens: Some(40),
-        duration: Duration::from_millis(250),
-    });
-    telemetry.on_rerank_start(&RerankStartEvent {
-        call_id: "rerank-1".to_owned(),
-        model: model(),
-        document_count: 5,
-        query: None,
-    });
-    telemetry.on_rerank_end(&RerankEndEvent {
-        call_id: "rerank-1".to_owned(),
-        ranked_count: 5,
-        duration: Duration::from_millis(120),
-    });
+    telemetry
+        .on_embed_start(&EmbedStartEvent {
+            call_id: "embed-1".to_owned(),
+            model: model(),
+            value_count: 3,
+            values: None,
+        })
+        .await;
+    telemetry
+        .on_embed_end(&EmbedEndEvent {
+            call_id: "embed-1".to_owned(),
+            embedding_count: 3,
+            tokens: Some(40),
+            duration: Duration::from_millis(250),
+        })
+        .await;
+    telemetry
+        .on_rerank_start(&RerankStartEvent {
+            call_id: "rerank-1".to_owned(),
+            model: model(),
+            document_count: 5,
+            query: None,
+        })
+        .await;
+    telemetry
+        .on_rerank_end(&RerankEndEvent {
+            call_id: "rerank-1".to_owned(),
+            ranked_count: 5,
+            duration: Duration::from_millis(120),
+        })
+        .await;
 
     let durations = harness.histogram_points("gen_ai.client.operation.duration");
     assert_eq!(durations.len(), 2);
@@ -130,24 +142,43 @@ fn embed_and_rerank_events_record_operation_metrics() {
         attr_str(&usage[0].attributes, "gen_ai.operation.name"),
         Some("embeddings".to_owned())
     );
+    let spans = harness.finished_spans();
+    assert_eq!(
+        spans
+            .iter()
+            .map(|span| (span.name.as_ref(), span.span_kind.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("embeddings gpt-5", opentelemetry::trace::SpanKind::Client),
+            ("rerank gpt-5", opentelemetry::trace::SpanKind::Client)
+        ]
+    );
+    assert_eq!(
+        attr(&spans[0].attributes, "gen_ai.usage.input_tokens"),
+        Some(&opentelemetry::Value::I64(40))
+    );
 }
 
-#[test]
-fn a_failed_modality_call_records_the_duration_with_the_error_type() {
+#[tokio::test]
+async fn a_failed_modality_call_records_the_duration_with_the_error_type() {
     let harness = Harness::new();
     let telemetry = harness.telemetry();
-    telemetry.on_embed_start(&EmbedStartEvent {
-        call_id: "embed-1".to_owned(),
-        model: model(),
-        value_count: 1,
-        values: None,
-    });
+    telemetry
+        .on_embed_start(&EmbedStartEvent {
+            call_id: "embed-1".to_owned(),
+            model: model(),
+            value_count: 1,
+            values: None,
+        })
+        .await;
     let error = Error::NoOutputGenerated;
-    telemetry.on_error(&ErrorEvent {
-        call_id: "embed-1",
-        error: &error,
-        phase: ErrorPhase::ModelCall,
-    });
+    telemetry
+        .on_error(&ErrorEvent {
+            call_id: "embed-1",
+            error: &error,
+            phase: ErrorPhase::ModelCall,
+        })
+        .await;
     let durations = harness.histogram_points("gen_ai.client.operation.duration");
     assert_eq!(durations.len(), 1);
     assert_eq!(
@@ -158,13 +189,20 @@ fn a_failed_modality_call_records_the_duration_with_the_error_type() {
         attr_str(&durations[0].attributes, "error.type"),
         Some("output".to_owned())
     );
+    let spans = harness.finished_spans();
+    assert_eq!(
+        spans[0].status,
+        opentelemetry::trace::Status::error("output")
+    );
 }
 
-#[test]
-fn metrics_can_be_disabled() {
+#[tokio::test]
+async fn metrics_can_be_disabled() {
     let harness = Harness::new();
     let telemetry = harness.builder().without_metrics().build();
-    telemetry.on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))));
+    telemetry
+        .on_language_model_call_end(&model_call_end(0, Some(Duration::from_millis(300))))
+        .await;
     assert!(
         harness
             .histogram_points("gen_ai.client.token.usage")

@@ -182,3 +182,11 @@ let wrapped = wrap_language_model(model, [Arc::new(extract_reasoning("think")) a
 - 【事实】覆盖：`tests/suite/middleware/{embedding,image,provider,default_embedding_settings}.rs`（组合顺序、经 `embed_many` / `generate_image` 分块观察到的标识与限制覆盖、供应商直通、未解析引用、请求头与供应商选项优先级）与 `tests/suite/registry.rs`（注册表嵌入/图像中间件）。
 
 【决策】 语言模型中间件对工具的过滤也约束本地工具执行。每次模型调用尝试拥有独立的工具约束：各层只能收窄工具名称集合；解析调用或校验结束条件前，按集合的交集规范化最终工具选择。约束通过带作用域的中间件续体传递（包括在子任务中轮询的续体），流消费期间持续保留，重试时重新创建。这使策略过滤真正生效，无须向供应商规范新增字段，也不在并发调用间共享可变状态。
+
+【决策】参考行为对齐（2026-09-17，ADR 0026）：provider options 覆盖采用递归对象合并、数组替换，并在每层对象边界排除参考实现的保留键。格式错误的注册表模型 ID 返回 `NoSuchModel`；格式正确但供应商不存在时返回 `NoSuchProvider`。`register_provider` 替换后续查询使用的供应商，不改变此前返回的模型句柄。
+
+【决策】中间件 metadata 边界遵循本地 AI SDK `6c6c221`：JSON 提取对未匹配开始事件的文本增量原样转发；模拟流的文本事件不带源部件 metadata，reasoning-start 则保留；非流式推理提取匹配后生成不带源 metadata 的文本和推理部件。结果级 metadata 不变。追加工具示例时将空描述视为缺省。JSON 围栏的空白处理遵循 ECMAScript 规则。来源：参考 `extract-json-middleware.ts`、`simulate-streaming-middleware.ts`、`extract-reasoning-middleware.ts`、`add-tool-input-examples-middleware.ts` 及本地中间件回归。
+
+【决策】注册表 files/skills 查询使用不含模型分隔符的供应商 ID，并区分未知供应商和不支持的服务。自定义供应商显式配置的 files/skills 优先于 fallback。来源：参考 `provider-registry.ts`、`custom-provider.ts` 和本地注册表服务回归。此实现补齐第 2.1 与 2.2 节描述的接口。
+
+【决策】默认 JSON 响应格式递归合并 schema 对象，保留本次调用未指定的名称和描述，与参考 `mergeObjects(settings, params)` 行为一致。显式 schema 数组和标量替换默认值。来源：本地 AI SDK `6c6c221` 的 `default-settings-middleware.ts`、`util/merge-objects.ts` 及本地默认设置回归。

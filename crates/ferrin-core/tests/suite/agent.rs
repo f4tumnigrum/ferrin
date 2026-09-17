@@ -133,7 +133,9 @@ async fn prepare_call_rewrites_settings_from_options() {
                     *seen_timeout.lock().unwrap() = Some(input.defaults.timeout.clone());
                     let mut call = input.defaults;
                     assert_eq!(
-                        call.instructions.as_ref().map(|i| i.content.as_str()),
+                        call.instructions
+                            .as_ref()
+                            .map(|i| i.as_messages()[0].content.as_str()),
                         Some("base")
                     );
                     assert_eq!(call.stop_conditions.len(), 1);
@@ -158,7 +160,7 @@ async fn prepare_call_rewrites_settings_from_options() {
 
     assert_eq!(
         *seen_timeout.lock().unwrap(),
-        Some(Timeout::none().with_total(Duration::from_secs(1)))
+        Some(Timeout::none().with_total(Duration::from_secs(30)))
     );
     let calls = model.generate_calls();
     assert_eq!(system_content(&calls[0].prompt[0]), Some("Tenant: acme"));

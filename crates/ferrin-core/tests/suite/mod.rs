@@ -1,4 +1,6 @@
 mod agent;
+mod agent_options;
+mod agent_overrides;
 mod approval;
 mod approval_provider_metadata;
 mod cancel_timeout;
@@ -10,15 +12,25 @@ mod hooks;
 mod middleware;
 mod modalities;
 mod output;
+mod output_parity;
 mod prepare_step;
+#[cfg(feature = "sandbox")]
+mod prepare_step_parity;
+mod prompt_conversion;
+mod prompt_instructions;
 #[cfg(feature = "realtime")]
 mod realtime;
 mod registry;
+mod result_aggregation;
 mod retry;
 mod runtime_context;
 mod stream;
 mod stream_metadata;
+mod stream_transform_parity;
+mod stream_views;
+mod telemetry_async;
 mod telemetry_content;
 mod telemetry_errors;
+mod tool_contract_parity;
 mod tool_metadata;
 mod tool_restrictions;

@@ -27,6 +27,8 @@ pub mod image;
 pub(crate) mod limits;
 pub mod middleware;
 pub(crate) mod modality;
+mod modality_hooks;
+mod modality_metadata;
 mod modality_stream;
 pub mod output;
 pub mod prompt;

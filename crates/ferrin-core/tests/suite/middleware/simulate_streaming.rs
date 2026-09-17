@@ -9,6 +9,7 @@ use ferrin_spec::Warning;
 use ferrin_spec::language_model::GenerateResult;
 use ferrin_testing::MockLanguageModel;
 use pretty_assertions::assert_eq;
+use serde_json::json;
 
 use super::common::render;
 use super::common::stream;
@@ -79,4 +80,40 @@ async fn wrap_stream_uses_do_generate() {
     assert_eq!(parts.len(), 10);
     assert_eq!(mock.generate_calls().len(), 1);
     assert!(mock.stream_calls().is_empty());
+}
+
+#[test]
+fn text_and_reasoning_metadata_follow_reference_event_boundaries() {
+    let metadata = Some(
+        [(
+            "mock".to_owned(),
+            json!({"signature":"value"}).as_object().unwrap().clone(),
+        )]
+        .into(),
+    );
+    let result = GenerateResult::new(
+        vec![
+            Content::Text {
+                text: "answer".into(),
+                provider_metadata: metadata.clone(),
+            },
+            Content::Reasoning {
+                text: "thinking".into(),
+                provider_metadata: metadata,
+            },
+        ],
+        FinishReason::stop(),
+    );
+    let parts = simulate_parts(&result);
+    assert_eq!(
+        serde_json::to_value(&parts[2..8]).unwrap(),
+        json!([
+            {"type":"text-start","id":"0"},
+            {"type":"text-delta","id":"0","delta":"answer"},
+            {"type":"text-end","id":"0"},
+            {"type":"reasoning-start","id":"1","provider_metadata":{"mock":{"signature":"value"}}},
+            {"type":"reasoning-delta","id":"1","delta":"thinking"},
+            {"type":"reasoning-end","id":"1"}
+        ])
+    );
 }

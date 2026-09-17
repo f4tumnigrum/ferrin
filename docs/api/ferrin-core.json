@@ -133,6 +133,7 @@
         "NoImageGenerated { responses: Vec<ResponseMetadata> }",
         "NoSpeechGenerated { responses: Vec<ResponseMetadata> }",
         "NoTranscriptGenerated { responses: Vec<ResponseMetadata> }",
+        "NoTranslationGenerated { response: Box<ResponseMetadata> }",
         "NoVideoGenerated { responses: Vec<ResponseMetadata> }",
         "NoSuchProvider(Box<NoSuchProviderDetails>)",
         "NoDefaultRegistry { model_id: String }",
@@ -283,15 +284,28 @@
         "output: O"
       ],
       "methods": [
+        "fn content(&self) -> impl Iterator<Item = &StepContent>",
+        "fn dynamic_tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn dynamic_tool_results(&self) -> impl Iterator<Item = &ToolResult>",
+        "fn files(&self) -> impl Iterator<Item = &GeneratedFile>",
+        "fn final_step(&self) -> &StepResult",
         "fn finish_reason(&self) -> &FinishReason",
         "fn last_step(&self) -> &StepResult",
         "fn map_output<P>(self, f: impl FnOnce(O) -> P) -> GenerateTextResult<P>",
         "fn provider_metadata(&self) -> Option<&ProviderMetadata>",
+        "fn raw_finish_reason(&self) -> Option<&str>",
         "fn reasoning_text(&self) -> Option<String>",
+        "fn request(&self) -> &StepRequest",
+        "fn response(&self) -> &StepResponse",
         "fn response_messages(&self) -> Vec<Message>",
+        "fn sources(&self) -> impl Iterator<Item = &Source>",
+        "fn static_tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn static_tool_results(&self) -> impl Iterator<Item = &ToolResult>",
         "fn text(&self) -> String",
+        "fn tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn tool_results(&self) -> impl Iterator<Item = &ToolResult>",
         "fn usage(&self) -> &Usage",
-        "fn warnings(&self) -> &[Warning]"
+        "fn warnings(&self) -> Vec<&Warning>"
       ],
       "traits": [
         "impl<O: Clone> Clone for GenerateTextResult<O>",
@@ -351,15 +365,20 @@
     },
     {
       "path": "ferrin_core::Instructions",
-      "kind": "struct",
-      "signature": "struct",
+      "kind": "enum",
+      "signature": "enum",
       "source": "prompt::Instructions",
-      "fields": [
-        "content: String",
-        "provider_options: Option<ProviderOptions>"
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "System(SystemMessage)",
+        "Messages(Vec<SystemMessage>)"
       ],
       "methods": [
-        "fn into_message(self) -> SystemMessage",
+        "fn as_messages(&self) -> &[SystemMessage]",
+        "fn into_messages(self) -> Vec<SystemMessage>",
+        "fn messages(messages: impl IntoIterator<Item = SystemMessage>) -> Self",
         "fn new(content: impl Into<String>) -> Self",
         "fn with_provider_options(self, options: ProviderOptions) -> Self"
       ],
@@ -371,6 +390,7 @@
         "impl From<&str> for Instructions",
         "impl From<String> for Instructions",
         "impl From<SystemMessage> for Instructions",
+        "impl From<Vec<SystemMessage>> for Instructions",
         "impl PartialEq for Instructions",
         "impl StructuralPartialEq for Instructions"
       ]
@@ -448,12 +468,15 @@
       "methods": [
         "fn builder() -> ProviderRegistryBuilder",
         "fn embedding_model(&self, id: &str) -> Result<EmbeddingModelRef, Error>",
+        "fn files(&self, provider_id: &str) -> Result<FilesRef, Error>",
         "fn image_model(&self, id: &str) -> Result<ImageModelRef, Error>",
         "fn language_model(&self, id: &str) -> Result<LanguageModelRef, Error>",
         "fn provider(&self, id: &str) -> Option<&ProviderRef>",
         "fn provider_ids(&self) -> impl Iterator<Item = &str> + '_",
         "fn realtime_model(&self, id: &str) -> Result<RealtimeModelRef, Error>",
+        "fn register_provider(&mut self, id: impl Into<String>, provider: ProviderRef)",
         "fn reranking_model(&self, id: &str) -> Result<RerankingModelRef, Error>",
+        "fn skills(&self, provider_id: &str) -> Result<SkillsRef, Error>",
         "fn speech_model(&self, id: &str) -> Result<SpeechModelRef, Error>",
         "fn speech_translation_model(&self, id: &str) -> Result<SpeechTranslationModelRef, Error>",
         "fn transcription_model(&self, id: &str) -> Result<TranscriptionModelRef, Error>",
@@ -721,12 +744,19 @@
       ],
       "methods": [
         "async fn consume(self) -> Result<GenerateTextResult<O>, Error>",
+        "async fn final_result(self) -> Result<GenerateTextResult<O>, Error>",
         "fn call_id(&self) -> &str",
         "fn element_stream(self) -> impl Stream<Item = Result<<O as ArrayElements>::Element, Error>> + Send",
+        "fn element_view(&mut self) -> impl Stream<Item = Result<<O as ArrayElements>::Element, Error>> + Send + use<>",
         "fn events(&mut self) -> &mut EventStream",
+        "fn full_stream(&mut self) -> EventStream",
+        "fn into_completion(self) -> Completion<O>",
+        "fn into_shared_completion(self) -> impl Future<Output = Arc<Result<GenerateTextResult<O>, Error>>> + Clone + Send",
         "fn partial_output_stream(self) -> impl Stream<Item = PartialOutput<O>> + Send",
+        "fn partial_output_view(&mut self) -> impl Stream<Item = PartialOutput<O>> + Send + use<>",
         "fn split(self) -> (EventStream, Completion<O>)",
-        "fn text_stream(self) -> impl Stream<Item = Result<String, Error>> + Send"
+        "fn text_stream(self) -> impl Stream<Item = Result<String, Error>> + Send",
+        "fn text_view(&mut self) -> impl Stream<Item = String> + Send + use<>"
       ],
       "traits": [
         "impl<O> Debug for StreamTextResult<O>"
@@ -740,20 +770,24 @@
       "methods": [
         "fn execute_language_model_call<'a>(&'a self, _ctx: &'a ModelCallContext, call: BoxFuture<'a, Result<ModelCallOutcome, Error>>) -> BoxFuture<'a, Result<ModelCallOutcome, Error>>",
         "fn execute_tool<'a>(&'a self, _ctx: &'a ToolExecutionContext, call: BoxFuture<'a, Result<ToolOutcome, ToolError>>) -> BoxFuture<'a, Result<ToolOutcome, ToolError>>",
-        "fn on_abort(&self, _event: &AbortEvent)",
-        "fn on_embed_end(&self, _event: &EmbedEndEvent)",
-        "fn on_embed_start(&self, _event: &EmbedStartEvent)",
-        "fn on_end(&self, _event: &EndEvent)",
-        "fn on_error(&self, _event: &ErrorEvent<'_>)",
-        "fn on_language_model_call_end(&self, _event: &ModelCallEndEvent)",
-        "fn on_language_model_call_start(&self, _event: &ModelCallStartEvent)",
-        "fn on_rerank_end(&self, _event: &RerankEndEvent)",
-        "fn on_rerank_start(&self, _event: &RerankStartEvent)",
-        "fn on_start(&self, _event: &StartEvent)",
-        "fn on_step_end(&self, _event: &StepEndEvent)",
-        "fn on_step_start(&self, _event: &StepStartEvent)",
-        "fn on_tool_execution_end(&self, _event: &ToolExecutionEndEvent)",
-        "fn on_tool_execution_start(&self, _event: &ToolExecutionStartEvent)"
+        "fn on_abort<'a>(&'a self, _event: &'a AbortEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_end<'a>(&'a self, _event: &'a EmbedEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_operation_end<'a>(&'a self, _event: &'a EmbedCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_operation_start<'a>(&'a self, _event: &'a EmbedCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_start<'a>(&'a self, _event: &'a EmbedStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_end<'a>(&'a self, _event: &'a EndEvent) -> BoxFuture<'a, ()>",
+        "fn on_error<'a>(&'a self, _event: &'a ErrorEvent<'_>) -> BoxFuture<'a, ()>",
+        "fn on_language_model_call_end<'a>(&'a self, _event: &'a ModelCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_language_model_call_start<'a>(&'a self, _event: &'a ModelCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_end<'a>(&'a self, _event: &'a RerankEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_operation_end<'a>(&'a self, _event: &'a RerankCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_operation_start<'a>(&'a self, _event: &'a RerankCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_start<'a>(&'a self, _event: &'a RerankStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_start<'a>(&'a self, _event: &'a StartEvent) -> BoxFuture<'a, ()>",
+        "fn on_step_end<'a>(&'a self, _event: &'a StepEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_step_start<'a>(&'a self, _event: &'a StepStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_tool_execution_end<'a>(&'a self, _event: &'a ToolExecutionEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_tool_execution_start<'a>(&'a self, _event: &'a ToolExecutionStartEvent) -> BoxFuture<'a, ()>"
       ]
     },
     {
@@ -928,7 +962,7 @@
       "path": "ferrin_core::agent::PrepareCall",
       "kind": "trait",
       "signature": "trait<Opt>: Send + Sync",
-      "source": "tool_loop_agent::PrepareCall",
+      "source": "prepare_call::PrepareCall",
       "methods": [
         "fn prepare_call(&self, input: PrepareCallInput<Opt>) -> BoxFuture<'_, Result<PreparedCall, Error>>"
       ]
@@ -937,10 +971,11 @@
       "path": "ferrin_core::agent::PrepareCallInput",
       "kind": "struct",
       "signature": "struct<Opt>",
-      "source": "tool_loop_agent::PrepareCallInput",
+      "source": "prepare_call::PrepareCallInput",
       "fields": [
         "options: Opt",
-        "defaults: PreparedCall"
+        "defaults: PreparedCall",
+        "sandbox: Option<Arc<dyn Sandbox>>"
       ],
       "traits": [
         "impl<Opt: Debug> Debug for PrepareCallInput<Opt>"
@@ -950,7 +985,7 @@
       "path": "ferrin_core::agent::PreparedCall",
       "kind": "struct",
       "signature": "struct",
-      "source": "tool_loop_agent::PreparedCall",
+      "source": "prepare_call::PreparedCall",
       "fields": [
         "input: AgentInput",
         "instructions: Option<Instructions>",
@@ -962,6 +997,13 @@
         "tool_order: Vec<ToolName>",
         "tools_context: Option<JsonValue>",
         "runtime_context: Option<JsonValue>",
+        "tool_approval: Option<Arc<dyn ApprovalPolicy>>",
+        "tool_approval_secret: Option<Arc<SecretBox<[u8]>>>",
+        "tool_callers: ToolCallers",
+        "prepare_step: Option<Arc<dyn PrepareStep>>",
+        "repair_tool_call: Option<Arc<dyn ToolCallRepair>>",
+        "refine_tool_inputs: RefineToolInputs",
+        "download: Option<Arc<dyn DownloadFn>>",
         "settings: CallSettings",
         "stop_conditions: Vec<Arc<dyn StopCondition>>",
         "timeout: Timeout",
@@ -1005,6 +1047,7 @@
         "fn allow_system_in_messages(self) -> Self",
         "fn build(self) -> ToolLoopAgent<Opt, Out>",
         "fn call_options<O>(self) -> ToolLoopAgentBuilder<O, Out>",
+        "fn call_options_schema(self, schema: Schema<Opt>) -> Self where Opt: Serialize + 'static",
         "fn cancellation(self, token: CancellationToken) -> Self",
         "fn clock(self, clock: Arc<dyn Clock>) -> Self",
         "fn download(self, download: Arc<dyn DownloadFn>) -> Self",
@@ -1527,7 +1570,7 @@
     {
       "path": "ferrin_core::cosine_similarity",
       "kind": "function",
-      "signature": "fn cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32, Error>",
+      "signature": "fn cosine_similarity(a: &[f64], b: &[f64]) -> Result<f64, Error>",
       "source": "embed::cosine_similarity"
     },
     {
@@ -1570,15 +1613,64 @@
         "fn header(self, name: &str, value: &str) -> Self",
         "fn headers(self, headers: Headers) -> Self",
         "fn max_retries(self, max_retries: u32) -> Self",
+        "fn on_end(self, hook: impl HookFn<EmbedCallEndEvent>) -> Self",
+        "fn on_start(self, hook: impl HookFn<EmbedCallStartEvent>) -> Self",
         "fn provider_option(self, provider: impl Into<String>, options: JsonObject) -> Self",
         "fn provider_options(self, options: ProviderOptions) -> Self",
         "fn retry(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn telemetry(self, options: TelemetryOptions) -> Self",
         "fn timeout(self, timeout: Duration) -> Self"
       ],
       "traits": [
         "impl Debug for Embed",
         "impl IntoFuture for Embed"
+      ]
+    },
+    {
+      "path": "ferrin_core::embed::EmbedCallEndEvent",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::modality_hooks::EmbedCallEndEvent",
+      "fields": [
+        "runtime_context: Option<JsonValue>",
+        "call_id: String",
+        "operation_id: &'static str",
+        "model: ModelIdentity",
+        "value: Option<EmbeddingInput>",
+        "embedding: Option<EmbeddingOutput>",
+        "usage: EmbeddingUsage",
+        "warnings: Vec<Warning>",
+        "provider_metadata: Option<ProviderMetadata>",
+        "response: EmbeddingResponse"
+      ],
+      "traits": [
+        "impl Clone for EmbedCallEndEvent",
+        "impl Debug for EmbedCallEndEvent",
+        "impl PartialEq for EmbedCallEndEvent",
+        "impl StructuralPartialEq for EmbedCallEndEvent"
+      ]
+    },
+    {
+      "path": "ferrin_core::embed::EmbedCallStartEvent",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::modality_hooks::EmbedCallStartEvent",
+      "fields": [
+        "runtime_context: Option<JsonValue>",
+        "call_id: String",
+        "operation_id: &'static str",
+        "model: ModelIdentity",
+        "value: Option<EmbeddingInput>",
+        "max_retries: u32",
+        "headers: Headers",
+        "provider_options: ProviderOptions"
+      ],
+      "traits": [
+        "impl Clone for EmbedCallStartEvent",
+        "impl Debug for EmbedCallStartEvent",
+        "impl PartialEq for EmbedCallStartEvent",
+        "impl StructuralPartialEq for EmbedCallStartEvent"
       ]
     },
     {
@@ -1594,9 +1686,12 @@
         "fn headers(self, headers: Headers) -> Self",
         "fn max_parallel_calls(self, max_parallel_calls: usize) -> Self",
         "fn max_retries(self, max_retries: u32) -> Self",
+        "fn on_end(self, hook: impl HookFn<EmbedCallEndEvent>) -> Self",
+        "fn on_start(self, hook: impl HookFn<EmbedCallStartEvent>) -> Self",
         "fn provider_option(self, provider: impl Into<String>, options: JsonObject) -> Self",
         "fn provider_options(self, options: ProviderOptions) -> Self",
         "fn retry(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn telemetry(self, options: TelemetryOptions) -> Self",
         "fn timeout(self, timeout: Duration) -> Self"
       ],
@@ -1649,6 +1744,63 @@
       "source": "ferrin_spec::embedding_model::Embedding"
     },
     {
+      "path": "ferrin_core::embed::EmbeddingInput",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "crate::modality_hooks::EmbeddingInput",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Single(String)",
+        "Many(Vec<String>)"
+      ],
+      "traits": [
+        "impl Clone for EmbeddingInput",
+        "impl Debug for EmbeddingInput",
+        "impl PartialEq for EmbeddingInput",
+        "impl StructuralPartialEq for EmbeddingInput"
+      ]
+    },
+    {
+      "path": "ferrin_core::embed::EmbeddingOutput",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "crate::modality_hooks::EmbeddingOutput",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Single(Embedding)",
+        "Many(Vec<Embedding>)"
+      ],
+      "traits": [
+        "impl Clone for EmbeddingOutput",
+        "impl Debug for EmbeddingOutput",
+        "impl PartialEq for EmbeddingOutput",
+        "impl StructuralPartialEq for EmbeddingOutput"
+      ]
+    },
+    {
+      "path": "ferrin_core::embed::EmbeddingResponse",
+      "kind": "enum",
+      "signature": "enum",
+      "source": "crate::modality_hooks::EmbeddingResponse",
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "Single(Box<ResponseMetadata>)",
+        "Many(Vec<ResponseMetadata>)"
+      ],
+      "traits": [
+        "impl Clone for EmbeddingResponse",
+        "impl Debug for EmbeddingResponse",
+        "impl PartialEq for EmbeddingResponse",
+        "impl StructuralPartialEq for EmbeddingResponse"
+      ]
+    },
+    {
       "path": "ferrin_core::embed::EmbeddingUsage",
       "kind": "struct",
       "signature": "struct",
@@ -1668,7 +1820,7 @@
     {
       "path": "ferrin_core::embed::cosine_similarity",
       "kind": "function",
-      "signature": "fn cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32, Error>"
+      "signature": "fn cosine_similarity(a: &[f64], b: &[f64]) -> Result<f64, Error>"
     },
     {
       "path": "ferrin_core::embed::embed",
@@ -1748,6 +1900,7 @@
         "NoImageGenerated { responses: Vec<ResponseMetadata> }",
         "NoSpeechGenerated { responses: Vec<ResponseMetadata> }",
         "NoTranscriptGenerated { responses: Vec<ResponseMetadata> }",
+        "NoTranslationGenerated { response: Box<ResponseMetadata> }",
         "NoVideoGenerated { responses: Vec<ResponseMetadata> }",
         "NoSuchProvider(Box<NoSuchProviderDetails>)",
         "NoDefaultRegistry { model_id: String }",
@@ -2244,15 +2397,28 @@
         "output: O"
       ],
       "methods": [
+        "fn content(&self) -> impl Iterator<Item = &StepContent>",
+        "fn dynamic_tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn dynamic_tool_results(&self) -> impl Iterator<Item = &ToolResult>",
+        "fn files(&self) -> impl Iterator<Item = &GeneratedFile>",
+        "fn final_step(&self) -> &StepResult",
         "fn finish_reason(&self) -> &FinishReason",
         "fn last_step(&self) -> &StepResult",
         "fn map_output<P>(self, f: impl FnOnce(O) -> P) -> GenerateTextResult<P>",
         "fn provider_metadata(&self) -> Option<&ProviderMetadata>",
+        "fn raw_finish_reason(&self) -> Option<&str>",
         "fn reasoning_text(&self) -> Option<String>",
+        "fn request(&self) -> &StepRequest",
+        "fn response(&self) -> &StepResponse",
         "fn response_messages(&self) -> Vec<Message>",
+        "fn sources(&self) -> impl Iterator<Item = &Source>",
+        "fn static_tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn static_tool_results(&self) -> impl Iterator<Item = &ToolResult>",
         "fn text(&self) -> String",
+        "fn tool_calls(&self) -> impl Iterator<Item = &ParsedToolCall>",
+        "fn tool_results(&self) -> impl Iterator<Item = &ToolResult>",
         "fn usage(&self) -> &Usage",
-        "fn warnings(&self) -> &[Warning]"
+        "fn warnings(&self) -> Vec<&Warning>"
       ],
       "traits": [
         "impl<O: Clone> Clone for GenerateTextResult<O>",
@@ -2388,16 +2554,18 @@
       "fields": [
         "steps: &'a [StepResult]",
         "step_number: u32",
-        "model: &'a ModelIdentity",
+        "model: &'a Arc<dyn DynLanguageModel>",
         "instructions: Option<&'a Instructions>",
+        "initial_instructions: Option<&'a Instructions>",
         "messages: &'a [Message]",
         "initial_messages: &'a [Message]",
         "response_messages: &'a [Message]",
         "tools_context: Option<&'a JsonValue>",
-        "runtime_context: Option<&'a JsonValue>"
+        "runtime_context: Option<&'a JsonValue>",
+        "sandbox: Option<&'a Arc<dyn Sandbox>>"
       ],
       "traits": [
-        "impl<'a> Debug for PrepareStepContext<'a>"
+        "impl Debug for PrepareStepContext<'_>"
       ]
     },
     {
@@ -2517,6 +2685,7 @@
         "messages: Option<Vec<Message>>",
         "tools_context: Option<JsonValue>",
         "runtime_context: Option<JsonValue>",
+        "sandbox: Option<Arc<dyn Sandbox>>",
         "settings: Option<CallSettings>"
       ],
       "methods": [
@@ -2526,6 +2695,7 @@
         "fn with_messages(self, messages: impl IntoIterator<Item = Message>) -> Self",
         "fn with_model(self, model: impl Into<LanguageModelRef>) -> Self",
         "fn with_runtime_context(self, context: JsonValue) -> Self",
+        "fn with_sandbox(self, sandbox: Arc<dyn Sandbox>) -> Self",
         "fn with_settings(self, settings: CallSettings) -> Self",
         "fn with_tool_choice(self, tool_choice: ToolChoice) -> Self",
         "fn with_tool_order(self, names: impl IntoIterator<Item = impl Into<ToolName>>) -> Self",
@@ -3706,11 +3876,14 @@
       "kind": "trait",
       "signature": "trait<O>: Send + Sync + 'static",
       "methods": [
+        "fn max_elements(&self) -> Option<usize>",
         "fn parse_complete(&self, text: &str, ctx: &OutputContext) -> Result<O, Error>",
         "fn parse_elements(&self, _text: &str) -> Option<Vec<JsonValue>>",
         "fn parse_partial(&self, text: &str) -> Option<JsonValue>",
+        "fn parse_typed_elements(&self, text: &str) -> Option<O>",
         "fn response_format(&self) -> Option<ResponseFormat>",
         "fn typed_partial(&self, _value: &JsonValue) -> Option<O>",
+        "fn validate_configuration(&self) -> Result<(), Error>",
         "fn wants_output(&self) -> bool"
       ]
     },
@@ -3842,15 +4015,20 @@
     },
     {
       "path": "ferrin_core::prompt::Instructions",
-      "kind": "struct",
-      "signature": "struct",
+      "kind": "enum",
+      "signature": "enum",
       "source": "standardize::Instructions",
-      "fields": [
-        "content: String",
-        "provider_options: Option<ProviderOptions>"
+      "attrs": [
+        "non_exhaustive"
+      ],
+      "variants": [
+        "System(SystemMessage)",
+        "Messages(Vec<SystemMessage>)"
       ],
       "methods": [
-        "fn into_message(self) -> SystemMessage",
+        "fn as_messages(&self) -> &[SystemMessage]",
+        "fn into_messages(self) -> Vec<SystemMessage>",
+        "fn messages(messages: impl IntoIterator<Item = SystemMessage>) -> Self",
         "fn new(content: impl Into<String>) -> Self",
         "fn with_provider_options(self, options: ProviderOptions) -> Self"
       ],
@@ -3862,6 +4040,7 @@
         "impl From<&str> for Instructions",
         "impl From<String> for Instructions",
         "impl From<SystemMessage> for Instructions",
+        "impl From<Vec<SystemMessage>> for Instructions",
         "impl PartialEq for Instructions",
         "impl StructuralPartialEq for Instructions"
       ]
@@ -4119,9 +4298,11 @@
         "fn build(self) -> CustomProvider",
         "fn embedding_model(self, id: impl Into<String>, model: impl Into<EmbeddingModelRef>) -> Self",
         "fn fallback(self, provider: ProviderRef) -> Self",
+        "fn files(self, files: FilesRef) -> Self",
         "fn image_model(self, id: impl Into<String>, model: impl Into<ImageModelRef>) -> Self",
         "fn language_model(self, id: impl Into<String>, model: impl Into<LanguageModelRef>) -> Self",
         "fn reranking_model(self, id: impl Into<String>, model: impl Into<RerankingModelRef>) -> Self",
+        "fn skills(self, skills: SkillsRef) -> Self",
         "fn speech_model(self, id: impl Into<String>, model: impl Into<SpeechModelRef>) -> Self",
         "fn speech_translation_model(self, id: impl Into<String>, model: impl Into<SpeechTranslationModelRef>) -> Self",
         "fn transcription_model(self, id: impl Into<String>, model: impl Into<TranscriptionModelRef>) -> Self",
@@ -4142,12 +4323,15 @@
       "methods": [
         "fn builder() -> ProviderRegistryBuilder",
         "fn embedding_model(&self, id: &str) -> Result<EmbeddingModelRef, Error>",
+        "fn files(&self, provider_id: &str) -> Result<FilesRef, Error>",
         "fn image_model(&self, id: &str) -> Result<ImageModelRef, Error>",
         "fn language_model(&self, id: &str) -> Result<LanguageModelRef, Error>",
         "fn provider(&self, id: &str) -> Option<&ProviderRef>",
         "fn provider_ids(&self) -> impl Iterator<Item = &str> + '_",
         "fn realtime_model(&self, id: &str) -> Result<RealtimeModelRef, Error>",
+        "fn register_provider(&mut self, id: impl Into<String>, provider: ProviderRef)",
         "fn reranking_model(&self, id: &str) -> Result<RerankingModelRef, Error>",
+        "fn skills(&self, provider_id: &str) -> Result<SkillsRef, Error>",
         "fn speech_model(&self, id: &str) -> Result<SpeechModelRef, Error>",
         "fn speech_translation_model(&self, id: &str) -> Result<SpeechTranslationModelRef, Error>",
         "fn transcription_model(&self, id: &str) -> Result<TranscriptionModelRef, Error>",
@@ -4251,9 +4435,12 @@
         "fn header(self, name: &str, value: &str) -> Self",
         "fn headers(self, headers: Headers) -> Self",
         "fn max_retries(self, max_retries: u32) -> Self",
+        "fn on_end(self, hook: impl HookFn<RerankCallEndEvent>) -> Self",
+        "fn on_start(self, hook: impl HookFn<RerankCallStartEvent>) -> Self",
         "fn provider_option(self, provider: impl Into<String>, options: JsonObject) -> Self",
         "fn provider_options(self, options: ProviderOptions) -> Self",
         "fn retry(self, policy: RetryPolicy) -> Self",
+        "fn runtime_context(self, context: JsonValue) -> Self",
         "fn telemetry(self, options: TelemetryOptions) -> Self",
         "fn timeout(self, timeout: Duration) -> Self",
         "fn top_n(self, top_n: usize) -> Self"
@@ -4261,6 +4448,54 @@
       "traits": [
         "impl<D: Debug> Debug for Rerank<D>",
         "impl<D> IntoFuture for Rerank<D> where D: Into<RerankDocument> + Clone + Send + 'static"
+      ]
+    },
+    {
+      "path": "ferrin_core::rerank::RerankCallEndEvent",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::modality_hooks::RerankCallEndEvent",
+      "fields": [
+        "runtime_context: Option<JsonValue>",
+        "call_id: String",
+        "operation_id: &'static str",
+        "model: ModelIdentity",
+        "documents: Option<Vec<RerankDocument>>",
+        "query: Option<String>",
+        "ranking: Option<Vec<Ranked<RerankDocument>>>",
+        "warnings: Vec<Warning>",
+        "provider_metadata: Option<ProviderMetadata>",
+        "response: ResponseMetadata"
+      ],
+      "traits": [
+        "impl Clone for RerankCallEndEvent",
+        "impl Debug for RerankCallEndEvent",
+        "impl PartialEq for RerankCallEndEvent",
+        "impl StructuralPartialEq for RerankCallEndEvent"
+      ]
+    },
+    {
+      "path": "ferrin_core::rerank::RerankCallStartEvent",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::modality_hooks::RerankCallStartEvent",
+      "fields": [
+        "runtime_context: Option<JsonValue>",
+        "call_id: String",
+        "operation_id: &'static str",
+        "model: ModelIdentity",
+        "documents: Option<Vec<RerankDocument>>",
+        "query: Option<String>",
+        "top_n: Option<usize>",
+        "max_retries: u32",
+        "headers: Headers",
+        "provider_options: ProviderOptions"
+      ],
+      "traits": [
+        "impl Clone for RerankCallStartEvent",
+        "impl Debug for RerankCallStartEvent",
+        "impl PartialEq for RerankCallStartEvent",
+        "impl StructuralPartialEq for RerankCallStartEvent"
       ]
     },
     {
@@ -4286,6 +4521,7 @@
       "kind": "struct",
       "signature": "struct<D>",
       "fields": [
+        "original_documents: Vec<D>",
         "ranking: Vec<Ranked<D>>",
         "warnings: Vec<Warning>",
         "response: ResponseMetadata",
@@ -4491,14 +4727,46 @@
       "kind": "module"
     },
     {
+      "path": "ferrin_core::speech_translation::SpeechTranslationResult",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "source_text: String",
+        "translation_text: String",
+        "duration_in_seconds: Option<f64>",
+        "usage: Option<SpeechTranslationUsage>",
+        "warnings: Vec<Warning>",
+        "request: RequestMetadata",
+        "response: ResponseMetadata",
+        "provider_metadata: ProviderMetadata"
+      ],
+      "traits": [
+        "impl Clone for SpeechTranslationResult",
+        "impl Debug for SpeechTranslationResult",
+        "impl PartialEq for SpeechTranslationResult",
+        "impl StructuralPartialEq for SpeechTranslationResult"
+      ]
+    },
+    {
       "path": "ferrin_core::speech_translation::SpeechTranslationStreamPart",
       "kind": "use",
       "source": "ferrin_spec::speech_translation_model::SpeechTranslationStreamPart"
     },
     {
       "path": "ferrin_core::speech_translation::SpeechTranslationStreamResult",
-      "kind": "use",
-      "source": "ferrin_spec::speech_translation_model::SpeechTranslationStreamResult"
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "stream: BoxStream<'static, SpeechTranslationStreamPart>",
+        "request: RequestMetadata",
+        "response: ResponseMetadata"
+      ],
+      "methods": [
+        "async fn consume(self) -> Result<SpeechTranslationResult, Error>"
+      ],
+      "traits": [
+        "impl Debug for SpeechTranslationStreamResult"
+      ]
     },
     {
       "path": "ferrin_core::speech_translation::SpeechTranslationUsage",
@@ -4783,12 +5051,19 @@
       ],
       "methods": [
         "async fn consume(self) -> Result<GenerateTextResult<O>, Error>",
+        "async fn final_result(self) -> Result<GenerateTextResult<O>, Error>",
         "fn call_id(&self) -> &str",
         "fn element_stream(self) -> impl Stream<Item = Result<<O as ArrayElements>::Element, Error>> + Send",
+        "fn element_view(&mut self) -> impl Stream<Item = Result<<O as ArrayElements>::Element, Error>> + Send + use<>",
         "fn events(&mut self) -> &mut EventStream",
+        "fn full_stream(&mut self) -> EventStream",
+        "fn into_completion(self) -> Completion<O>",
+        "fn into_shared_completion(self) -> impl Future<Output = Arc<Result<GenerateTextResult<O>, Error>>> + Clone + Send",
         "fn partial_output_stream(self) -> impl Stream<Item = PartialOutput<O>> + Send",
+        "fn partial_output_view(&mut self) -> impl Stream<Item = PartialOutput<O>> + Send + use<>",
         "fn split(self) -> (EventStream, Completion<O>)",
-        "fn text_stream(self) -> impl Stream<Item = Result<String, Error>> + Send"
+        "fn text_stream(self) -> impl Stream<Item = Result<String, Error>> + Send",
+        "fn text_view(&mut self) -> impl Stream<Item = String> + Send + use<>"
       ],
       "traits": [
         "impl<O> Debug for StreamTextResult<O>"
@@ -4812,6 +5087,7 @@
         "/* private fields */"
       ],
       "methods": [
+        "fn fail(&self, error: Error)",
         "fn stop(&self)",
         "fn tools(&self) -> &ToolSet"
       ],
@@ -4923,6 +5199,7 @@
         "/* private fields */"
       ],
       "methods": [
+        "fn fail(&self, error: Error)",
         "fn stop(&self)",
         "fn tools(&self) -> &ToolSet"
       ],
@@ -5153,7 +5430,7 @@
       "signature": "struct",
       "source": "events::RecordedInputs",
       "fields": [
-        "system: Option<String>",
+        "system: Option<Instructions>",
         "messages: Arc<[Message]>"
       ],
       "traits": [
@@ -5250,20 +5527,24 @@
       "methods": [
         "fn execute_language_model_call<'a>(&'a self, _ctx: &'a ModelCallContext, call: BoxFuture<'a, Result<ModelCallOutcome, Error>>) -> BoxFuture<'a, Result<ModelCallOutcome, Error>>",
         "fn execute_tool<'a>(&'a self, _ctx: &'a ToolExecutionContext, call: BoxFuture<'a, Result<ToolOutcome, ToolError>>) -> BoxFuture<'a, Result<ToolOutcome, ToolError>>",
-        "fn on_abort(&self, _event: &AbortEvent)",
-        "fn on_embed_end(&self, _event: &EmbedEndEvent)",
-        "fn on_embed_start(&self, _event: &EmbedStartEvent)",
-        "fn on_end(&self, _event: &EndEvent)",
-        "fn on_error(&self, _event: &ErrorEvent<'_>)",
-        "fn on_language_model_call_end(&self, _event: &ModelCallEndEvent)",
-        "fn on_language_model_call_start(&self, _event: &ModelCallStartEvent)",
-        "fn on_rerank_end(&self, _event: &RerankEndEvent)",
-        "fn on_rerank_start(&self, _event: &RerankStartEvent)",
-        "fn on_start(&self, _event: &StartEvent)",
-        "fn on_step_end(&self, _event: &StepEndEvent)",
-        "fn on_step_start(&self, _event: &StepStartEvent)",
-        "fn on_tool_execution_end(&self, _event: &ToolExecutionEndEvent)",
-        "fn on_tool_execution_start(&self, _event: &ToolExecutionStartEvent)"
+        "fn on_abort<'a>(&'a self, _event: &'a AbortEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_end<'a>(&'a self, _event: &'a EmbedEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_operation_end<'a>(&'a self, _event: &'a EmbedCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_operation_start<'a>(&'a self, _event: &'a EmbedCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_embed_start<'a>(&'a self, _event: &'a EmbedStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_end<'a>(&'a self, _event: &'a EndEvent) -> BoxFuture<'a, ()>",
+        "fn on_error<'a>(&'a self, _event: &'a ErrorEvent<'_>) -> BoxFuture<'a, ()>",
+        "fn on_language_model_call_end<'a>(&'a self, _event: &'a ModelCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_language_model_call_start<'a>(&'a self, _event: &'a ModelCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_end<'a>(&'a self, _event: &'a RerankEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_operation_end<'a>(&'a self, _event: &'a RerankCallEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_operation_start<'a>(&'a self, _event: &'a RerankCallStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_rerank_start<'a>(&'a self, _event: &'a RerankStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_start<'a>(&'a self, _event: &'a StartEvent) -> BoxFuture<'a, ()>",
+        "fn on_step_end<'a>(&'a self, _event: &'a StepEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_step_start<'a>(&'a self, _event: &'a StepStartEvent) -> BoxFuture<'a, ()>",
+        "fn on_tool_execution_end<'a>(&'a self, _event: &'a ToolExecutionEndEvent) -> BoxFuture<'a, ()>",
+        "fn on_tool_execution_start<'a>(&'a self, _event: &'a ToolExecutionStartEvent) -> BoxFuture<'a, ()>"
       ]
     },
     {
@@ -5298,7 +5579,8 @@
         "call_id: String",
         "tool_call_id: ToolCallId",
         "tool_name: ToolName",
-        "input: Option<JsonValue>"
+        "input: Option<JsonValue>",
+        "record_outputs: bool"
       ],
       "traits": [
         "impl Clone for ToolExecutionContext",

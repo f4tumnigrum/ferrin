@@ -76,14 +76,14 @@ async fn state_persists_after_compression_in_both_loops() {
             0 => {
                 assert_eq!(
                     (
-                        ctx.instructions.unwrap().content.as_str(),
+                        ctx.instructions.unwrap().as_messages()[0].content.as_str(),
                         ctx.runtime_context,
                         ctx.tools_context
                     ),
                     (
                         "initial instructions",
                         Some(&json!("initial runtime")),
-                        Some(&json!("initial tools"))
+                        Some(&json!({"inspect":"initial tools"}))
                     )
                 );
                 StepOverrides::none()
@@ -93,7 +93,7 @@ async fn state_persists_after_compression_in_both_loops() {
                 StepOverrides::none()
                     .with_messages([Message::user("summary")])
                     .with_instructions("retained instructions")
-                    .with_tools_context(json!("retained tools"))
+                    .with_tools_context(json!({"inspect":"retained tools"}))
                     .with_runtime_context(json!({"phase":"second"}))
             }
             2 => {
@@ -108,14 +108,14 @@ async fn state_persists_after_compression_in_both_loops() {
                 assert_eq!(&ctx.messages[0], &Message::user("summary"));
                 assert_eq!(
                     (
-                        ctx.instructions.unwrap().content.as_str(),
+                        ctx.instructions.unwrap().as_messages()[0].content.as_str(),
                         ctx.runtime_context,
                         ctx.tools_context
                     ),
                     (
                         "retained instructions",
                         Some(&json!({"phase":"second"})),
-                        Some(&json!("retained tools"))
+                        Some(&json!({"inspect":"retained tools"}))
                     )
                 );
                 StepOverrides::none()
@@ -154,7 +154,7 @@ async fn state_persists_after_compression_in_both_loops() {
                 .prompt("initial messages")
                 .system("initial instructions")
                 .tools(tools)
-                .tools_context(json!("initial tools"))
+                .tools_context(json!({"inspect":"initial tools"}))
                 .runtime_context(json!("initial runtime"))
                 .stop_when(step_count(4))
                 .prepare_step(prepare)
@@ -172,7 +172,7 @@ async fn state_persists_after_compression_in_both_loops() {
                 .prompt("initial messages")
                 .system("initial instructions")
                 .tools(tools)
-                .tools_context(json!("initial tools"))
+                .tools_context(json!({"inspect":"initial tools"}))
                 .runtime_context(json!("initial runtime"))
                 .stop_when(step_count(4))
                 .prepare_step(prepare)
@@ -197,8 +197,11 @@ async fn state_persists_after_compression_in_both_loops() {
         assert_eq!(
             *approvals.lock().unwrap(),
             [
-                (runtime[0].clone(), Some(json!("initial tools"))),
-                (runtime[1].clone(), Some(json!("retained tools"))),
+                (runtime[0].clone(), Some(json!({"inspect":"initial tools"}))),
+                (
+                    runtime[1].clone(),
+                    Some(json!({"inspect":"retained tools"}))
+                ),
             ]
         );
         assert_eq!(
@@ -262,20 +265,28 @@ async fn agent_call_runtime_is_independent_and_can_be_explicitly_replaced_with_n
 struct ContextRecorder(Mutex<Vec<Option<JsonValue>>>);
 
 impl Telemetry for ContextRecorder {
-    fn on_start(&self, event: &StartEvent) {
-        self.0.lock().unwrap().push(event.runtime_context.clone());
+    fn on_start<'a>(&'a self, event: &'a StartEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.0.lock().unwrap().push(event.runtime_context.clone());
+        })
     }
-    fn on_step_start(&self, event: &StepStartEvent) {
-        self.0.lock().unwrap().push(event.runtime_context.clone());
+    fn on_step_start<'a>(&'a self, event: &'a StepStartEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.0.lock().unwrap().push(event.runtime_context.clone());
+        })
     }
-    fn on_step_end(&self, event: &StepEndEvent) {
-        self.0.lock().unwrap().extend([
-            event.step.runtime_context.clone(),
-            event.step.tools_context.clone(),
-        ]);
+    fn on_step_end<'a>(&'a self, event: &'a StepEndEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.0.lock().unwrap().extend([
+                event.step.runtime_context.clone(),
+                event.step.tools_context.clone(),
+            ]);
+        })
     }
-    fn on_end(&self, event: &EndEvent) {
-        self.0.lock().unwrap().push(event.runtime_context.clone());
+    fn on_end<'a>(&'a self, event: &'a EndEvent) -> ferrin_spec::BoxFuture<'a, ()> {
+        Box::pin(async move {
+            self.0.lock().unwrap().push(event.runtime_context.clone());
+        })
     }
 }
 

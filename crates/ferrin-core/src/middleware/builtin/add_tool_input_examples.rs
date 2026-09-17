@@ -98,8 +98,8 @@ impl AddToolInputExamples {
                     .join("\n");
                 let section = format!("{}\n{formatted}", self.prefix);
                 *description = Some(match description.take() {
-                    Some(existing) => format!("{existing}\n\n{section}"),
-                    None => section,
+                    Some(existing) if !existing.is_empty() => format!("{existing}\n\n{section}"),
+                    _ => section,
                 });
                 if self.remove {
                     input_examples.clear();

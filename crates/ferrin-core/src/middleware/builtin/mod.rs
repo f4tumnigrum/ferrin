@@ -30,6 +30,7 @@ pub use default_settings::CallDefaults;
 pub use default_settings::DefaultSettings;
 pub use default_settings::default_settings;
 pub use default_settings::merge_json_objects;
+pub(crate) use default_settings::merge_provider_options;
 pub use extract_json::ExtractJson;
 pub use extract_json::JsonTransformFn;
 pub use extract_json::extract_json;

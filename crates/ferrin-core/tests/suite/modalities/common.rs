@@ -120,10 +120,10 @@ impl EmbeddingModel for EmbedMock {
             }
             let count = options.values.len();
             #[allow(clippy::cast_precision_loss, reason = "test values are tiny")]
-            let mut embeddings: Vec<Vec<f32>> = options
+            let mut embeddings: Vec<Vec<f64>> = options
                 .values
                 .iter()
-                .map(|value| vec![value.len() as f32, 1.0])
+                .map(|value| vec![value.len() as f64, 1.0])
                 .collect();
             embeddings.truncate(count.saturating_sub(drop));
             Ok(EmbedResult {

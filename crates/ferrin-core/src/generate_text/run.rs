@@ -31,6 +31,7 @@ use super::replay::replay_tool_message;
 use super::response_messages::to_response_messages;
 use super::step_count;
 use super::stop_condition::is_stop_condition_met;
+use super::tools::ToolEnvironment;
 use super::tools::ToolTask;
 use super::tools::execute_tools;
 use super::tools::invalid_tool_errors;
@@ -46,6 +47,8 @@ use crate::prompt::standardize;
 use crate::registry::resolve_language_model;
 use crate::retry::retry;
 use crate::telemetry::EndEvent;
+use crate::telemetry::ErrorEvent;
+use crate::telemetry::ErrorPhase;
 use crate::telemetry::ModelCallContext;
 use crate::telemetry::ModelCallEndEvent;
 use crate::telemetry::ModelCallOutcome;
@@ -171,10 +174,7 @@ impl LoopContext {
     /// Emits the start event.
     pub(crate) async fn emit_start(&self) {
         let inputs = self.telemetry.record_inputs().then(|| RecordedInputs {
-            system: self
-                .instructions
-                .as_ref()
-                .map(|instructions| instructions.content.clone()),
+            system: self.instructions.clone(),
             messages: Arc::from(self.initial_messages.clone()),
         });
         let event = Arc::new(StartEvent {
@@ -185,7 +185,7 @@ impl LoopContext {
             inputs,
             metadata: self.config.telemetry.metadata.clone(),
         });
-        self.telemetry.on_start(&event);
+        self.telemetry.on_start(&event).await;
         Hooks::emit(&self.hooks.on_start, event).await;
     }
 
@@ -198,17 +198,19 @@ impl LoopContext {
             total_usage: total_usage.clone(),
             output_recorded: None,
         });
-        self.telemetry.on_end(&event);
+        self.telemetry.on_end(&event).await;
         Hooks::emit(&self.hooks.on_end, event).await;
     }
 
     /// Emits the step-end event and returns the step.
     pub(crate) async fn emit_step_end(&self, step: StepResult) -> StepResult {
         let shared = Arc::new(step);
-        self.telemetry.on_step_end(&StepEndEvent {
-            call_id: self.call_id.clone(),
-            step: Arc::clone(&shared),
-        });
+        self.telemetry
+            .on_step_end(&StepEndEvent {
+                call_id: self.call_id.clone(),
+                step: Arc::clone(&shared),
+            })
+            .await;
         Hooks::emit(&self.hooks.on_step_end, Arc::clone(&shared)).await;
         Arc::try_unwrap(shared).unwrap_or_else(|shared| (*shared).clone())
     }
@@ -229,18 +231,18 @@ impl LoopContext {
         tool_call_id: &ToolCallId,
         tool_name: &ferrin_spec::ToolName,
         messages: &Arc<[Message]>,
-        tools_context: Option<&JsonValue>,
+        environment: ToolEnvironment<'_>,
         cancellation: &CallCancellation,
     ) -> Result<ToolContext, Error> {
         let validated = tool
-            .validate_context(tool_name, tools_context.cloned())
+            .validate_named_context(tool_name, environment.tools_context)
             .map_err(|error| Error::invalid_argument("tools_context", error.to_string()))?;
         let ctx = ToolContext::new(tool_call_id.clone())
             .with_messages(Arc::clone(messages))
             .with_cancellation(cancellation.token().child_token())
             .with_tools_context(validated);
         #[cfg(feature = "sandbox")]
-        let ctx = match &self.config.sandbox {
+        let ctx = match environment.sandbox {
             Some(sandbox) => ctx.with_sandbox(Arc::clone(sandbox)),
             None => ctx,
         };
@@ -253,11 +255,11 @@ impl LoopContext {
         tool: &Tool,
         call: &ParsedToolCall,
         messages: &Arc<[Message]>,
-        tools_context: Option<&JsonValue>,
+        environment: ToolEnvironment<'_>,
         cancellation: &CallCancellation,
     ) -> Result<ToolTask, Error> {
         Ok(ToolTask {
-            runtime_context: None,
+            runtime_context: environment.runtime_context.cloned(),
             telemetry: self.telemetry.clone(),
             hooks: Arc::clone(&self.hooks),
             call_id: self.call_id.clone(),
@@ -267,7 +269,7 @@ impl LoopContext {
                 &call.tool_call_id,
                 &call.tool_name,
                 messages,
-                tools_context,
+                environment,
                 cancellation,
             )?,
         })
@@ -289,7 +291,21 @@ pub(crate) async fn run<O: Send + 'static>(
         run_inner(&ctx, output.as_ref()).instrument(span),
     ))
     .await;
-    result.map_err(|error| cancellation.map_error(error))
+    let result = result.map_err(|error| cancellation.map_error(error));
+    if let Err(error) = &result {
+        let phase = match error {
+            Error::NoOutputGenerated | Error::NoObjectGenerated(_) => ErrorPhase::Output,
+            _ => ErrorPhase::ModelCall,
+        };
+        ctx.telemetry
+            .on_error(&ErrorEvent {
+                call_id: &ctx.call_id,
+                error,
+                phase,
+            })
+            .await;
+    }
+    result
 }
 
 async fn run_inner<O: 'static>(
@@ -479,7 +495,7 @@ async fn run_step(
         performance: performance.clone(),
         warnings: result.warnings.clone(),
     });
-    ctx.telemetry.on_language_model_call_end(&call_end);
+    ctx.telemetry.on_language_model_call_end(&call_end).await;
     Hooks::emit(&ctx.hooks.on_language_model_call_end, call_end).await;
 
     super::parse_tool_call::check_tool_choice(inputs.tool_choice.as_ref(), &tool_calls)?;
@@ -488,8 +504,7 @@ async fn run_step(
         ctx,
         &tool_calls,
         &step_messages,
-        inputs.tools_context.as_ref(),
-        inputs.runtime_context.as_ref(),
+        ToolEnvironment::for_step(&inputs),
         cancellation,
     )
     .await?;
@@ -514,8 +529,7 @@ async fn run_step(
                 ctx,
                 to_execute,
                 Arc::clone(&step_messages),
-                inputs.tools_context.clone(),
-                inputs.runtime_context.clone(),
+                ToolEnvironment::for_step(&inputs),
                 cancellation,
             )
             .await?,

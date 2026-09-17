@@ -73,3 +73,18 @@ fn custom_prefix_format_and_keep() {
         (Some("Desc\n\nExamples:\n1. a=1\n2. a=2".to_owned()), 2)
     );
 }
+
+#[test]
+fn empty_descriptions_do_not_add_leading_blank_lines() {
+    let mut call = options();
+    call.tools = vec![
+        tool(Some(""), &[json!({"value":1})]),
+        tool(None, &[json!({"value":1})]),
+    ];
+    let transformed = add_tool_input_examples().apply(call);
+    assert_eq!(transformed.tools[0], transformed.tools[1]);
+    assert_eq!(
+        description_and_examples(&transformed.tools[0]),
+        (Some("Input Examples:\n{\"value\":1}".into()), 0)
+    );
+}

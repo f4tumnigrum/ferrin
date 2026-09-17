@@ -6,6 +6,7 @@ use ferrin_spec::ProviderOptions;
 use ferrin_spec::ReasoningEffort;
 
 use crate::error::Error;
+use crate::middleware::builtin::merge_provider_options;
 
 /// Sampling and request settings applied to every model call.
 ///
@@ -78,13 +79,8 @@ impl CallSettings {
         options.seed = self.seed;
         options.reasoning = self.reasoning;
         options.headers.merge(&self.headers);
-        for (key, value) in &self.provider_options {
-            options
-                .provider_options
-                .entry(key.clone())
-                .or_default()
-                .extend(value.clone());
-        }
+        options.provider_options =
+            merge_provider_options(&options.provider_options, self.provider_options.clone());
     }
 
     /// Overlays the set fields of `other` onto `self` (used by
@@ -118,11 +114,7 @@ impl CallSettings {
             self.reasoning = other.reasoning;
         }
         self.headers.merge(&other.headers);
-        for (key, value) in &other.provider_options {
-            self.provider_options
-                .entry(key.clone())
-                .or_default()
-                .extend(value.clone());
-        }
+        self.provider_options =
+            merge_provider_options(&self.provider_options, other.provider_options.clone());
     }
 }

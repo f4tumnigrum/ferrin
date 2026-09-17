@@ -15,7 +15,7 @@ pub struct DefaultInstructions {
     instructions: Instructions,
 }
 
-/// Prepends `instructions` as a system message when the prompt has no
+/// Prepends `instructions` as system messages when the prompt has no
 /// system message.
 #[must_use]
 pub fn default_instructions(instructions: impl Into<Instructions>) -> DefaultInstructions {
@@ -35,13 +35,15 @@ impl LanguageModelMiddleware for DefaultInstructions {
             .iter()
             .any(|message| matches!(message, PromptMessage::System { .. }));
         if !has_system {
-            let message = self.instructions.clone().into_message();
-            options.prompt.insert(
-                0,
-                PromptMessage::System {
-                    content: message.content,
-                    provider_options: message.provider_options,
-                },
+            options.prompt.splice(
+                0..0,
+                self.instructions
+                    .as_messages()
+                    .iter()
+                    .map(|message| PromptMessage::System {
+                        content: message.content.clone(),
+                        provider_options: message.provider_options.clone(),
+                    }),
             );
         }
         Box::pin(async move { Ok(options) })
