@@ -112,6 +112,43 @@
       ]
     },
     {
+      "path": "ferrin_google::GoogleInteractionOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::interactions::GoogleInteractionOptions",
+      "fields": [
+        "headers: Headers",
+        "cancellation: CancellationToken"
+      ],
+      "traits": [
+        "impl Clone for GoogleInteractionOptions",
+        "impl Debug for GoogleInteractionOptions",
+        "impl Default for GoogleInteractionOptions"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleInteractionsLanguageModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::interactions::GoogleInteractionsLanguageModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "async fn cancel_interaction(&self, id: &str, options: GoogleInteractionOptions) -> Result<JsonValue, ProviderError>",
+        "async fn get_interaction(&self, id: &str, options: GoogleInteractionOptions) -> Result<JsonValue, ProviderError>",
+        "async fn start_interaction(&self, options: CallOptions) -> Result<JsonValue, ProviderError>",
+        "fn config(&self) -> &SharedConfig",
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self",
+        "fn prepare_request(&self, options: &CallOptions) -> Result<JsonValue, ProviderError>"
+      ],
+      "traits": [
+        "impl Clone for GoogleInteractionsLanguageModel",
+        "impl Debug for GoogleInteractionsLanguageModel",
+        "impl LanguageModel for GoogleInteractionsLanguageModel"
+      ]
+    },
+    {
       "path": "ferrin_google::GoogleLanguageModel",
       "kind": "struct",
       "signature": "struct",
@@ -146,9 +183,11 @@
         "fn files(&self) -> GoogleFiles",
         "fn from_config(config: SharedConfig) -> Self",
         "fn image(&self, model_id: &str) -> GoogleImageModel",
+        "fn interactions(&self, model_id: &str) -> GoogleInteractionsLanguageModel",
         "fn language_model(&self, model_id: &str) -> GoogleLanguageModel",
         "fn realtime(&self) -> GoogleRealtimeFactory",
         "fn speech(&self, model_id: &str) -> GoogleSpeechModel",
+        "fn speech_translation(&self, model_id: &str) -> GoogleSpeechTranslationModel",
         "fn text_embedding(&self, model_id: &str) -> GoogleEmbeddingModel",
         "fn tools(&self) -> &GoogleTools",
         "fn transcription(&self, model_id: &str) -> GoogleTranscriptionModel",
@@ -229,6 +268,41 @@
         "impl Clone for GoogleSpeechModel",
         "impl Debug for GoogleSpeechModel",
         "impl SpeechModel for GoogleSpeechModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleSpeechTranslationModel",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::speech_translation::GoogleSpeechTranslationModel",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechTranslationModel",
+        "impl Debug for GoogleSpeechTranslationModel",
+        "impl SpeechTranslationModel for GoogleSpeechTranslationModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::GoogleSpeechTranslationOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "source": "crate::speech_translation::GoogleSpeechTranslationOptions",
+      "fields": [
+        "echo_target_language: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechTranslationOptions",
+        "impl Debug for GoogleSpeechTranslationOptions",
+        "impl Default for GoogleSpeechTranslationOptions",
+        "impl Eq for GoogleSpeechTranslationOptions",
+        "impl PartialEq for GoogleSpeechTranslationOptions",
+        "impl StructuralPartialEq for GoogleSpeechTranslationOptions",
+        "impl<'de> Deserialize<'de> for GoogleSpeechTranslationOptions"
       ]
     },
     {
@@ -1766,6 +1840,43 @@
       "signature": "fn parse_sample_rate(media_type: &str) -> Option<u32>",
       "attrs": [
         "must_use"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech_translation",
+      "kind": "module"
+    },
+    {
+      "path": "ferrin_google::speech_translation::GoogleSpeechTranslationModel",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "/* private fields */"
+      ],
+      "methods": [
+        "fn new(config: SharedConfig, model_id: impl Into<ModelId>) -> Self"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechTranslationModel",
+        "impl Debug for GoogleSpeechTranslationModel",
+        "impl SpeechTranslationModel for GoogleSpeechTranslationModel"
+      ]
+    },
+    {
+      "path": "ferrin_google::speech_translation::GoogleSpeechTranslationOptions",
+      "kind": "struct",
+      "signature": "struct",
+      "fields": [
+        "echo_target_language: Option<bool>"
+      ],
+      "traits": [
+        "impl Clone for GoogleSpeechTranslationOptions",
+        "impl Debug for GoogleSpeechTranslationOptions",
+        "impl Default for GoogleSpeechTranslationOptions",
+        "impl Eq for GoogleSpeechTranslationOptions",
+        "impl PartialEq for GoogleSpeechTranslationOptions",
+        "impl StructuralPartialEq for GoogleSpeechTranslationOptions",
+        "impl<'de> Deserialize<'de> for GoogleSpeechTranslationOptions"
       ]
     },
     {

@@ -2,7 +2,7 @@
 
 **English** | [Chinese](../zh-CN/providers/google.md)
 
-`ferrin-google` is the L3 Google Generative AI/Gemini adapter ([Crates](../01-architecture/02-crates.md)). This guide records the 2026-09-14 implementation; see [implementation guide section 12](../01-architecture/17-provider-implementation-guide.md#12-implementation-record-2026-09-14-ferrin-google).
+`ferrin-google` is the L3 Google Generative AI/Gemini adapter ([Crates](../01-architecture/02-crates.md)). This guide records the original 2026-09-14 implementation and the 2026-09-17 Interactions/Live audio additions; see [implementation guide section 12](../01-architecture/17-provider-implementation-guide.md#12-implementation-record-2026-09-14-ferrin-google).
 
 IDs use `name`.generative-ai/speech/transcription/batch/realtime; embedding/image/video/files use bare `name`. Default `google` is configurable. Read `google` then custom-`name` options; write result metadata to both distinct keys.
 
@@ -18,11 +18,13 @@ IDs use `name`.generative-ai/speech/transcription/batch/realtime; embedding/imag
 | Embeddings | Implemented | embedContent or batchEmbedContents, maximum 100 values; dimensions/`taskType`/multimodal `content`. |
 | Images | Implemented | Gemini `generateContent` IMAGE modality, aspect/image config, references, search; see `size`/`mask`/n limits. |
 | Speech | Implemented | `AUDIO` generation, default `Kore`, WAV or raw PCM, multi-speaker configuration. |
-| Transcription | Implemented | Single Interactions `POST /interactions`, `word_info` segments; `-live` IDs invalid. |
+| Transcription | Implemented | Single Interactions `POST /interactions`, `word_info` segments; `realtime` enables Live `do_stream` for `-live` IDs. |
 | Video | Implemented | predictLongRunning start/status with first/last/reference images, aspect/`resolution`/duration/`seed`; direct generation unsupported. |
 | Files | Partial | Two-request resumable upload and polling to `ACTIVE`, metadata/delete; no download. |
 | Batches | Implemented | batchGenerateContent inline or JSONL upload at ≥20 MB, status, inline/file JSONL results, cancel/list; text and images share image-to-language conversion. |
-| Realtime Live API | Implemented | Temporary auth tokens, WebSocket `setup` and bidirectional event mapping; no `speech translation`. |
+| Realtime Live API | Implemented | Temporary auth tokens, WebSocket `setup` and bidirectional event mapping. |
+| Interactions language model | Implemented | `interactions(model_id)`; unary/SSE, stateful replay, background polling and resumable streaming. |
+| Speech translation | Implemented with `realtime` | `speech_translation(model_id)`, target-language text and 24 kHz PCM output. |
 | Reranking | Unavailable | No Gemini endpoint; `Provider` defaults. |
 
 ## Settings and environment variables
@@ -76,7 +78,7 @@ CamelCase keys; unknown keys return InvalidArgument. Schemas are in `src/options
 - [Decision] Video exposes only start/status because Veo has only long-running operations; core owns waiting.
 - [Decision] Batch image masks/n>1 return `InvalidArgument`, matching single-image preparation.
 - [Decision] Batch display names are `ferrin-batch-<id>`; only file-backed startup records input IDs/expiry needed for cleanup.
-- [Decision] Exclude Interactions beyond transcription, Live streaming transcription, speech translation, and `downloadToolResultFiles`. Core owns secure downloads; other endpoints need stable schemas and future ADRs.
+- [Decision] Core owns secure file downloads; `downloadToolResultFiles` remains outside the provider. [ADR 0023](../04-decisions/2026-09-17-0023-google-interactions-and-live-audio.md) replaces the former Interactions and Live audio exclusions.
 
 ## Fixture inventory
 
@@ -94,7 +96,7 @@ Area fixtures replay through FixtureServer; chunks use encoded data events with 
 | `batch` | `create`, `status-running`, `status-succeeded-inline`, `status-succeeded-file`, `status-failed`, `cancel`, `list`, `results.jsonl` | Requests/state/counts/inline-file results/classification/`cancel`/paging |
 | `realtime` | `auth-token` | Token requests/expiry |
 
-Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and events. The ≥20 MB JSONL upload path lacks fixture coverage.
+[Fact] Fixture regressions snapshot requests, prompts, tool wire shapes, schemas, and events. The ≥20 MB JSONL upload path lacks fixture coverage.
 
 [Pending verification] (PV-031) Handwritten official-schema fixtures need real-response recording.
 
@@ -111,3 +113,21 @@ Seventy-eight tests snapshot requests, prompts, tool wire shapes, schemas, and e
 [Fact] Executable code and its result carry `serverToolType: "code_execution"` metadata and replay as `executableCode`/`codeExecutionResult` parts, including with an application tool alias. Regression: `tests/suite/prompt.rs::generated_code_execution_roundtrips_with_its_result_and_alias` and the code-execution stream fixture (2026-09-15).
 
 [Fact] Returned resumable upload URLs are validated using `url_policy` before file bytes are sent: HTTPS/public addresses by default, resolved addresses pinned, and redirects rejected. Finalization response bodies obey its byte limit. Caller headers are forwarded only to the configured origin or explicit `credentialed_origins`; `x-goog-api-key` is always removed. Local test endpoints require explicit `allow_http().trust_origin(...)`. Sources: `src/files.rs`, `tests/suite/security.rs` (2026-09-15).
+
+[Decision] ADR 0023 supersedes the exclusion of general Interactions, Live streaming transcription and speech translation; implementation and local verification are tracked in [ADR 0023](../04-decisions/2026-09-17-0023-google-interactions-and-live-audio.md).
+
+## Implementation record (2026-09-17): Interactions and Live audio
+
+[Fact] `GoogleInteractionsLanguageModel` uses provider ID `<name>.interactions`; `language_model` and `chat` retain generateContent. Options under `google` and the configured name merge with custom-key precedence: `previousInteractionId`, `store`, `agent`, `agentConfig`, `environment`, `background`, `pollingTimeoutMs` (default 30 minutes), `thinkingLevel`, `thinkingSummaries`, `responseFormat`, `responseModalities`, `mediaResolution`, `serviceTier`, and `systemInstruction`. Prompt system messages win over `systemInstruction` with a warning. Sources: `src/interactions/request.rs`, request snapshot regressions.
+
+[Fact] Interactions converts user text/files, assistant text/files/reasoning/function calls, provider tool replay and tool results. `signature`, `interactionId` and `stepType` metadata survive replay under canonical and custom keys; stored prior assistant history matching `previousInteractionId` is omitted while new tool results remain. `store: false` retains complete history and warns on a prior ID. JSON schemas preserve user property names; response formats use snake-case wire keys. Sources: `src/interactions/prompt.rs`, request and replay regressions.
+
+[Fact] Functions and Google search/code execution/URL context/file search/maps/computer use/retrieval tools have Interactions wire conversion and built-in aliases restore application names. Remote `mcp_server` tools and unknown provider tools warn and are omitted. Unary and streaming results include text, reasoning, files, calls/results, URL/document/maps citations, token counts and service tiers; streaming deduplicates sources. Source: `src/interactions/output.rs`, `sources.rs` and fixture regressions.
+
+[Fact] `start_interaction` returns the initial resource, `get_interaction` reads it, and `cancel_interaction` stops it; resource operations use `GoogleInteractionOptions` headers/cancellation and encode IDs as path segments. `do_generate` polls an in-progress background/agent call once per second up to the configured deadline. `do_stream` starts a background resource then reads incremental `GET /interactions/{id}?stream=true`; an interrupted stream resumes with `last_event_id`, suppressing a duplicated boundary event, with at most two reconnects and the same deadline. A terminal initial POST synthesizes parts immediately. Sources: `src/interactions/background.rs`, lifecycle regressions.
+
+[Decision] Explicit cancellation of a polled/streamed background run attempts a bounded remote cancel and returns cancellation regardless of cleanup outcome. Dropping a stream closes its owned connection without spawning cleanup work; retain the ID via `start_interaction` and use `cancel_interaction` when remote cancellation after drop is required. Missing resume IDs, malformed executable calls, incompatible deltas and premature EOF fail closed; terminal events finish immediately even when the connection remains open. Sources: lifecycle and stream-boundary regressions.
+
+[Fact] With `realtime`, Live transcription accepts `audio/pcm` or `pcm16`, signed 16-bit mono PCM at 16 kHz, for model IDs ending in `-live`. Translation accepts the same input and returns `audio/pcm` at 24 kHz, auto-detects the source language, requires a target language, and accepts `echoTargetLanguage`. Audio submission waits for `setupComplete`; output retains usage and custom-key metadata. Connections use URL policy validation, DNS pinning and bounded frames; cancellation and drop release owned resources. Sources: `src/live_audio`, `src/transcription/live.rs`, `src/speech_translation`, local WebSocket regressions.
+
+[Decision] Audio completion follows the reference adapter's protocol: transcription permits a one-second quiet grace after input EOF; translation uses one second of detected PCM silence (threshold 128) or turn completion plus grace. No detached background task keeps a dropped stream alive. These boundaries are covered by local controlled WebSocket tests with paused time; they do not establish official-provider compatibility. PV-031 remains open for real response recordings.

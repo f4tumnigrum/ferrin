@@ -1,0 +1,9 @@
+data: {"event_type":"interaction.created","interaction":{"id":"interaction-1","model":"gemini-2.5-flash","status":"in_progress"}}
+data: {"event_type":"step.start","index":0,"step":{"type":"thought"}}
+data: {"event_type":"step.delta","index":0,"delta":{"type":"thought_summary","content":{"type":"text","text":"Thinking"}}}
+data: {"event_type":"step.delta","index":0,"delta":{"type":"thought_signature","signature":"fixture-signature"}}
+data: {"event_type":"step.stop","index":0}
+data: {"event_type":"step.start","index":1,"step":{"type":"model_output"}}
+data: {"event_type":"step.delta","index":1,"delta":{"type":"text","text":"Hello"}}
+data: {"event_type":"step.stop","index":1}
+data: {"event_type":"interaction.completed","interaction":{"id":"interaction-1","status":"completed","service_tier":"standard","usage":{"total_input_tokens":10,"total_output_tokens":4,"total_thought_tokens":3}}}

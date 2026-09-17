@@ -1,0 +1,1 @@
+{"id":"interaction-2","status":"requires_action","steps":[{"type":"code_execution_call","id":"code-1","arguments":{"code":"1+1"}},{"type":"code_execution_result","call_id":"code-1","result":{"output":"2"}},{"type":"function_call","id":"call-1","name":"weather","arguments":{"city":"Paris"},"signature":"function-signature"}],"usage":{"total_input_tokens":5,"total_output_tokens":2}}

@@ -1,0 +1,58 @@
+---
+source: crates/providers/ferrin-google/tests/suite/interactions.rs
+expression: body
+---
+{
+  "model": "gemini-2.5-flash",
+  "input": [
+    {
+      "type": "user_input",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hello"
+        }
+      ]
+    }
+  ],
+  "system_instruction": "Be precise",
+  "store": false,
+  "tools": [
+    {
+      "type": "function",
+      "name": "weather",
+      "description": "",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "camelCase": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "generation_config": {
+    "thinking_level": "low",
+    "tool_choice": "any"
+  },
+  "response_format": [
+    {
+      "type": "text",
+      "mime_type": "application/json",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "camelCase": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "type": "image",
+      "mime_type": "image/png",
+      "aspect_ratio": "1:1"
+    }
+  ]
+}

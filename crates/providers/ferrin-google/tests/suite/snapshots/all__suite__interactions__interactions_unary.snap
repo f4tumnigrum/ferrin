@@ -1,0 +1,61 @@
+---
+source: crates/providers/ferrin-google/tests/suite/interactions.rs
+expression: result.content
+---
+[
+  {
+    "type": "reasoning",
+    "text": "Let me think",
+    "provider_metadata": {
+      "custom": {
+        "interactionId": "interaction-1",
+        "signature": "fixture-signature",
+        "stepType": "thought"
+      },
+      "google": {
+        "interactionId": "interaction-1",
+        "signature": "fixture-signature",
+        "stepType": "thought"
+      }
+    }
+  },
+  {
+    "type": "text",
+    "text": "Hello",
+    "provider_metadata": {
+      "custom": {
+        "interactionId": "interaction-1",
+        "stepType": "model_output"
+      },
+      "google": {
+        "interactionId": "interaction-1",
+        "stepType": "model_output"
+      }
+    }
+  },
+  {
+    "type": "source",
+    "source_type": "url",
+    "id": "id-0",
+    "url": "https://example.com/source",
+    "title": "Example"
+  },
+  {
+    "type": "file",
+    "data": {
+      "type": "data",
+      "data": "aGVsbG8="
+    },
+    "media_type": "image/png",
+    "provider_metadata": {
+      "custom": {
+        "interactionId": "interaction-1",
+        "stepType": "model_output"
+      },
+      "google": {
+        "interactionId": "interaction-1",
+        "stepType": "model_output"
+      }
+    }
+  }
+]

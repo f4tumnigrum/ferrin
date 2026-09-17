@@ -42,15 +42,20 @@ pub mod embedding;
 pub mod error;
 pub mod files;
 pub mod image;
+mod interactions;
 pub mod json_accumulator;
 pub mod json_schema;
 pub mod language_model;
+#[cfg(feature = "realtime")]
+mod live_audio;
 pub mod options;
 pub mod output;
 pub mod prepare_tools;
 pub mod realtime;
 pub mod request;
 pub mod speech;
+#[cfg(feature = "realtime")]
+pub mod speech_translation;
 pub mod stream;
 pub mod tools;
 pub mod transcription;
@@ -84,10 +89,16 @@ pub use crate::config::SharedConfig;
 pub use crate::embedding::GoogleEmbeddingModel;
 pub use crate::files::GoogleFiles;
 pub use crate::image::GoogleImageModel;
+pub use crate::interactions::GoogleInteractionOptions;
+pub use crate::interactions::GoogleInteractionsLanguageModel;
 pub use crate::language_model::GoogleLanguageModel;
 pub use crate::realtime::GoogleRealtimeFactory;
 pub use crate::realtime::GoogleRealtimeModel;
 pub use crate::speech::GoogleSpeechModel;
+#[cfg(feature = "realtime")]
+pub use crate::speech_translation::GoogleSpeechTranslationModel;
+#[cfg(feature = "realtime")]
+pub use crate::speech_translation::GoogleSpeechTranslationOptions;
 pub use crate::tools::GoogleTools;
 pub use crate::transcription::GoogleTranscriptionModel;
 pub use crate::video::GoogleVideoModel;
@@ -190,6 +201,12 @@ impl GoogleProvider {
         GoogleLanguageModel::new(self.config.clone(), model_id)
     }
 
+    /// Interactions language model, with stateful conversations and background agents.
+    #[must_use]
+    pub fn interactions(&self, model_id: &str) -> GoogleInteractionsLanguageModel {
+        GoogleInteractionsLanguageModel::new(self.config.clone(), model_id)
+    }
+
     /// Alias of [`Self::language_model`].
     #[must_use]
     pub fn chat(&self, model_id: &str) -> GoogleLanguageModel {
@@ -218,6 +235,13 @@ impl GoogleProvider {
     #[must_use]
     pub fn speech(&self, model_id: &str) -> GoogleSpeechModel {
         GoogleSpeechModel::new(self.config.clone(), model_id)
+    }
+
+    /// Live speech translation model.
+    #[cfg(feature = "realtime")]
+    #[must_use]
+    pub fn speech_translation(&self, model_id: &str) -> GoogleSpeechTranslationModel {
+        GoogleSpeechTranslationModel::new(self.config.clone(), model_id)
     }
 
     /// Transcription model (Interactions API).
@@ -283,6 +307,14 @@ impl Provider for GoogleProvider {
 
     fn speech_model(&self, model_id: &str) -> Result<SpeechModelRef, NoSuchModelError> {
         Ok(self.speech(model_id).into())
+    }
+
+    #[cfg(feature = "realtime")]
+    fn speech_translation_model(
+        &self,
+        model_id: &str,
+    ) -> Result<ferrin_spec::SpeechTranslationModelRef, NoSuchModelError> {
+        Ok(self.speech_translation(model_id).into())
     }
 
     fn video_model(&self, model_id: &str) -> Result<VideoModelRef, NoSuchModelError> {

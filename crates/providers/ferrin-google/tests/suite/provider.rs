@@ -97,6 +97,9 @@ fn provider_and_model_ids_follow_the_name_family_scheme() {
     );
     assert!(provider.video_model("veo-3.1-generate-preview").is_ok());
     assert!(provider.reranking_model("x").is_err());
+    #[cfg(feature = "realtime")]
+    assert!(provider.speech_translation_model("x").is_ok());
+    #[cfg(not(feature = "realtime"))]
     assert!(provider.speech_translation_model("x").is_err());
     assert!(Provider::files(&provider).is_some());
     assert!(Provider::batch(&provider).is_some());

@@ -1,4 +1,7 @@
-//! Gemini transcription model (unary, Interactions API `POST /interactions`).
+//! Gemini transcription over Interactions and feature-gated Live streaming.
+
+#[cfg(feature = "realtime")]
+mod live;
 
 use base64::Engine;
 use ferrin_provider_util::http::ResponseHandlers;
@@ -182,7 +185,7 @@ impl GoogleTranscriptionModel {
             return Err(InvalidArgumentError::new(
                 "model_id",
                 format!(
-                    "model '{}' only supports streaming transcription over the Live API, which this crate does not implement; use a unary model such as 'gemini-3.5-transcribe'",
+                    "model '{}' only supports streaming transcription over the Live API; use a unary model such as 'gemini-3.5-transcribe'",
                     self.model_id
                 ),
             )
@@ -220,6 +223,19 @@ impl TranscriptionModel for GoogleTranscriptionModel {
 
     fn model_id(&self) -> &ModelId {
         &self.model_id
+    }
+
+    fn supports_stream(&self) -> bool {
+        cfg!(feature = "realtime") && is_live_model(self.model_id.as_str())
+    }
+
+    #[cfg(feature = "realtime")]
+    #[tracing::instrument(skip_all, fields(model = %self.model_id))]
+    async fn do_stream(
+        &self,
+        options: ferrin_spec::transcription_model::TranscriptionStreamOptions,
+    ) -> Result<ferrin_spec::transcription_model::TranscriptionStreamResult, ProviderError> {
+        live::start(self, options).await
     }
 
     #[tracing::instrument(skip_all, fields(model = %self.model_id))]

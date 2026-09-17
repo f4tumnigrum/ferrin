@@ -18,11 +18,13 @@
 | 嵌入 | 已实现 | `GoogleEmbeddingModel`：单值 `:embedContent`，多值 `:batchEmbedContents`，每次最多 100 个值；`outputDimensionality`、`taskType`、多模态 `content`。 |
 | 图像 | 已实现 | `GoogleImageModel`：基于 Gemini 图像模型的 `generateContent`（`responseModalities: ["IMAGE"]`），支持 `aspectRatio`、`imageConfig`、参考图像文件与 `googleSearch` 工具；`size`、`mask`、`n > 1` 见限制。 |
 | 语音 | 已实现 | `GoogleSpeechModel`：`generateContent` 的 `AUDIO` 模态，默认声音 `Kore`，输出 WAV（默认）或原始 PCM（`outputFormat: pcm`），`multiSpeakerVoiceConfig`。 |
-| 转写 | 已实现 | `GoogleTranscriptionModel`：Interactions API `POST /interactions`（单次），`word_info` 注解映射为分段；`-live` 模型 ID 返回 `InvalidArgument`。 |
+| 转写 | 已实现 | `GoogleTranscriptionModel`：Interactions API 单次转写；`realtime` 为 `-live` ID 启用 Live `do_stream`。 |
 | 视频 | 已实现 | `GoogleVideoModel`：`:predictLongRunning` 启动 + 操作轮询（`do_start`/`do_status`），首帧、末帧、参考图像、`aspectRatio`、`resolution`、`durationSeconds`、`seed`；`do_generate` 返回 `UnsupportedFunctionality`。 |
 | 文件 | 部分 | `GoogleFiles`：可恢复上传（`/upload/v1beta/files`，两次请求）并轮询至 `ACTIVE`；元数据（`GET /files/{id}`）与删除（`DELETE /files/{id}`）；下载未实现（`supports_download_file` 返回 `false`）。 |
 | 批处理 | 已实现 | `GoogleBatch`：`:batchGenerateContent`（内联请求，≥ 20 MB 时改为上传 JSONL 文件）、状态、结果（内联响应或 `responsesFile` 下载的 JSON 行）、取消、列表。接受 `BatchRequest::Text` 与 `BatchRequest::Image`（图像请求经 `GoogleImageModel::prepare_call` 转为语言模型请求）。 |
-| 实时（Live API） | 已实现 | `GoogleRealtimeModel`/`GoogleRealtimeFactory`：临时令牌（`POST /v1alpha/auth_tokens`）、WebSocket 会话配置（`setup`）与双向事件映射；`speech translation` 未实现。 |
+| 实时（Live API） | 已实现 | `GoogleRealtimeModel`/`GoogleRealtimeFactory`：临时令牌（`POST /v1alpha/auth_tokens`）、WebSocket 会话配置（`setup`）与双向事件映射。 |
+| Interactions 语言模型 | 已实现 | `interactions(model_id)`，单次/SSE、状态回放、后台轮询与断线续流。 |
+| 语音翻译 | `realtime` 下已实现 | `speech_translation(model_id)`，目标语言文本与 24 kHz PCM 输出。 |
 | 重排 | 无 | Gemini API 无对应端点；沿用 `Provider` 的默认实现。 |
 
 ## 设置与环境变量
@@ -76,7 +78,7 @@
 - 【决策】`do_generate` 在视频模型上返回 `UnsupportedFunctionality`，只提供操作式接口（`do_start`/`do_status`）。依据：Veo 端点只有 `predictLongRunning`，同步等待属于核心层的轮询职责。
 - 【决策】图像批处理请求中的 `mask` 与 `n > 1` 返回 `InvalidArgument` 而非 `UnsupportedFunctionality`。依据：与 `GoogleImageModel::prepare_call` 的单次调用行为一致，同一输入在两处得到同一错误类型。
 - 【决策】批次显示名为 `ferrin-batch-<id>`（`id` 由 `id_generator` 生成），状态元数据只在文件式启动后携带 `inputFileId`/`inputFileExpiresAt`。依据：Gemini 批次没有其他稳定的可读标识；文件 ID 是调用方清理输入文件所需的唯一信息。
-- 【决策】以下能力不在本 crate 范围内：Interactions API 中转写以外的功能、Live API 流式转写、语音翻译、`downloadToolResultFiles`。依据：核心层的 `secure_url` 负责下载；其余端点缺少稳定 schema，待有需求时按 ADR 流程加入。
+- 【决策】安全文件下载由核心层负责，`downloadToolResultFiles` 仍不属于供应商范围。[ADR 0023](../04-decisions/2026-09-17-0023-google-interactions-and-live-audio.md) 取代此前对 Interactions 和 Live 音频的排除。
 
 ## Fixture 清单
 
@@ -111,3 +113,21 @@ fixture 位于 `crates/providers/ferrin-google/tests/fixtures/<area>/`，由 `te
 【事实】 可执行代码及其结果携带 `serverToolType: "code_execution"` 元数据，回放为 `executableCode`/`codeExecutionResult` 部件，并支持应用工具别名。回归：`tests/suite/prompt.rs::generated_code_execution_roundtrips_with_its_result_and_alias` 与代码执行流 fixture（2026-09-15）。
 
 【事实】 返回的可恢复上传 URL 在发送文件字节之前经过 `url_policy` 校验：默认只允许 HTTPS 与公网地址，固定解析后的地址，拒绝重定向。上传完成响应遵守字节上限。调用方头仅发送到配置的同源地址或明确的 `credentialed_origins`，且始终移除 `x-goog-api-key`。本地测试端点需要显式 `allow_http().trust_origin(...)`。来源：`src/files.rs`、`tests/suite/security.rs`（2026-09-15）。
+
+【决策】ADR 0023 取代此前对通用 Interactions、Live 流式转写和语音翻译的排除；实现和本地验证记录见 [ADR 0023](../04-decisions/2026-09-17-0023-google-interactions-and-live-audio.md)。
+
+## 实现记录（2026-09-17）：Interactions 与 Live 音频
+
+【事实】`GoogleInteractionsLanguageModel` 使用 `<name>.interactions`；`language_model` 和 `chat` 保留 generateContent。`google` 和自定义名称下的选项合并，后者优先：`previousInteractionId`、`store`、`agent`、`agentConfig`、`environment`、`background`、`pollingTimeoutMs`（默认 30 分钟）、`thinkingLevel`、`thinkingSummaries`、`responseFormat`、`responseModalities`、`mediaResolution`、`serviceTier` 和 `systemInstruction`。提示系统消息优先于 `systemInstruction` 并给出警告。来源：`src/interactions/request.rs`、请求快照回归。
+
+【事实】Interactions 转换用户文本/文件、助手文本/文件/推理/函数调用、供应商工具回放和工具结果。`signature`、`interactionId`、`stepType` 在标准和自定义键下回放；启用存储时压缩匹配 `previousInteractionId` 的助手历史，保留新工具结果。`store: false` 保留完整历史，与先前 ID 合用时警告。JSON Schema 保留用户属性名称；响应格式转换为下划线 wire 键。来源：`src/interactions/prompt.rs`、请求及回放回归。
+
+【事实】函数以及 Google 搜索/代码执行/URL 上下文/文件搜索/地图/计算机使用/检索工具有 Interactions wire 转换，内置别名恢复应用名称。远端 `mcp_server` 和未知供应商工具警告并忽略。单次及流式输出包含文本、推理、文件、调用/结果、URL/文档/地图来源、token 计数和服务等级；流式来源去重。来源：`src/interactions/output.rs`、`sources.rs` 及 fixture 回归。
+
+【事实】`start_interaction` 返回初始资源，`get_interaction` 查询资源，`cancel_interaction` 停止资源；使用 `GoogleInteractionOptions` 的请求头/取消并编码 ID 路径段。`do_generate` 每秒轮询进行中的后台/agent 调用，直到配置时限。`do_stream` 创建后台资源后增量读取 `GET /interactions/{id}?stream=true`；断流使用 `last_event_id` 续接并忽略重复边界事件，最多重连两次，遵守同一时限。初始 POST 已终结时立即合成事件。来源：`src/interactions/background.rs`、生命周期回归。
+
+【决策】显式取消后台轮询/流时尝试有界远端取消，清理失败也返回原取消。丢弃流直接关闭自有连接，不启动清理任务；需要丢弃后取消远端任务时，通过 `start_interaction` 保留 ID 并调用 `cancel_interaction`。缺失续传 ID、非法可执行调用、不匹配增量及提前 EOF 关闭失败；终结事件即刻结束流，无需等待连接关闭。来源：生命周期与流边界回归。
+
+【事实】启用 `realtime` 时，Live 转写为 `-live` ID 接受 `audio/pcm` 或 `pcm16`，即 16 kHz、有符号 16 位单声道 PCM。翻译接受相同输入，输出 24 kHz `audio/pcm`，自动识别源语言，要求目标语言并接受 `echoTargetLanguage`。`setupComplete` 后才提交音频；输出保留 usage 和自定义键元数据。连接使用 URL 策略、DNS 固定及有界帧；取消与 drop 释放自有资源。来源：`src/live_audio`、`src/transcription/live.rs`、`src/speech_translation` 及本地 WebSocket 回归。
+
+【决策】音频终结沿用参考适配器：转写在输入 EOF 后允许一秒静默宽限；翻译以一秒 PCM 静音（阈值 128）或轮次完成加宽限终结。无分离后台任务维持已丢弃的流。使用可控本地 WebSocket 和暂停时间覆盖这些边界，不证明官方端点兼容性；PV-031 的真实响应录制要求继续开放。

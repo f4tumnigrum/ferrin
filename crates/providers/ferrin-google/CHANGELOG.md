@@ -5,6 +5,20 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- General Interactions language models with structured/multimodal output,
+  function/provider tools, linked history, incremental SSE, resumable background
+  streams, and start/get/cancel resource operations (ADR 0023).
+- Live streaming transcription and speech translation behind `realtime`, with
+  secure DNS-pinned WebSockets, setup gating, cancellation, bounded messages,
+  backpressure and explicit completion handling.
+
+
+### Changed
+
+- Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
 ## [0.1.2] - 2026-09-16
 
 ### Changed
