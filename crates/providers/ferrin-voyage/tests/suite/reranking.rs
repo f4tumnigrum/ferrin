@@ -57,7 +57,6 @@ async fn text_ranking_preserves_response_metadata_and_request_headers() {
             response: ResponseMetadata {
                 headers: Some(headers),
                 body: Some(raw),
-                model_id: Some(ModelId::new("rerank-2.5")),
                 ..ResponseMetadata::default()
             },
         }
@@ -118,7 +117,7 @@ async fn object_documents_warn_and_core_preserves_original_objects() {
         result.warnings,
         vec![Warning::compatibility(
             "object documents",
-            Some("object documents are converted to strings".into())
+            Some("Object documents are converted to strings.".into())
         )]
     );
     assert_eq!(result.response.model_id, Some(ModelId::new("rerank-2.5")));
@@ -137,39 +136,110 @@ async fn object_documents_warn_and_core_preserves_original_objects() {
 }
 
 #[tokio::test]
-async fn rejects_invalid_rankings() {
+async fn direct_calls_preserve_ranking_entries_and_order() {
     for ranking in [
         json!([{"index": 2, "relevance_score": 0.5}]),
         json!([{"index": 0, "relevance_score": 0.5}, {"index": 0, "relevance_score": 0.4}]),
         json!([{"index": 0, "relevance_score": 0.4}, {"index": 1, "relevance_score": 0.5}]),
+        json!([{"index": 1, "relevance_score": 0.9}, {"index": 0, "relevance_score": 0.8}, {"index": 1, "relevance_score": 0.7}]),
     ] {
         let test = TestProvider::start().await;
-        test.mount(json!({"data": ranking}), 200).await;
-        let error = test
+        let raw = json!({"data": ranking});
+        test.mount(raw.clone(), 200).await;
+        let mut options = text_options();
+        options.top_n = Some(1);
+        let result = test
             .provider
             .reranking("rerank-2.5")
-            .do_rerank(text_options())
+            .do_rerank(options)
             .await
-            .unwrap_err();
-        assert!(
-            matches!(error, ProviderError::InvalidResponseData(_)),
-            "{error:?}"
+            .unwrap();
+        assert_eq!(serde_json::to_value(result.ranking).unwrap(), ranking,);
+        assert_eq!(
+            (
+                result.response.body,
+                result.response.model_id,
+                result.response.timestamp
+            ),
+            (Some(raw), None, None),
         );
     }
+}
+
+#[tokio::test]
+async fn core_rejects_out_of_range_indices_before_resolving_documents() {
     let test = TestProvider::start().await;
-    test.mount(serde_json::from_str(BASIC).unwrap(), 200).await;
-    let mut options = text_options();
-    options.top_n = Some(1);
-    let error = test
-        .provider
-        .reranking("rerank-2.5")
-        .do_rerank(options)
+    test.mount(json!({"data": [{"index": 2, "relevance_score": 0.5}]}), 200)
+        .await;
+    let model = Provider::reranking_model(&test.provider, "rerank-2.5").unwrap();
+    let error = rerank(model, "query", vec!["first", "second"])
         .await
         .unwrap_err();
     assert!(
-        matches!(error, ProviderError::InvalidResponseData(_)),
+        matches!(
+            error.as_provider(),
+            Some(ProviderError::InvalidResponseData(_))
+        ),
         "{error:?}"
     );
+}
+
+#[tokio::test]
+async fn direct_calls_forward_empty_documents_and_zero_top_n() {
+    for documents in [Vec::new(), vec!["first".to_owned()]] {
+        let test = TestProvider::start().await;
+        test.mount(json!({"data": []}), 200).await;
+        let mut options = RerankOptions::new(
+            "query",
+            RerankDocuments::Text {
+                values: documents.clone(),
+            },
+        );
+        options.top_n = Some(0);
+        options.provider_options = provider_options("voyage", json!({"unknown": true}));
+        let result = test
+            .provider
+            .reranking("rerank-2.5")
+            .do_rerank(options)
+            .await
+            .unwrap();
+        assert_eq!(result.ranking, Vec::new());
+        assert_eq!(
+            test.transport.last_request().unwrap().body_json().unwrap(),
+            json!({
+                "model": "rerank-2.5", "query": "query", "documents": documents, "top_k": 0
+            })
+        );
+        assert_eq!(test.server.received_requests().await.unwrap().len(), 1);
+    }
+}
+
+#[tokio::test]
+async fn core_empty_documents_return_without_http() {
+    let test = TestProvider::start().await;
+    let model = Provider::reranking_model(&test.provider, "rerank-2.5").unwrap();
+    let result = rerank(model, "query", Vec::<String>::new())
+        .top_n(0)
+        .await
+        .unwrap();
+    let timestamp = result.response.timestamp;
+    assert!(timestamp.is_some());
+    assert_eq!(
+        result,
+        rerank::RerankResult {
+            original_documents: vec![],
+            ranking: vec![],
+            warnings: vec![],
+            provider_metadata: None,
+            response: ResponseMetadata {
+                model_id: Some(ModelId::new("rerank-2.5")),
+                timestamp,
+                ..ResponseMetadata::default()
+            }
+        }
+    );
+    assert_eq!(test.server.received_requests().await.unwrap().len(), 0);
+    assert!(test.transport.is_empty());
 }
 
 #[tokio::test]
@@ -227,22 +297,15 @@ async fn failures_retain_detail_and_status_based_retryability() {
 async fn invalid_options_and_cancelled_calls_send_no_http_request() {
     let test = TestProvider::start().await;
     let model = test.provider.reranking("rerank-2.5");
-    let mut invalid = text_options();
-    invalid.top_n = Some(0);
-    let empty = RerankOptions::new("q", RerankDocuments::Text { values: vec![] });
     let mut invalid_option = text_options();
     invalid_option.provider_options =
         provider_options("voyage", json!({"truncation": "secret-value"}));
-    let mut unknown_option = text_options();
-    unknown_option.provider_options = provider_options("voyage", json!({"unknown": true}));
-    for options in [invalid, empty, invalid_option, unknown_option] {
-        let error = model.do_rerank(options).await.unwrap_err();
-        assert!(
-            matches!(error, ProviderError::InvalidArgument(_)),
-            "{error:?}"
-        );
-        assert!(!error.to_string().contains("secret-value"));
-    }
+    let error = model.do_rerank(invalid_option).await.unwrap_err();
+    assert!(
+        matches!(error, ProviderError::InvalidArgument(_)),
+        "{error:?}"
+    );
+    assert!(!error.to_string().contains("secret-value"));
     let cancelled = text_options();
     cancelled.cancellation.cancel();
     let error = model.do_rerank(cancelled).await.unwrap_err();

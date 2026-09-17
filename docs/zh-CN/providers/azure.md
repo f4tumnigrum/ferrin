@@ -10,11 +10,13 @@
 
 【决策】选项和响应 metadata 使用 `openai` 键，模型标识使用 `azure.<family>`。和参考 Azure 适配器一样，模型能力规则依据 deployment 名称推断；应用需选择适合模型采样与图像限制的名称，SDK 不向 Azure 查询底层模型。Azure DeepSeek、realtime、文件、skills 与 batch 不属于本适配器范围。
 
-【事实】凭据在请求时读取：显式 `api_key` 优先于 `AZURE_API_KEY`；也可用 `token_provider` 逐请求获取 Entra token，两种显式方式互斥。`resource_name` 或 `AZURE_RESOURCE_NAME` 构造 `https://<resource>.openai.azure.com/openai`，`base_url` 可覆盖。来源：`settings.rs`、`provider.rs`、`transport.rs`。
+【事实】凭据在请求时读取：显式 `api_key` 优先于 `AZURE_API_KEY`；也可用 `token_provider` 为缺少 Authorization 请求头的调用获取 Entra token，两种显式方式互斥。`resource_name` 或 `AZURE_RESOURCE_NAME` 构造 `https://<resource>.openai.azure.com/openai`，`base_url` 可覆盖。来源：`settings.rs`、`provider.rs`、`transport.rs`。
 
 【决策】`AzureUrlMode::V1` 为未带版本的 Azure 主机补 `/v1`，保留完整 `/openai/v1` 和自定义网关 URL，并识别 Foundry project 路径。`Deployment` 使用 `/deployments/<deployment>` 和 `api-version`，默认版本为 `v1`；旧接口应配置适用的日期版本。非法 deployment 在 HTTP 前拒绝。
 
-【决策】凭据限定于配置的 origin 和 API 路径前缀；跨域、同源相邻路径、URL 凭据、解码后的路径穿越、反斜线、控制字符和有歧义的双重编码都不会获得 Azure 凭据。保留原下载 URL 安全验证；专用认证覆盖调用级凭据头，错误与调试输出不暴露凭据。
+【决策】凭据限定于配置的 origin 和 API 路径前缀；跨域、同源相邻路径、URL 凭据、解码后的路径穿越、反斜线、控制字符和有歧义的双重编码都不会获得 Azure 凭据。保留原下载 URL 安全验证；在此边界内，配置和调用级请求头覆盖生成的凭据头，显式 Authorization 跳过 Entra 回调。错误与调试输出不暴露凭据。
+
+【决策】[ADR 0026](../04-decisions/2026-09-17-0026-reference-sdk-parity.md) 迁移说明：需要逐请求刷新 Entra token 的应用须移除显式 Authorization 请求头。之前的实现无条件覆盖调用者凭据；现在请求头优先级遵循参考 Azure 适配器。
 
 【决策】token 获取支持取消和超时，其耗时从底层响应体剩余期限中扣除。HTTP 转写使用独立包装，其他 crate 开启 OpenAI realtime feature 不会意外启用 Azure WebSocket 路径。
 

@@ -103,12 +103,16 @@ async fn credentials_and_token_refresh_are_scoped_to_exact_origin_and_api_path()
             false,
         ),
     ];
-    for (target, _) in targets {
+    for (target, authorized) in targets {
         let mut request = HttpRequest::get(target.parse().unwrap());
         request.headers = Headers::new()
             .with("authorization", "Bearer stray")
             .with("api-key", "stray")
             .with("accept", "application/octet-stream");
+        if authorized {
+            request.headers.remove("authorization");
+            request.headers.remove("api-key");
+        }
         request.pinned_addresses = vec!["203.0.113.7:443".parse().unwrap()];
         model.config().transport.execute(request).await.unwrap();
     }
@@ -172,7 +176,10 @@ async fn api_key_authentication_never_leaks_to_download_requests() {
             ))
             .collect::<Vec<_>>(),
         vec![
-            (Some("azure-test-key".to_owned()), None),
+            (
+                Some("unrelated-key".to_owned()),
+                Some("Bearer unrelated".to_owned())
+            ),
             (None, None),
             (None, None)
         ]

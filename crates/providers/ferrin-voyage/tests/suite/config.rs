@@ -93,7 +93,7 @@ fn custom_name_merges_canonical_options_and_preserves_identity() {
 }
 
 #[test]
-fn explicit_authorization_avoids_key_loading_and_debug_redacts_credentials() {
+fn explicit_authorization_overrides_the_resolved_key_and_debug_redacts_credentials() {
     let mut config =
         VoyageConfig::new("voyage", Url::parse("https://api.example.com/v1/").unwrap()).unwrap();
     config.api_key = Some(SecretString::from("invalid\nkey"));
@@ -115,6 +115,36 @@ fn explicit_authorization_avoids_key_loading_and_debug_redacts_credentials() {
         ..VoyageSettings::default()
     };
     assert!(!format!("{settings:?}").contains("fixture-settings-secret"));
+}
+
+#[test]
+fn authorization_alone_still_requires_key_resolution() {
+    const CHILD: &str = "FERRIN_VOYAGE_KEY_RESOLUTION_TEST";
+    if ferrin_provider_util::settings::env_var(CHILD).is_some() {
+        let config =
+            VoyageConfig::new("voyage", Url::parse("https://api.example.com/v1").unwrap()).unwrap();
+        let error = config
+            .headers(&Headers::new().with("authorization", "Bearer explicit"))
+            .unwrap_err();
+        assert!(matches!(error, ProviderError::LoadApiKey(_)));
+        return;
+    }
+    // Child environment isolation avoids process-wide environment mutation.
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "suite::config::authorization_alone_still_requires_key_resolution",
+            "--nocapture",
+        ])
+        .env_remove("VOYAGE_API_KEY")
+        .env(CHILD, "1")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]

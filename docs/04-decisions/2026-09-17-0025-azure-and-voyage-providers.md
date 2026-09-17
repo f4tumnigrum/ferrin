@@ -26,4 +26,6 @@
 
 ## Consequences
 
+[Decision] [ADR 0026](2026-09-17-0026-reference-sdk-parity.md) revises default credential precedence to the reference SDK: an Azure Authorization header skips Entra acquisition, and configured/call headers override generated credentials within the endpoint boundary. Voyage resolves the API key before applying header overrides. Origin/path isolation and redaction remain mandatory; this revision does not change this ADR's proposed status.
+
 [Decision] Provider fixtures verify request/response translation only. Credentialed Azure and Voyage service verification remains part of PV-031; local tests must not be described as live provider verification. New crates require matching license/notice files, documentation, API snapshots and publication ordering. The ADR remains proposed pending maintainer review.

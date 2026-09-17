@@ -10,3 +10,9 @@
 ### Changed
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
+
+### Fixed
+
+- Honor explicit credential-header overrides using the reference precedence;
+  skip Entra token acquisition when Authorization is already present, while
+  preserving credential origin scoping.

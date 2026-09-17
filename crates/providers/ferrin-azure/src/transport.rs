@@ -60,16 +60,15 @@ impl AzureTransport {
             request.headers.remove("api-key");
             return self.inner.execute(request).await;
         }
-        request.headers.remove("authorization");
-        request.headers.remove("api-key");
-        let (name, credential) = match &self.token_provider {
+        let credential = match &self.token_provider {
+            Some(_) if request.headers.contains("authorization") => None,
             Some(provider) => {
                 let token = tokio::select! {
                     biased;
                     _ = request.cancellation.cancelled() => return Err(TransportError::new(TransportErrorKind::Cancelled, "azure token acquisition cancelled")),
                     token = provider.token() => token.map_err(|_| auth_error("azure token acquisition failed"))?,
                 };
-                ("authorization", format!("Bearer {}", token.expose_secret()))
+                Some(("authorization", format!("Bearer {}", token.expose_secret())))
             }
             None => {
                 let key = load_api_key(ApiKeyConfig {
@@ -79,13 +78,16 @@ impl AzureTransport {
                     description: "Azure OpenAI",
                 })
                 .map_err(|_| auth_error("azure API key is missing"))?;
-                ("api-key", key.expose_secret().to_owned())
+                (!request.headers.contains("api-key"))
+                    .then(|| ("api-key", key.expose_secret().to_owned()))
             }
         };
-        request
-            .headers
-            .insert(name, &credential)
-            .map_err(|_| auth_error("invalid azure credential header"))?;
+        if let Some((name, credential)) = credential {
+            request
+                .headers
+                .insert(name, &credential)
+                .map_err(|_| auth_error("invalid azure credential header"))?;
+        }
         request.headers = request
             .headers
             .with_user_agent_suffix([concat!("ferrin-azure/", env!("CARGO_PKG_VERSION"))]);

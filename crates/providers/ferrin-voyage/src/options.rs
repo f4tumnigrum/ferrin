@@ -12,7 +12,7 @@ use serde::Serialize;
 
 /// Provider options under `voyage` or the configured provider name.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct VoyageRerankingOptions {
     /// Whether the provider includes document text in the raw response body.
     #[serde(default, skip_serializing_if = "Option::is_none")]

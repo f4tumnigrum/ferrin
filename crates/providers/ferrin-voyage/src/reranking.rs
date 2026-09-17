@@ -3,8 +3,6 @@
 //! Derived from Vercel AI SDK `packages/voyage/src/reranking/voyage-reranking-model.ts`
 //! (Apache-2.0, Copyright 2023 Vercel, Inc.); translated and modified.
 
-use std::collections::HashSet;
-
 use ferrin_provider_util::http::ResponseHandlers;
 use ferrin_provider_util::http::json_response_handler;
 use ferrin_provider_util::http::post_json;
@@ -14,8 +12,6 @@ use ferrin_spec::ProviderId;
 use ferrin_spec::RerankingModel;
 use ferrin_spec::ResponseMetadata;
 use ferrin_spec::Warning;
-use ferrin_spec::error::InvalidArgumentError;
-use ferrin_spec::error::InvalidResponseDataError;
 use ferrin_spec::error::ProviderError;
 use ferrin_spec::error::UnsupportedFunctionalityError;
 use ferrin_spec::reranking_model::RankedDocument;
@@ -24,7 +20,6 @@ use ferrin_spec::reranking_model::RerankOptions;
 use ferrin_spec::reranking_model::RerankResult;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::json;
 
 use crate::config::SharedConfig;
 use crate::error::failed_response_handler;
@@ -46,8 +41,6 @@ struct Request<'a> {
 #[derive(Deserialize)]
 struct Response {
     data: Vec<RankedDocument>,
-    #[serde(default)]
-    model: Option<ModelId>,
 }
 
 /// Reranking model backed by Voyage's `POST /rerank` endpoint.
@@ -79,20 +72,12 @@ impl VoyageRerankingModel {
     ///
     /// # Errors
     ///
-    /// Returns an error for empty documents, zero `top_n`, unsupported
-    /// document kinds, invalid provider options or serialization failure.
+    /// Returns an error for unsupported document kinds, invalid provider
+    /// options or serialization failure.
     pub fn prepare_request(
         &self,
         options: &RerankOptions,
     ) -> Result<(JsonValue, Vec<Warning>), ProviderError> {
-        if options.documents.is_empty() {
-            return Err(
-                InvalidArgumentError::new("documents", "documents must not be empty").into(),
-            );
-        }
-        if options.top_n == Some(0) {
-            return Err(InvalidArgumentError::new("top_n", "top_n must be positive").into());
-        }
         let provider_options = parse_options(&self.config.name, &options.provider_options)?;
         let mut warnings = Vec::new();
         let documents = match &options.documents {
@@ -100,7 +85,7 @@ impl VoyageRerankingModel {
             RerankDocuments::Object { values } => {
                 warnings.push(Warning::compatibility(
                     "object documents",
-                    Some("object documents are converted to strings".to_owned()),
+                    Some("Object documents are converted to strings.".to_owned()),
                 ));
                 values
                     .iter()
@@ -150,61 +135,15 @@ impl RerankingModel for VoyageRerankingModel {
             options.cancellation,
         )
         .await?;
-        validate_ranking(&response.value.data, options.documents.len(), options.top_n)?;
         Ok(RerankResult {
             ranking: response.value.data,
             provider_metadata: None,
             warnings,
             response: ResponseMetadata {
-                model_id: Some(
-                    response
-                        .value
-                        .model
-                        .unwrap_or_else(|| self.model_id.clone()),
-                ),
                 headers: Some(response.response_headers),
                 body: response.raw,
                 ..ResponseMetadata::default()
             },
         })
     }
-}
-
-fn validate_ranking(
-    ranking: &[RankedDocument],
-    document_count: usize,
-    top_n: Option<usize>,
-) -> Result<(), ProviderError> {
-    let limit = top_n.unwrap_or(document_count).min(document_count);
-    if ranking.len() > limit {
-        return Err(InvalidResponseDataError::new(
-            "ranking contains more results than requested",
-            json!({"ranking_count": ranking.len(), "limit": limit}),
-        )
-        .into());
-    }
-    let mut seen = HashSet::with_capacity(ranking.len());
-    let mut previous_score = f64::INFINITY;
-    for entry in ranking {
-        let message = if entry.index >= document_count {
-            Some("ranking index is out of range")
-        } else if !seen.insert(entry.index) {
-            Some("ranking contains a duplicate index")
-        } else if !entry.relevance_score.is_finite() {
-            Some("ranking score must be finite")
-        } else if entry.relevance_score > previous_score {
-            Some("ranking scores must be in descending order")
-        } else {
-            None
-        };
-        if let Some(message) = message {
-            return Err(InvalidResponseDataError::new(
-                message,
-                json!({"index": entry.index, "relevance_score": entry.relevance_score}),
-            )
-            .into());
-        }
-        previous_score = entry.relevance_score;
-    }
-    Ok(())
 }

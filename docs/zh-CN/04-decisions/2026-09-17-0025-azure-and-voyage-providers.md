@@ -26,4 +26,6 @@
 
 ## 影响
 
+【决策】[ADR 0026](2026-09-17-0026-reference-sdk-parity.md) 将默认凭据优先级修订为参考 SDK 行为：Azure 已有 Authorization 时跳过 Entra 获取，端点边界内的配置/调用请求头覆盖生成的凭据。Voyage 先解析 API 密钥再应用请求头覆盖。origin/路径隔离和脱敏仍为强制要求；此修订不改变本 ADR 的 proposed 状态。
+
 【决策】fixture 测试仅验证协议转换，Azure 与 Voyage 的真实服务验证仍属于 PV-031。新 crate 同步许可证、NOTICE、文档、API 快照和发布顺序。ADR 保持 proposed，等待维护者评审。

@@ -129,7 +129,7 @@ async fn legacy_deployments_route_model_and_api_version() {
 }
 
 #[tokio::test]
-async fn entra_tokens_refresh_per_request_and_override_call_auth() {
+async fn entra_tokens_refresh_unless_authorization_is_supplied_by_the_caller() {
     let server = FixtureServer::start().await.unwrap();
     server.mount(
         Method::POST,
@@ -148,16 +148,21 @@ async fn entra_tokens_refresh_per_request_and_override_call_auth() {
     })
     .unwrap();
     for _ in 0..2 {
-        let mut options = CallOptions::new(Prompt::default());
-        options.headers = Headers::new()
-            .with("authorization", "Bearer stray")
-            .with("api-key", "stray");
         provider
             .responses("deployment")
-            .do_generate(options)
+            .do_generate(CallOptions::new(Prompt::default()))
             .await
             .unwrap();
     }
+    let mut options = CallOptions::new(Prompt::default());
+    options.headers = Headers::new()
+        .with("authorization", "Bearer explicit")
+        .with("api-key", "explicit-key");
+    provider
+        .responses("deployment")
+        .do_generate(options)
+        .await
+        .unwrap();
     let requests = server.received();
     assert_eq!(
         requests
@@ -166,7 +171,8 @@ async fn entra_tokens_refresh_per_request_and_override_call_auth() {
             .collect::<Vec<_>>(),
         vec![
             (Some("Bearer test-token-0"), None),
-            (Some("Bearer test-token-1"), None)
+            (Some("Bearer test-token-1"), None),
+            (Some("Bearer explicit"), Some("explicit-key"))
         ]
     );
     assert_eq!(calls.load(Ordering::SeqCst), 2);

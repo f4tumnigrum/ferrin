@@ -88,7 +88,8 @@ async fn azure_hosts_custom_gateways_and_foundry_keep_their_url_contracts() {
             .await
             .unwrap();
         let requests = transport.0.lock().unwrap();
-        let body: serde_json::Value = serde_json::from_slice(&requests[0].body.to_bytes()).unwrap();
+        let body: serde_json::Value =
+            serde_json::from_slice(&requests[0].body.to_bytes().unwrap()).unwrap();
         assert_eq!(
             (
                 requests[0].url.as_str(),

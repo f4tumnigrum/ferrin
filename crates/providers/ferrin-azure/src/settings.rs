@@ -11,7 +11,7 @@ use ferrin_spec::error::ProviderError;
 use secrecy::SecretString;
 use url::Url;
 
-/// Returns a Microsoft Entra access token for each HTTP request.
+/// Returns a Microsoft Entra access token for requests without an Authorization override.
 pub trait TokenProvider: Send + Sync + 'static {
     /// Acquires an access token.
     ///
@@ -62,7 +62,8 @@ pub struct AzureSettings {
     pub base_url: Option<Url>,
     /// API key, loaded from `AZURE_API_KEY` on each request when absent.
     pub api_key: Option<SecretString>,
-    /// Entra authentication, mutually exclusive with `api_key`.
+    /// Entra authentication, mutually exclusive with `api_key`; an explicit
+    /// Authorization header bypasses the callback for that request.
     pub token_provider: Option<Arc<dyn TokenProvider>>,
     /// Additional request headers; credentials use the dedicated fields above.
     pub headers: Headers,

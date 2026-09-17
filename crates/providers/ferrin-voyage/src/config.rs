@@ -111,19 +111,17 @@ impl VoyageConfig {
         })?)
     }
 
-    /// Builds headers, loading the key only when Authorization is absent.
+    /// Resolves the API key, then applies configured and per-call header overrides.
     ///
     /// # Errors
     ///
     /// Returns an error for a missing key or an invalid key header value.
     pub fn headers(&self, call_headers: &Headers) -> Result<Headers, ProviderError> {
+        let key = self.api_key()?;
         let mut headers = self.headers.clone().merged(call_headers);
         if !headers.contains("authorization") {
             headers
-                .insert(
-                    "authorization",
-                    &format!("Bearer {}", self.api_key()?.expose_secret()),
-                )
+                .insert("authorization", &format!("Bearer {}", key.expose_secret()))
                 .map_err(|_| {
                     InvalidArgumentError::new("api_key", "api_key is not a valid header value")
                 })?;
