@@ -36,6 +36,8 @@ enum LimitError {
     TooLarge { len: usize, max: usize },
     #[error("nesting depth exceeds the limit of {max}")]
     TooDeep { max: usize },
+    #[error("object contains forbidden prototype property")]
+    PrototypeProperty,
 }
 
 /// Parses `text` with the default limits.
@@ -74,7 +76,30 @@ pub fn parse_with(text: &str, limits: ParseLimits) -> Result<Value, JsonParseErr
             },
         ));
     }
+    check_object_keys(&value).map_err(|error| JsonParseError::new(truncate(text), error))?;
     Ok(value)
+}
+
+fn check_object_keys(value: &Value) -> Result<(), LimitError> {
+    let mut pending = vec![value];
+    while let Some(value) = pending.pop() {
+        match value {
+            Value::Object(fields) => {
+                if fields.contains_key("__proto__")
+                    || fields
+                        .get("constructor")
+                        .and_then(Value::as_object)
+                        .is_some_and(|constructor| constructor.contains_key("prototype"))
+                {
+                    return Err(LimitError::PrototypeProperty);
+                }
+                pending.extend(fields.values());
+            }
+            Value::Array(values) => pending.extend(values),
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// Parses `text` and validates it against `schema`.

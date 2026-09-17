@@ -58,6 +58,7 @@
         "non_exhaustive"
       ],
       "variants": [
+        "UndefinedInput",
         "SuccessfulParse",
         "RepairedParse",
         "FailedParse"
@@ -87,6 +88,7 @@
         "fn empty_object() -> Self",
         "fn erased(&self) -> Schema<Value>",
         "fn from_json_schema(schema: Value) -> Self",
+        "fn from_provider_json_schema(schema: Value) -> Self",
         "fn json_schema(&self) -> &Value",
         "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
         "fn transformed(&self, transform: SchemaTransform) -> Result<Self, SchemaError>",
@@ -353,6 +355,7 @@
         "non_exhaustive"
       ],
       "variants": [
+        "UndefinedInput",
         "SuccessfulParse",
         "RepairedParse",
         "FailedParse"
@@ -365,6 +368,14 @@
         "impl Hash for PartialParseState",
         "impl PartialEq for PartialParseState",
         "impl StructuralPartialEq for PartialParseState"
+      ]
+    },
+    {
+      "path": "ferrin_schema::partial_json::parse_optional",
+      "kind": "function",
+      "signature": "fn parse_optional(text: Option<&str>) -> PartialParse",
+      "attrs": [
+        "must_use"
       ]
     },
     {
@@ -401,6 +412,7 @@
         "fn empty_object() -> Self",
         "fn erased(&self) -> Schema<Value>",
         "fn from_json_schema(schema: Value) -> Self",
+        "fn from_provider_json_schema(schema: Value) -> Self",
         "fn json_schema(&self) -> &Value",
         "fn lazy(json_schema: impl FnOnce() -> Value + Send + 'static, validate: impl Fn(Value) -> Result<T, TypeValidationError> + Send + Sync + 'static) -> Self",
         "fn transformed(&self, transform: SchemaTransform) -> Result<Self, SchemaError>",

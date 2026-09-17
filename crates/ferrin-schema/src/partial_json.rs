@@ -27,6 +27,8 @@ pub struct PartialParse {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum PartialParseState {
+    /// No input was provided.
+    UndefinedInput,
     /// The input parsed as-is.
     SuccessfulParse,
     /// The input parsed after repair.
@@ -35,17 +37,38 @@ pub enum PartialParseState {
     FailedParse,
 }
 
+/// Parses optional JSON text, distinguishing absent input from invalid JSON.
+///
+/// # Examples
+///
+/// ```
+/// use ferrin_schema::partial_json::{parse_optional, PartialParseState};
+///
+/// assert_eq!(parse_optional(None).state, PartialParseState::UndefinedInput);
+/// assert_eq!(parse_optional(Some("null")).state, PartialParseState::SuccessfulParse);
+/// ```
+#[must_use]
+pub fn parse_optional(text: Option<&str>) -> PartialParse {
+    text.map_or(
+        PartialParse {
+            value: None,
+            state: PartialParseState::UndefinedInput,
+        },
+        parse_partial,
+    )
+}
+
 /// Parses `text`, repairing it first if a direct parse fails.
 #[must_use]
 pub fn parse_partial(text: &str) -> PartialParse {
-    if let Ok(value) = serde_json::from_str::<Value>(text) {
+    if let Ok(value) = crate::json::parse(text) {
         return PartialParse {
             value: Some(value),
             state: PartialParseState::SuccessfulParse,
         };
     }
     let repaired = repair(text);
-    match serde_json::from_str::<Value>(&repaired) {
+    match crate::json::parse(&repaired) {
         Ok(value) => PartialParse {
             value: Some(value),
             state: PartialParseState::RepairedParse,

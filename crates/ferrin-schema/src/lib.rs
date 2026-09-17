@@ -23,6 +23,7 @@ pub mod dialect;
 mod error;
 pub mod json;
 pub mod partial_json;
+mod provider_schema;
 pub mod schema;
 pub mod transform;
 mod transform_refs;

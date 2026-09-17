@@ -16,7 +16,7 @@
 | 选择（候选列表） | `json` + `{result: {enum: options}}` 包装 | 取 `result` | 匹配前缀唯一时给出候选 |
 | 任意 JSON（可选 schema） | `json` | 任意 JSON 值 | 修复后的部分值 |
 
-【决策】Ferrin 只提供 `generate_text(...).output(Output::object::<T>())` 一条路径，不提供独立的 `generate_object` 函数。依据：独立入口与 `output()` 的能力完全重叠，单一路径减少 API 表面与重复的循环实现。
+【决策】Ferrin 只提供 `generate_text(...).output(Output::<T>::object())` 一条路径，不提供独立的 `generate_object` 函数。依据：独立入口与 `output()` 的能力完全重叠，单一路径减少 API 表面与重复的循环实现。
 
 ```rust
 pub struct Output<T> { strategy: OutputStrategy, _marker: PhantomData<T> }
@@ -40,11 +40,13 @@ impl Output<JsonValue> { pub fn json() -> Self; pub fn json_with_schema(schema: 
 
 ## 3. 部分 JSON 修复
 
-【决策】部分 JSON 修复是一个状态机：扫描输入维护栈（对象、数组、字符串、字面量、数字），在输入截断处按栈状态补齐引号、括号，并删除不完整的字面量（如 `tru`）与尾随逗号；部分解析先尝试直接解析，失败后修复再解析，并返回解析状态（成功、修复后成功、失败）。依据：流式结构化输出需要在每个分片后给出可用的部分值，栈式修复比正则替换更能覆盖嵌套结构。
+【决策】部分 JSON 修复是一个状态机：扫描输入维护栈（对象、数组、字符串、字面量、数字），在输入截断处按栈状态补齐引号、括号和不完整的字面量（如 `tru`），并删除尾随逗号；部分解析先尝试直接解析，失败后修复再解析，并返回解析状态（成功、修复后成功、失败）。依据：流式结构化输出需要在每个分片后给出可用的部分值，栈式修复比正则替换更能覆盖嵌套结构。
 
 【决策】`ferrin_schema::partial_json::repair(&str) -> Cow<str>` 与 `parse_partial(&str) -> PartialParse { value: Option<JsonValue>, state }` 移植该状态机；以 `proptest` 验证“对任意合法 JSON 的任意前缀，修复结果可解析且是原值的前缀近似”。
 
 【事实】2026-09-13 实现：`PartialParseState` 只有 `SuccessfulParse`、`RepairedParse`、`FailedParse`（空字符串归入 `FailedParse`）。数组首元素为孤立的 `-` 时（输入 `[-`）输出 `[]` 而非不可解析的 `[-]`。`proptest` 用例对随机 JSON 值（紧凑与美化两种格式）的每个字符边界前缀断言修复结果可解析。
+
+【决策】参考对齐（ADR 0026，2026-09-17）：`parse_optional(Option<&str>)` 以 `UndefinedInput` 区分未提供输入，`parse_partial(&str)` 保留原有便捷签名。空字符串仍归入 `FailedParse`，JSON 字面量 `null` 仍为成功解析的值。参考语料记录 Vercel AI SDK `6c6c221` 的 `fix-json.test.ts` 中 60 个不同输入。Ferrin 保留合法 Unicode 标量与 JSON 数值：JavaScript `JSON.parse` 接受的孤立 UTF-16 代理项和非有限数值无法用 `serde_json::Value` 表示。已记录的孤立负号、转义键与代理对前缀修复改进继续作为明确差异保留。
 
 ## 4. 部分输出流
 
@@ -93,9 +95,9 @@ impl<T> Schema<T> {
 
 ### 5.3 JSON 解析安全
 
-【事实】JavaScript 运行时解析含 `__proto__`/`constructor.prototype` 键的 JSON 可能造成原型污染；Rust 的 `serde_json` 把对象解析为普通映射，不存在该风险，Ferrin 因此不需要专门的安全解析步骤。
+【事实】JavaScript 运行时解析含 `__proto__`/`constructor.prototype` 键的 JSON 可能造成原型污染；Rust 的 `serde_json` 把对象解析为没有原型链的普通映射。语言差异本身不决定参考 SDK 的输入约定（参考 `packages/provider-utils/src/secure-json-parse.ts`）。
 
-【决策】Rust 无原型污染问题；`ferrin_schema::json::parse` 转而施加资源限制：最大嵌套深度（默认 128）与最大字节数（默认 64 MiB，供应商响应体另有 HTTP 层限制），超限返回 `JsonParseError`。依据：`serde_json` 默认递归限制为 128，显式配置便于在配置文档中说明。
+【决策】按照 ADR 0026，完整与 partial 解析均在所有层级拒绝 `__proto__` 键以及包含 `prototype` 的对象型 `constructor` 项，对齐参考输入拒绝行为。两条路径仍施加资源限制：最大嵌套深度（默认 128）与最大字节数（默认 64 MiB，供应商响应体另有 HTTP 层限制），超限返回 `JsonParseError` 或失败的 partial 解析。依据：`serde_json` 默认递归限制为 128，显式配置便于在配置文档中说明。
 
 ## 6. 示例
 
@@ -140,3 +142,7 @@ while let Some(partial) = partials.next().await {
 【决策】动态 JSON Schema 校验使用 `$schema` 声明的方言，仅在未声明时默认采用 draft-07。必须执行方言专属约束，不能将其作为未知关键字静默忽略。
 
 【决策】部分 JSON 修复跟踪对象键中的转义引号，并且只在 Unicode 标量完整时提交转义序列，包括代理对的两个部分。数值指数中的正号仍属于该数值，包括完整文档和截断前缀。前缀测试覆盖带符号指数、任意序列化键和显式 Unicode 转义，确保不完整的键和标量不会生成无效的修复 JSON。
+
+【决策】参考对齐（ADR 0026，2026-09-17）：两个生成入口在请求模型前校验数组边界。部分数组丢弃尚未完成的末尾元素，过滤非法完整元素并保留合法元素顺序；流式类型元素经过元素schema校验器。元素流在输出超过 `max_items` 的元素前失败。带schema的JSON仅在校验成功后提供typed partial，原始部分值仍可读取。来源：Vercel AI SDK `6c6c221` 的 `output.ts` 和 Ferrin output parity 回归。
+
+【决策】默认部分输出解析器跟踪调用的首个文本片段，仅在重试边界重置文本/ID，不在步骤边界重置。数组元素视图跨重试和步骤保留已输出数量；后续部分数组增长时跳过已输出前缀。最终结构化输出仍来自最后步骤。此行为取代此前按步骤重置；需要逐步解析时可使用 `full_stream`。来源：Vercel AI SDK `6c6c221` 的 `createOutputTransformStream` 和 `array().createElementStreamTransform`。

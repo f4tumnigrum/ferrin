@@ -23,6 +23,47 @@ fn parses_within_limits() {
 }
 
 #[test]
+fn prototype_properties_follow_reference_parsing_rules() {
+    for text in [
+        r#"{"__proto__":null}"#,
+        r#"[{"nested":{"\u005f_proto__":{}}}]"#,
+        r#"{"constructor":{"prototype":null}}"#,
+        r#"{"nested":[{"constructor":{"prototype":{}}}]}"#,
+    ] {
+        assert!(parse(text).is_err(), "{text}");
+        assert!(!is_parsable(text), "{text}");
+    }
+    let allowed = json!({
+        "constructor": {"name": "example"},
+        "prototype": {"constructor": null},
+        "children": [{"constructor": "ordinary"}]
+    });
+    assert_eq!(parse(&allowed.to_string()).unwrap(), allowed);
+}
+
+#[test]
+fn repaired_json_uses_the_same_property_checks() {
+    use ferrin_schema::partial_json::PartialParse;
+    use ferrin_schema::partial_json::PartialParseState;
+    use ferrin_schema::partial_json::parse_partial;
+
+    for text in [
+        r#"{"__proto__":{}}"#,
+        r#"{"__proto__":true,"#,
+        r#"{"constructor":{"prototype":{}"#,
+    ] {
+        assert_eq!(
+            parse_partial(text),
+            PartialParse {
+                value: None,
+                state: PartialParseState::FailedParse
+            },
+            "{text}"
+        );
+    }
+}
+
+#[test]
 fn enforces_size_and_depth_limits() {
     let limits = ParseLimits {
         max_depth: 2,

@@ -6,6 +6,8 @@
 
 ## 1. JSON 值
 
+【决策】完整与修复后的 JSON 解析均在所有嵌套层级拒绝 `__proto__` 键，以及包含 `prototype` 的对象型 `constructor` 项。虽然 Rust 映射没有 JavaScript 原型链，仍对齐参考 SDK 的输入边界（ADR 0026；参考 `packages/provider-utils/src/secure-json-parse.ts`）。两条解析路径均执行已有字节与深度限制；普通 `constructor` 和 `prototype` 键仍有效。
+
 【事实】供应商选项、供应商元数据与工具输入输出在供应商 API 中都是任意 JSON，SDK 需要一个 JSON 值类型贯穿规范层、核心层与适配器。
 
 【决策】Ferrin 直接使用 `serde_json::Value` 与 `serde_json::Map<String, Value>`，在 `ferrin_spec::json` 中提供类型别名 `JsonValue`、`JsonObject`。依据：自定义 JSON 类型会造成与 serde 生态的重复转换；`serde_json` 是事实标准。

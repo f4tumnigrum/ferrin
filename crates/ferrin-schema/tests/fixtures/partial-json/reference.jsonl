@@ -1,0 +1,60 @@
+{"input":"","expected":""}
+{"input":"nul","expected":"null"}
+{"input":"t","expected":"true"}
+{"input":"fals","expected":"false"}
+{"input":"12.","expected":"12"}
+{"input":"12.2","expected":"12.2"}
+{"input":"-12","expected":"-12"}
+{"input":"-","expected":""}
+{"input":"2.5e","expected":"2.5"}
+{"input":"2.5e-","expected":"2.5"}
+{"input":"2.5e3","expected":"2.5e3"}
+{"input":"-2.5e3","expected":"-2.5e3"}
+{"input":"2.5E","expected":"2.5"}
+{"input":"2.5E-","expected":"2.5"}
+{"input":"2.5E3","expected":"2.5E3"}
+{"input":"-2.5E3","expected":"-2.5E3"}
+{"input":"12.e","expected":"12"}
+{"input":"12.34e","expected":"12.34"}
+{"input":"5e","expected":"5"}
+{"input":"\"abc","expected":"\"abc\""}
+{"input":"\"value with \\\"quoted\\\" text and \\\\ escape","expected":"\"value with \\\"quoted\\\" text and \\\\ escape\""}
+{"input":"\"value with \\","expected":"\"value with \""}
+{"input":"\"\\u","expected":"\"\""}
+{"input":"\"\\u12","expected":"\"\""}
+{"input":"\"text \\u00","expected":"\"text \""}
+{"input":"{\"a\":\"\\u12","expected":"{\"a\":\"\"}"}
+{"input":"\"value with unicode <\"","expected":"\"value with unicode <\""}
+{"input":"[","expected":"[]"}
+{"input":"[[1], [2","expected":"[[1], [2]]"}
+{"input":"[[\"1\"], [\"2","expected":"[[\"1\"], [\"2\"]]"}
+{"input":"[[false], [nu","expected":"[[false], [null]]"}
+{"input":"[[[]], [[]","expected":"[[[]], [[]]]"}
+{"input":"[[{}], [{","expected":"[[{}], [{}]]"}
+{"input":"[1, ","expected":"[1]"}
+{"input":"[[], 123","expected":"[[], 123]"}
+{"input":"{\"key\":","expected":"{}"}
+{"input":"{\"a\": {\"b\": 1}, \"c\": {\"d\": 2","expected":"{\"a\": {\"b\": 1}, \"c\": {\"d\": 2}}"}
+{"input":"{\"a\": {\"b\": \"1\"}, \"c\": {\"d\": 2","expected":"{\"a\": {\"b\": \"1\"}, \"c\": {\"d\": 2}}"}
+{"input":"{\"a\": {\"b\": false}, \"c\": {\"d\": 2","expected":"{\"a\": {\"b\": false}, \"c\": {\"d\": 2}}"}
+{"input":"{\"a\": {\"b\": []}, \"c\": {\"d\": 2","expected":"{\"a\": {\"b\": []}, \"c\": {\"d\": 2}}"}
+{"input":"{\"a\": {\"b\": {}}, \"c\": {\"d\": 2","expected":"{\"a\": {\"b\": {}}, \"c\": {\"d\": 2}}"}
+{"input":"{\"ke","expected":"{}"}
+{"input":"{\"k1\": 1, \"k2","expected":"{\"k1\": 1}"}
+{"input":"{\"k1\": 1, \"k2\":","expected":"{\"k1\": 1}"}
+{"input":"{\"key\": \"value\"  ","expected":"{\"key\": \"value\"}"}
+{"input":"{\"a\": {\"b\": {}","expected":"{\"a\": {\"b\": {}}}"}
+{"input":"[1, [2, 3, [","expected":"[1, [2, 3, []]]"}
+{"input":"[false, [true, [","expected":"[false, [true, []]]"}
+{"input":"{\"key\": {\"subKey\":","expected":"{\"key\": {}}"}
+{"input":"{\"key\": 123, \"key2\": {\"subKey\":","expected":"{\"key\": 123, \"key2\": {}}"}
+{"input":"{\"key\": null, \"key2\": {\"subKey\":","expected":"{\"key\": null, \"key2\": {}}"}
+{"input":"{\"key\": [1, 2, {","expected":"{\"key\": [1, 2, {}]}"}
+{"input":"[1, 2, {\"key\": \"value\",","expected":"[1, 2, {\"key\": \"value\"}]"}
+{"input":"{\"a\": {\"b\": [\"c\", {\"d\": \"e\",","expected":"{\"a\": {\"b\": [\"c\", {\"d\": \"e\"}]}}"}
+{"input":"{\"a\": {\"b\": {\"c\": {\"d\":","expected":"{\"a\": {\"b\": {\"c\": {}}}}"}
+{"input":"{\"a\": 1, \"b\": [","expected":"{\"a\": 1, \"b\": []}"}
+{"input":"{\"a\": 1, \"b\": {","expected":"{\"a\": 1, \"b\": {}}"}
+{"input":"{\"a\": 1, \"b\": \"","expected":"{\"a\": 1, \"b\": \"\"}"}
+{"input":"{\n  \"a\": [\n    {\n      \"a1\": \"v1\",\n      \"a2\": \"v2\",\n      \"a3\": \"v3\"\n    }\n  ],\n  \"b\": [\n    {\n      \"b1\": \"n","expected":"{\n  \"a\": [\n    {\n      \"a1\": \"v1\",\n      \"a2\": \"v2\",\n      \"a3\": \"v3\"\n    }\n  ],\n  \"b\": [\n    {\n      \"b1\": \"n\"}]}"}
+{"input":"{\"type\":\"div\",\"children\":[{\"type\":\"Card\",\"props\":{}","expected":"{\"type\":\"div\",\"children\":[{\"type\":\"Card\",\"props\":{}}]}"}

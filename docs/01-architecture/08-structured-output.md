@@ -16,7 +16,7 @@ Structured output lives in `ferrin-core::output`; schemas and partial JSON repai
 | Choice (candidate list) | `json` with `{result: {enum: options}}` wrapper | Extract `result` | Return a candidate when the prefix is unambiguous |
 | Arbitrary JSON (optional schema) | `json` | Any JSON value | Repaired partial value |
 
-[Decision] Use only `generate_text(...).output(Output::object::<T>())`, without a separate `generate_object`. One path avoids duplicate APIs and generation loops with identical capabilities.
+[Decision] Use only `generate_text(...).output(Output::<T>::object())`, without a separate `generate_object`. One path avoids duplicate APIs and generation loops with identical capabilities.
 
 ```rust
 pub struct Output<T> { strategy: OutputStrategy, _marker: PhantomData<T> }
@@ -40,11 +40,13 @@ impl Output<JsonValue> { pub fn json() -> Self; pub fn json_with_schema(schema: 
 
 ## 3. Partial JSON repair
 
-[Decision] A state machine scans input with a stack of objects, arrays, strings, literals, and numbers. At truncation, it closes quotes/brackets and removes incomplete literals (such as `tru`) and trailing commas. Try parsing directly, then repair and parse, reporting success, repaired success, or failure. Stack-based repair handles nested streaming structures more reliably than regex replacement.
+[Decision] A state machine scans input with a stack of objects, arrays, strings, literals, and numbers. At truncation, it closes quotes/brackets, completes incomplete literals (such as `tru`), and removes trailing commas. Try parsing directly, then repair and parse, reporting success, repaired success, or failure. Stack-based repair handles nested streaming structures more reliably than regex replacement.
 
 [Decision] Port this state machine as `ferrin_schema::partial_json::repair(&str) -> Cow<str>` and `parse_partial(&str) -> PartialParse { value: Option<JsonValue>, state }`. Use `proptest` to verify that repaired prefixes of valid JSON are parseable prefix approximations of the original.
 
 [Fact] Implementation on 2026-09-13: `PartialParseState` has `SuccessfulParse`, `RepairedParse`, and `FailedParse`; empty input fails. `[-` repairs to `[]`, not invalid `[-]`. Property tests check every character-boundary prefix of random compact and pretty-printed JSON.
+
+[Decision] Reference parity (ADR 0026, 2026-09-17): `parse_optional(Option<&str>)` distinguishes absent input with `UndefinedInput`, while `parse_partial(&str)` retains its existing convenience signature. Empty input remains `FailedParse`, and the JSON literal `null` remains a successful value. The reference corpus records the 60 distinct inputs from Vercel AI SDK `6c6c221` `fix-json.test.ts`. Ferrin retains valid Unicode scalar values and JSON numbers: isolated UTF-16 surrogates and nonfinite values accepted by JavaScript's `JSON.parse` are not representable in `serde_json::Value`. The documented lone-minus, escaped-key, and surrogate-prefix repair improvements remain explicit differences.
 
 ## 4. Partial output streams
 
@@ -93,9 +95,9 @@ impl<T> Schema<T> {
 
 ### 5.3 JSON parsing security
 
-[Fact] JSON keys such as `__proto__`/`constructor.prototype` can cause prototype pollution in JavaScript. `serde_json` uses ordinary Rust maps, so Ferrin needs no prototype-pollution parsing step.
+[Fact] JSON keys such as `__proto__`/`constructor.prototype` can cause prototype pollution in JavaScript. `serde_json` uses ordinary Rust maps without prototype chains; this language difference does not determine the reference SDK's accepted-input contract (reference `packages/provider-utils/src/secure-json-parse.ts`).
 
-[Decision] `ferrin_schema::json::parse` instead enforces resource limits: default nesting depth 128 and maximum 64 MiB (HTTP separately limits provider bodies). Exceeding limits returns `JsonParseError`. An explicit depth matches `serde_json`'s default and makes configuration documented.
+[Decision] Under ADR 0026, complete and partial parsing reject `__proto__` keys and object-valued `constructor` entries containing `prototype` at any depth, matching reference input rejection. Both paths retain resource limits: default nesting depth 128 and maximum 64 MiB (HTTP separately limits provider bodies). Exceeding limits returns `JsonParseError` or a failed partial parse. An explicit depth matches `serde_json`'s default and makes configuration documented.
 
 ## 6. Example
 
@@ -140,3 +142,7 @@ while let Some(partial) = partials.next().await {
 [Decision] Dynamic JSON Schema validation selects the dialect declared by `$schema`; only schemas without a declaration default to draft-07. Dialect-specific constraints must be evaluated rather than silently treated as unknown keywords.
 
 [Decision] Partial JSON repair tracks escaped object-key quotes and commits a Unicode escape only after a complete scalar value, including both halves of a surrogate pair. Positive signs in number exponents remain part of the number, including complete documents and truncated prefixes. Prefix tests include signed exponents, arbitrary serialized keys and explicitly escaped Unicode so incomplete keys and scalar values cannot produce invalid repaired JSON.
+
+[Decision] Reference parity (ADR 0026, 2026-09-17): validate array bounds before either generation entry point makes a model request. Partial arrays discard an unfinished last element, filter invalid completed elements while retaining valid ones in order, and apply the element schema's validator to streamed typed elements. Element streams fail before publishing an element beyond `max_items`. Schema-constrained JSON exposes a typed partial only after validation; raw partial values remain available. Sources: Vercel AI SDK `6c6c221` `output.ts` and Ferrin output-parity regressions.
+
+[Decision] The default partial-output parser follows the first text part of the call, resetting its text/ID only at a retry boundary, not at a step boundary. Array element views keep their published-element count across retries and steps, suppressing an already-emitted prefix when later partial arrays grow. Final structured output still comes from the final step. This replaces the earlier per-step partial reset; applications needing per-step parsing can use `full_stream`. Source: `createOutputTransformStream` and `array().createElementStreamTransform` in Vercel AI SDK `6c6c221`.

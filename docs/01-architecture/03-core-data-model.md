@@ -10,6 +10,8 @@ This document defines types shared across crates. Specification types live in `f
 
 [Decision] Use `serde_json::Value` and `serde_json::Map<String, Value>` directly, aliased as `JsonValue` and `JsonObject` in `ferrin_spec::json`. Custom JSON types would cause redundant conversion with the serde ecosystem; `serde_json` is the de facto standard.
 
+[Decision] Complete and repaired JSON parsing reject object keys named `__proto__` and object-valued `constructor` entries containing `prototype`, at every nesting level. This matches the reference SDK's accepted-input boundary even though Rust maps have no JavaScript prototype chain (ADR 0026; reference `packages/provider-utils/src/secure-json-parse.ts`). Enforce the existing byte/depth limits in both parsing paths; ordinary `constructor` and `prototype` keys remain valid.
+
 [Decision] Enable `serde_json`'s `preserve_order` in `ferrin-spec`. Tool-definition and object-key order affect provider prompt cache hits (OpenAI and Anthropic key caches by request prefix), and fixture snapshots need stable ordering. Document in the facade that Cargo unification enables this feature downstream.
 
 ## 2. Identifiers

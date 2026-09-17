@@ -5,7 +5,17 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Provider-input schema parsing with object-field stripping and defaults while
+  retaining explicit additional-property rules and JSON resource limits.
+- Optional partial JSON input with an explicit undefined-input state and
+  reference repair-corpus coverage (ADR 0026).
+
 ### Changed
+
+- Apply reference prototype-property rejection and the same resource limits to
+  complete and repaired JSON parsing (ADR 0026).
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.
 
