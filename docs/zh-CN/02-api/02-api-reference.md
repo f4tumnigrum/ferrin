@@ -375,3 +375,25 @@ assert_eq!(result.text(), "hello");
 【事实】新增字段会影响下游 Rust 结构体字面量和精确枚举模式：`StepResult` 与 `StreamEvent::StartStep` 增加 `runtime_context` / `tools_context`，`ParsedToolCall`、`ToolResult`、`ToolExecutionError`、`ToolOutputDenied` 增加 `tool_metadata`；`ToolOutputDenied` 另增加 `provider_metadata`。准备步骤、审批、Agent 准备结果和生命周期事件也增加 `runtime_context`。手写字面量需显式提供新字段（未使用时填 `None`），`StartStep` 模式可使用 `..` 忽略无关字段；优先使用现有构建器/构造器。持久化结果中缺失的可选字段仍按 `None` 反序列化。来源：`crates/ferrin-core/src/generate_text/{step,prepare_step}.rs`、`stream_text/events.rs`、`agent/tool_loop_agent.rs` 与 `telemetry/events.rs`，2026-09-17。
 
 【决策】应用回调与结果可读取上下文；Telemetry 默认不导出这两类上下文。需要导出时分别设置 `TelemetryOptions::include_runtime_context` 和 `include_tools_context`，使用 `..Default::default()` 保留其余默认设置。新供应商 feature 为可选项，不会自动启用；上述源码变更尚未发布，不代表已经做出新的版本发布决定。
+
+### 参考行为对齐（ADR 0026）
+
+【事实】所有 `Telemetry` 生命周期回调改为返回 `BoxFuture<'a, ()>` 并被等待。实现从同步函数体迁移为 `Box::pin(async move { ... })`；集成回调并发完成并隔离 panic。`ToolExecutionContext` 增加 `record_outputs`，包装器记录结果内容前必须遵守该设置。来源：`ferrin-core/src/telemetry/{mod,dispatcher}.rs`、`ferrin-otel/src/telemetry.rs`。
+
+【事实】`embed`、`embed_many`、`rerank` 支持 `.runtime_context(...)`、`.on_start(...)`、`.on_end(...)`。这些 hooks 在分块重试之外，按逻辑操作触发一次；embedding 事件区分单值和多值输入/结果，空文档 rerank 成功时也触发两个事件。集成使用 `Telemetry::on_embed_operation_start/end` 和 `on_rerank_operation_start/end`，与应用 hooks 并发接收过滤后的副本。已有遥测请求尝试回调仍独立存在。来源：`ferrin-core/src/{modality_hooks,embed,rerank}.rs` 和 `telemetry/dispatcher/modalities.rs`。
+
+【事实】Embedding 分量和 `cosine_similarity` 改用 `f64`，保留参考实现的数值精度；现有 `Vec<f32>` 需要显式转换。`Instructions` 为非穷尽枚举，包含 `System(SystemMessage)` 和 `Messages(Vec<SystemMessage>)`；文本和系统消息向量优先使用 `.into()`。空指令数组保持为空，每条消息保留其 provider options。来源：`ferrin-spec/src/embedding_model.rs`、`ferrin-core/src/{embed,prompt/standardize}.rs`。
+
+【事实】`PrepareStepContext::model` 改为配置的模型实例，需要身份信息时调用 `provider()` / `model_id()`。准备阶段可读取初始指令和 sandbox；sandbox 覆盖仅影响当前步骤。Agent 的 `.call_options_schema(schema)` 在 `prepare_call` 前验证并归一化序列化选项，仅使用此方法时要求选项可序列化。`PreparedCall` 也支持审批设置、工具 caller、修复和细化回调、步骤准备与下载器。来源：`ferrin-core/src/agent/{options,prepare_call,tool_loop_agent}.rs`、`generate_text/prepare_step.rs`。
+
+【决策】生命周期 hooks 并发完成并隔离同步及异步 panic；不要用回调注册顺序协调副作用。显式调用 timeout 覆盖 Agent 准备结果中的 timeout。修订后的顺序约定见 [Agent](../01-architecture/09-agent.md)。
+
+【事实】`StreamTextResult::final_result()` 和 `split()` 返回的 completion 自行驱动管线。`full_stream`、`text_view`、`partial_output_view`、`element_view` 从当前游标创建独立视图；落后视图的事件保持缓冲，直到消费或丢弃。`into_shared_completion()` 返回可克隆的等待器，共享最终分配，不要求输出实现 `Clone`。最后一个所有者被丢弃时取消未完成工作。来源：`ferrin-core/src/stream_text/result.rs` 与 `result/tee.rs`。
+
+【事实】`GenerateTextResult::warnings()` 返回所有步骤的警告引用，usage 也汇总所有步骤。`RerankResult::original_documents` 保留原始文档。`RequestBody::to_bytes()` 和 multipart `encode()` 改为返回 `Result`；`into_stream()` 保留一次性流所有权。来源：`ferrin-core/src/{generate_text/result,rerank}.rs`、`ferrin-provider-util/src/http/{request_body,multipart}.rs`。
+
+【决策】OpenAI 和兼容适配器保留传入的 JSON schema，不再自动执行 `OpenAiStrict`。需要该转换时，在传入 schema 前显式执行。供应商工具工厂使用参考输入 schema，应用对象默认值并移除未声明字段；`Schema::from_json_schema` 仍只做验证。参见 [OpenAI](../providers/openai.md) 与 [OpenAI-compatible](../providers/openai-compatible.md)。
+
+【事实】Policy 默认输入改为 `{tool: {name}, args, messages, runtimeContext}`。Shadow 观察模式允许执行，并将原始决策传给观察回调；异步观察器使用 `.on_decision(...)`，同步观察器使用 `.on_decision_sync(...)`，关闭前需要完成观察时调用 `flush_decisions().await`。来源：`ferrin-policy/src/{approval,decision,shadow}.rs`。
+
+【事实】MCP 多轮工具输入和取消通知改为默认关闭；需要保留这些扩展时，显式设置 `McpClientConfig::max_input_rounds` 与 `send_cancel_notifications`。`initialization_timeout` 覆盖传输启动、发现和初始化。OAuth 回调通过 `AuthOptions::callback_state` / `callback_issuer` 接收参数；供应商可用新增存储 hooks 持久化 state 和授权服务器信息。令牌和客户端的过期及签发数值改用 `f64`，授权资源为可选项，存储凭据包含可选 `OAuthAuthorizationServerInformation`。已有未绑定令牌使用前会失效。来源：`ferrin-mcp/src/client/mod.rs`、`oauth/{auth,flow,provider,types}.rs`；剩余差异见 [MCP](../01-architecture/15-mcp.md)。

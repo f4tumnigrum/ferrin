@@ -897,7 +897,9 @@ dependencies = [
  "bytes",
  "chrono",
  "criterion",
+ "ferrin-core",
  "ferrin-provider-util",
+ "ferrin-schema",
  "ferrin-spec",
  "ferrin-testing",
  "ferrin-tool",
@@ -977,7 +979,6 @@ dependencies = [
  "chrono",
  "criterion",
  "ferrin-provider-util",
- "ferrin-schema",
  "ferrin-spec",
  "ferrin-testing",
  "ferrin-tool",
@@ -1003,7 +1004,6 @@ dependencies = [
  "bytes",
  "chrono",
  "ferrin-provider-util",
- "ferrin-schema",
  "ferrin-spec",
  "ferrin-testing",
  "http",
@@ -1040,6 +1040,7 @@ name = "ferrin-policy"
 version = "0.1.2"
 dependencies = [
  "bytes",
+ "chrono",
  "ferrin-core",
  "ferrin-message",
  "ferrin-provider-util",
