@@ -14,7 +14,8 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
   are implemented (first complete build: 2026-09-14). The original 15 crates
   were first published as 0.1.0 on 2026-09-14; `ferrin-policy` is new in
   0.1.2. The current workspace version is 0.2.0, with dated changelog sections
-  for 2026-09-18 and publication verification tracked in the release document.
+  for 2026-09-18. All eighteen 0.2.0 crates are published and their docs.rs
+  builds passed; verification is recorded in the release document.
   This breaking release includes capability completion and reference parity fixes;
   `docs/05-appendix/03-reference-parity.md` records remaining differences. Version 0.1.1 retained
   breaking schema API changes by explicit exception (ADR 0019).

@@ -12,7 +12,7 @@
 
 Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI and OpenAI-compatible endpoints, Azure OpenAI and Voyage.
 
-This checkout prepares version 0.2.0, with [release notes dated 2026-09-18](CHANGELOG.md#020---2026-09-18). This is a breaking upgrade from 0.1.2: review the [migration guide](docs/02-api/02-api-reference.md#migrating-from-012-to-020) before updating. Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#11-release-020-2026-09-18).
+This checkout contains version 0.2.0, with [release notes dated 2026-09-18](CHANGELOG.md#020---2026-09-18). This is a breaking upgrade from 0.1.2: review the [migration guide](docs/02-api/02-api-reference.md#migrating-from-012-to-020) before updating. All eighteen crates and their docs.rs builds are verified in the [release record](docs/03-engineering/06-versioning-and-release.md#11-release-020-2026-09-18).
 
 Version 0.2.0 adds Azure OpenAI (`azure`) and Voyage reranking (`voyage`), Google Interactions and Live audio, provider-tool roundtrips, persistent Agent runtime context, independent stream views and awaited telemetry callbacks. The [module review](docs/05-appendix/03-reference-parity.md) records validated fixes and remaining differences from the reference AI SDK; complete parity is not claimed.
 
@@ -32,7 +32,7 @@ Version 0.2.0 adds Azure OpenAI (`azure`) and Voyage reranking (`voyage`), Googl
 
 ## Quick start
 
-Requires Rust 1.98 or later. The crates.io dependency below selects an available 0.1 release; the git dependency follows the repository checkout.
+Requires Rust 1.98 or later. The crates.io dependency below selects a 0.2 release; the git dependency follows the repository checkout.
 
 ```toml
 [dependencies]

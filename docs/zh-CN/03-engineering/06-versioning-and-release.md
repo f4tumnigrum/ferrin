@@ -105,3 +105,7 @@
 【事实】此前实现的 CI 发现 Google Live 背压 fixture 在 Linux 上存在时序假设。发布版本的 fixture 在推进虚拟时间前一次刷出两帧转录数据，两项定向背压回归本地通过，跨平台发布 CI 将重新检查；未增加重试或 sleep。
 
 【决策】发布包含已实现修复，不宣称完整参考对齐。已知剩余约定和 PV-031 保留在逐模块核查与待验证附录。现有提案 ADR 保留评审状态；发布实现不代表所有提议的对齐工作已完成。
+
+【事实】[发布运行 35298635799](https://github.com/f4tumnigrum/ferrin/actions/runs/35298635799) 已在提交 `eb479ec08d0af3fe03eaf7457210b15d9bd94882` 的 `v0.2.0` 标签上成功完成。[PR 1](https://github.com/f4tumnigrum/ferrin/pull/1) 通过 CI、SemVer、覆盖率、CodeQL 和 typos，其代码树与发布提交一致。发布提交的[主分支 CI 35298591040](https://github.com/f4tumnigrum/ferrin/actions/runs/35298591040) 也通过全部十四个作业，包括 Linux/macOS/Windows 测试和十八个 crate 的打包验证。
+
+【事实】crates.io 官方版本端点确认全部十八个 0.2.0 版本已上架且未 yank，所有 docs.rs `/crate/<name>/0.2.0/status.json` 端点均返回 `doc_status: true`（2026-09-18，Asia/Shanghai 验证）。[GitHub Release](https://github.com/f4tumnigrum/ferrin/releases/tag/v0.2.0) 发布于 `2026-09-18T02:21:12Z`（本地 10:21），附带根变更日志。Azure 和 Voyage 已首次发布。

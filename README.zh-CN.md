@@ -12,7 +12,7 @@
 
 Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和 OpenAI 兼容端点、Azure OpenAI 和 Voyage。
 
-当前检出准备 0.2.0，[发布说明日期为 2026-09-18](CHANGELOG.md#020---2026-09-18)。相较 0.1.2，这是一次破坏性升级，更新前请阅读[迁移指南](docs/zh-CN/02-api/02-api-reference.md#从-012-迁移到-020)。注册表发布结果单独记录于[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#11-020-发布2026-09-18)。
+当前检出包含 0.2.0，[发布说明日期为 2026-09-18](CHANGELOG.md#020---2026-09-18)。相较 0.1.2，这是一次破坏性升级，更新前请阅读[迁移指南](docs/zh-CN/02-api/02-api-reference.md#从-012-迁移到-020)。全部十八个 crate 及其 docs.rs 构建已验证，详见[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#11-020-发布2026-09-18)。
 
 0.2.0 新增 Azure OpenAI（`azure`）、Voyage 重排（`voyage`）、Google Interactions 与 Live 音频、供应商工具往返流程、Agent 持续运行上下文、独立流视图和可等待的遥测回调。[逐模块核查](docs/zh-CN/05-appendix/03-reference-parity.md) 记录已验证修复及参考 AI SDK 的剩余差异，不宣称完全对齐。
 
@@ -32,7 +32,7 @@ Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大�
 
 ## 快速开始
 
-需要 Rust 1.98 及以上。下方 crates.io 依赖选择可用的 0.1 版本；git 依赖跟随仓库检出版本。
+需要 Rust 1.98 及以上。下方 crates.io 依赖选择 0.2 版本；git 依赖跟随仓库检出版本。
 
 ```toml
 [dependencies]
