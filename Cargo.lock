@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "example-agent"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -695,7 +695,7 @@ dependencies = [
 
 [[package]]
 name = "example-generate-text"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "example-mcp"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "example-otel"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "example-stream-sse-server"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -742,7 +742,7 @@ dependencies = [
 
 [[package]]
 name = "example-structured-output"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "example-tool-approval"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ferrin",
@@ -777,7 +777,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "ferrin"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "ferrin-anthropic",
@@ -810,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-anthropic"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -835,7 +835,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-azure"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "ferrin-openai",
  "ferrin-provider-util",
@@ -854,7 +854,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-google"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -920,7 +920,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-macros"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -929,7 +929,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-mcp"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -956,7 +956,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-message"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-openai"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -998,7 +998,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-openai-compatible"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -1019,7 +1019,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-otel"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "ferrin-core",
  "ferrin-spec",
@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-policy"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -1060,7 +1060,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-provider-util"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -1087,7 +1087,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-schema"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "ferrin-spec",
@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-spec"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -1122,7 +1122,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-testing"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "ferrin-provider-util",
@@ -1142,7 +1142,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-tool"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -1165,7 +1165,7 @@ dependencies = [
 
 [[package]]
 name = "ferrin-voyage"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "ferrin-core",
  "ferrin-provider-util",
@@ -4121,7 +4121,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
 name = "xtask"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "cargo_metadata",

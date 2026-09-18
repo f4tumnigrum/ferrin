@@ -10,11 +10,11 @@
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#license)
 
-Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI and OpenAI-compatible endpoints; this checkout also includes unreleased Azure OpenAI and Voyage adapters.
+Ferrin is an AI SDK for Rust. It provides a provider-independent interface for text generation, streaming, tools with approval, agent loops, structured output, and other modalities including embeddings, images, speech, transcription, reranking, and video. It includes an MCP client and OpenTelemetry export. First-party adapters cover OpenAI, Anthropic, Google Generative AI and OpenAI-compatible endpoints, Azure OpenAI and Voyage.
 
-This checkout contains the 0.1.2 release, with [release notes dated 2026-09-16](CHANGELOG.md#012---2026-09-16). It adds model middleware and policy-based tool approval, including execution-boundary and diagnostic safeguards. The schema API migration introduced in 0.1.1 still applies to callers upgrading from 0.1.0; see [ADR 0019](docs/04-decisions/2026-09-15-0019-fallible-schema-transforms.md). Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#10-release-012-2026-09-16).
+This checkout prepares version 0.2.0, with [release notes dated 2026-09-18](CHANGELOG.md#020---2026-09-18). This is a breaking upgrade from 0.1.2: review the [migration guide](docs/02-api/02-api-reference.md#migrating-from-012-to-020) before updating. Registry publication is tracked separately in the [release record](docs/03-engineering/06-versioning-and-release.md#11-release-020-2026-09-18).
 
-Unreleased development adds Azure OpenAI (`azure`) and Voyage reranking (`voyage`), Google Interactions and Live audio, complete provider-tool roundtrips, and persistent Agent runtime context. These changes are not part of the published 0.1.2 release. See [Azure](docs/providers/azure.md), [Voyage](docs/providers/voyage.md) and the [changelog](CHANGELOG.md). Existing callers should review the [migration notes](docs/02-api/02-api-reference.md#migrating-from-012-to-unreleased-development) for persistent step overrides and new public fields.
+Version 0.2.0 adds Azure OpenAI (`azure`) and Voyage reranking (`voyage`), Google Interactions and Live audio, provider-tool roundtrips, persistent Agent runtime context, independent stream views and awaited telemetry callbacks. The [module review](docs/05-appendix/03-reference-parity.md) records validated fixes and remaining differences from the reference AI SDK; complete parity is not claimed.
 
 ## Features
 
@@ -36,7 +36,7 @@ Requires Rust 1.98 or later. The crates.io dependency below selects an available
 
 ```toml
 [dependencies]
-ferrin = { version = "0.1", features = ["openai"] }
+ferrin = { version = "0.2", features = ["openai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -250,10 +250,10 @@ match generate_text(openai.responses("gpt-5")).prompt("hi").await {
 | Anthropic | `ferrin-anthropic` / `anthropic` | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | Messages (tools, structured output, extended thinking, citations), file uploads, skills, batches |
 | Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`, Interactions, embeddings, images, speech, transcription, streaming speech translation, video, files, batches, Live API sessions |
 | OpenAI-compatible endpoints | `ferrin-openai-compatible` / `openai-compatible` | Configured in settings | Chat Completions, Completions, embeddings, images |
-| Azure OpenAI (unreleased) | `ferrin-azure` / `azure` | `AZURE_API_KEY`, `AZURE_RESOURCE_NAME` | Responses, Chat Completions, Completions, embeddings, images, speech, non-streaming transcription; API-key or Entra authentication |
-| Voyage (unreleased) | `ferrin-voyage` / `voyage` | `VOYAGE_API_KEY` | Reranking of text and JSON documents |
+| Azure OpenAI (new in 0.2.0) | `ferrin-azure` / `azure` | `AZURE_API_KEY`, `AZURE_RESOURCE_NAME` | Responses, Chat Completions, Completions, embeddings, images, speech, non-streaming transcription; API-key or Entra authentication |
+| Voyage (new in 0.2.0) | `ferrin-voyage` / `voyage` | `VOYAGE_API_KEY` | Reranking of text and JSON documents |
 
-This table describes the checkout; Google Interactions and Live streaming transcription/translation are unreleased additions. Full capability matrices, settings, and provider options are in `docs/providers/`: [OpenAI](docs/providers/openai.md), [Anthropic](docs/providers/anthropic.md), [Google](docs/providers/google.md), [OpenAI-compatible endpoints](docs/providers/openai-compatible.md), [Azure OpenAI](docs/providers/azure.md), and [Voyage](docs/providers/voyage.md). To build an adapter, see the [Provider implementation guide](docs/01-architecture/17-provider-implementation-guide.md).
+This table describes version 0.2.0, including Google Interactions and Live streaming transcription/translation. Full capability matrices, settings, and provider options are in `docs/providers/`: [OpenAI](docs/providers/openai.md), [Anthropic](docs/providers/anthropic.md), [Google](docs/providers/google.md), [OpenAI-compatible endpoints](docs/providers/openai-compatible.md), [Azure OpenAI](docs/providers/azure.md), and [Voyage](docs/providers/voyage.md). To build an adapter, see the [Provider implementation guide](docs/01-architecture/17-provider-implementation-guide.md).
 
 ## Cargo features
 
@@ -319,7 +319,7 @@ Layering rules: `ferrin-spec` depends on no other Ferrin crate; provider crates 
 
 ## Project status
 
-- The workspace contains 18 crates, `xtask`, and seven examples. The original 16 crates are published at version 0.1.2 (`ferrin-policy` was first published in 0.1.2); Azure and Voyage are unreleased. Version 0.1.0 of the original 15 crates was published to [crates.io](https://crates.io/crates/ferrin) on 2026-09-14 (tag `v0.1.0`); API documentation is on [docs.rs](https://docs.rs/ferrin).
+- The workspace contains 18 crates, `xtask`, and seven examples, coordinated at version 0.2.0. Azure and Voyage join this release for the first time. Publication verification is recorded in the [release record](docs/03-engineering/06-versioning-and-release.md#11-release-020-2026-09-18); API documentation is on [docs.rs](https://docs.rs/ferrin).
 - The local 2026-09-16 run passed 810 tests and skipped 10 live tests requiring real credentials. All 14 cross-platform CI jobs, coverage and CodeQL passed for the release commit; all 16 docs.rs builds succeeded. See the release record.
 - Live endpoint verification: all seven examples and all live tests passed against a third-party OpenAI-compatible endpoint. Official OpenAI, Anthropic, Google, Azure and Voyage services have not been verified with real credentials. Four Responses fixtures were recorded through a third-party proxy on 2026-09-17; remaining fixtures are handwritten (pending item PV-031).
 - Of 32 pending-verification items in the design documents, 31 are closed. See [Pending verification](docs/05-appendix/02-pending-verification.md).

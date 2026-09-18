@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
 - Optional `azure` and `voyage` provider features and reexports. The `realtime`
@@ -14,6 +16,9 @@ All notable changes to this crate are documented here. The format follows
 
 ### Changed
 
+- **Breaking:** re-export the 0.2.0 core contracts, including `f64` embeddings,
+  instruction arrays, independently consumed streams and asynchronous telemetry.
+  See the workspace migration guide and ADR 0026.
 - **Breaking:** core event/result struct literals require the new context and
   tool-metadata fields; step state overrides persist across later steps.
 

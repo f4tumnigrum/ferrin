@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
 - General Interactions language models with structured/multimodal output,
@@ -21,6 +23,8 @@ All notable changes to this crate are documented here. The format follows
 
 ### Fixed
 
+- Batch the backpressure fixture's WebSocket frames before advancing its clock,
+  so completion tests cover buffered output without depending on network timing.
 - Ignore normalized Realtime events without a Live API equivalent, preserving
   automatic tool-response continuation; retain JSON tool output values directly
   and replace invalid JSON with an empty object (ADR 0026).

@@ -263,7 +263,7 @@ let speech = ferrin::generate_speech(openai.speech("gpt-4o-mini-tts"), "Hello fr
 let transcript = ferrin::transcribe(openai.transcription("gpt-4o-transcribe"), audio /* Bytes or Url */)
     .await?;
 
-// feature `voyage` (unreleased)
+// feature `voyage` (since 0.2.0)
 let voyage = ferrin::voyage::create_voyage(Default::default())?;
 let ranked = ferrin::rerank(voyage.reranking("rerank-2.5"), "rust async", documents)
     .top_n(3)
@@ -364,17 +364,17 @@ assert_eq!(result.text(), "hello");
 
 【决策】`Tool::into_builder()` 保留现有工具的完整定义和回调，并以 `ToolBuilder<JsonValue>` 重新开放配置；可给供应商定义的本地工具工厂附加 `.execute(...)`。解析调用及各类工具结果带有从当前定义复制的可选 `tool_metadata`。供应商路由元数据也会通过本地执行，传播到响应消息的供应商参数。
 
-## 未发布供应商扩展（2026-09-17）
+## 0.2.0 供应商扩展（2026-09-18）
 
 【事实】门面通过 `azure` feature 导出 `ferrin::azure`，通过 `voyage` 导出 `ferrin::voyage`；详见 [Azure](../providers/azure.md) 与 [Voyage](../providers/voyage.md)。`realtime` 同时为已启用的 OpenAI/Google 供应商开启流式音频，不会自行启用供应商。来源：`crates/ferrin/Cargo.toml`。
 
-## 从 0.1.2 迁移到未发布开发版本
+## 从 0.1.2 迁移到 0.2.0
 
 【决策】[ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) 的状态延续改变 `prepare_step` 的行为：消息、指令和两类上下文覆盖持续到后续步骤；模型、工具选择和采样覆盖仍仅影响当前步骤。只需覆盖一次的提示压缩不必重复执行。需要恢复旧行为的回调应在下一步显式恢复原始指令或上下文；恢复完整消息时使用 `initial_messages` 加 `response_messages`。
 
 【事实】新增字段会影响下游 Rust 结构体字面量和精确枚举模式：`StepResult` 与 `StreamEvent::StartStep` 增加 `runtime_context` / `tools_context`，`ParsedToolCall`、`ToolResult`、`ToolExecutionError`、`ToolOutputDenied` 增加 `tool_metadata`；`ToolOutputDenied` 另增加 `provider_metadata`。准备步骤、审批、Agent 准备结果和生命周期事件也增加 `runtime_context`。手写字面量需显式提供新字段（未使用时填 `None`），`StartStep` 模式可使用 `..` 忽略无关字段；优先使用现有构建器/构造器。持久化结果中缺失的可选字段仍按 `None` 反序列化。来源：`crates/ferrin-core/src/generate_text/{step,prepare_step}.rs`、`stream_text/events.rs`、`agent/tool_loop_agent.rs` 与 `telemetry/events.rs`，2026-09-17。
 
-【决策】应用回调与结果可读取上下文；Telemetry 默认不导出这两类上下文。需要导出时分别设置 `TelemetryOptions::include_runtime_context` 和 `include_tools_context`，使用 `..Default::default()` 保留其余默认设置。新供应商 feature 为可选项，不会自动启用；上述源码变更尚未发布，不代表已经做出新的版本发布决定。
+【决策】应用回调与结果可读取上下文；Telemetry 默认不导出这两类上下文。需要导出时分别设置 `TelemetryOptions::include_runtime_context` 和 `include_tools_context`，使用 `..Default::default()` 保留其余默认设置。新供应商 feature 为可选项，不会自动启用；上述破坏性变更纳入统一的 0.2.0 发布；实际发布验证见发布记录。
 
 ### 参考行为对齐（ADR 0026）
 

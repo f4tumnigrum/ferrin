@@ -4,6 +4,8 @@ All notable changes to this crate are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
 - Voyage reranking provider with lazy credentials, configurable transport,

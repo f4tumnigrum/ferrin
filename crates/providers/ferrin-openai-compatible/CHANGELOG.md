@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Fixed
 
 - Forward supplied function and structured-output schemas unchanged; retain

@@ -11,6 +11,7 @@ use futures_util::SinkExt;
 use futures_util::StreamExt;
 use secrecy::SecretString;
 use serde_json::json;
+use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 
@@ -113,8 +114,14 @@ async fn backpressure_does_not_discard_buffered_transcripts_after_quiet_deadline
         let mut socket = server.accept().await;
         read(&mut socket).await;
         acknowledge_and_drain(&mut socket).await;
-        send(&mut socket, json!({"inputTranscription":{"text":"hello "}})).await;
-        send(&mut socket,json!({"inputTranscription":{"text":"world"},"serverContent":{"interactionStatus":"IDLE"}})).await;
+        // Flush both frames together so the test advances time only after
+        // provider output is buffered, not between separate network writes.
+        for value in [
+            json!({"inputTranscription":{"text":"hello "}}),
+            json!({"inputTranscription":{"text":"world"},"serverContent":{"interactionStatus":"IDLE"}}),
+        ] {
+            socket.feed(Message::text(value.to_string())).await.unwrap();
+        }
         socket.flush().await.unwrap();
         buffered.send(()).unwrap();
         wait_done.await.unwrap();
@@ -140,7 +147,10 @@ async fn backpressure_does_not_discard_buffered_transcripts_after_quiet_deadline
         tokio::time::pause();
         tokio::time::advance(Duration::from_secs(2)).await;
         let parts = stream.collect::<Vec<_>>().await;
-        assert!(matches!(parts.last(),Some(Transcript::Finish{text,..}) if text=="hello world"));
+        assert!(
+            matches!(parts.last(),Some(Transcript::Finish{text,..}) if text=="hello world"),
+            "{parts:?}"
+        );
         done.send(()).unwrap();
     };
     tokio::join!(serve, collect);

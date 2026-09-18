@@ -6,8 +6,20 @@ lists releases and cross-crate changes. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
+This is a breaking release across all 18 crates. Follow the
+[0.1.2 to 0.2.0 migration guide](docs/02-api/02-api-reference.md#migrating-from-012-to-020).
+The [reference review](docs/05-appendix/03-reference-parity.md) records remaining
+differences; this release does not claim complete AI SDK parity. Live provider
+verification remains limited by PV-031.
+
 ### Added
 
+- Independent full/text/partial/element stream views, agent call-options schemas,
+  and embedding/reranking operation hooks with runtime context and telemetry.
+- Streaming HTTP and multipart uploads, reference provider-tool schema parsing,
+  and OAuth authorization-server credential binding and state/issuer validation.
 - Azure OpenAI and Voyage reranking providers, Google Interactions and Live
   transcription/translation, and optional facade provider features (ADRs 0023, 0025).
 - Independent Agent runtime context, persistent message/instruction/tool context,
@@ -18,12 +30,24 @@ lists releases and cross-crate changes. The format follows
 
 ### Changed
 
+- Coordinate workspace crates and versioned internal dependencies at 0.2.0.
+- **Breaking:** embeddings use `f64`; `Instructions` is an enum; step preparation
+  exposes the model instance; telemetry callbacks return `BoxFuture`; streaming
+  completion actively drives the pipeline; usage and warnings aggregate steps.
+- **Breaking:** OpenAI adapters preserve supplied schemas without implicit strict
+  transformation; tools select context by name; policy input/shadow behavior and
+  MCP protocol defaults follow the documented reference contracts. Request-body
+  materialization now returns `Result`.
 - **Breaking:** new fields on public core/tool event structs and OpenAI configuration
   require Rust struct literals to be updated; new serialized fields default when
   reading older JSON. Step message/instruction/context overrides now persist.
 
 ### Fixed
 
+- Align provider options, resource paths, usage, tool schemas, Google Interactions
+  and Realtime, Azure authorization precedence and Voyage reranking behavior.
+- Correct callback ordering, metadata propagation, partial output, cancellation,
+  retry boundaries, JSON parsing and standalone feature dependency declarations.
 - Complete OpenAI advanced provider-tool mapping/replay and OpenAI/Anthropic
   caller/deferred factory bindings (ADR 0022).
 

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
 - Azure OpenAI model factories with v1 and legacy deployment routing, lazy API

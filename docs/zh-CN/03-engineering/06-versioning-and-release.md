@@ -95,3 +95,13 @@
 【事实】[发布运行 35033192744](https://github.com/f4tumnigrum/ferrin/actions/runs/35033192744) 已在提交 `7f950ad` 的 `v0.1.2` 标签上成功完成；该提交的 [CI run 35032650222](https://github.com/f4tumnigrum/ferrin/actions/runs/35032650222) 全部 14 个作业、覆盖率与 CodeQL 检查均通过。crates.io 官方版本 API 确认全部 16 个 0.1.2 版本已上架且未 yank，16 个 docs.rs `status.json` 端点均返回 `doc_status: true`（2026-09-16，Asia/Shanghai 验证）。[GitHub Release](https://github.com/f4tumnigrum/ferrin/releases/tag/v0.1.2) 发布于 `2026-09-15T22:58:43Z`，本地日期为 2026-09-16。
 
 【事实】本机 `just check-all` 通过：810 个测试通过，跳过 10 个需要凭据的在线测试；doctest、API 快照、依赖审计和 61 种 feature 组合均通过。公共 API 有变更的已有 crate（`ferrin-core`、`ferrin`）相对 `v0.1.1` 的 Semver 检查分别通过 196 项适用检查；首次发布的策略 crate 没有旧基线。Windows CI 关闭了托管 `windows-2025` 运行器的 PV-032，PV-031 仍待验证。
+
+## 11. 0.2.0 发布（2026-09-18）
+
+【决策】维护者于 2026-09-18 授权推送并发布已完成改动。规范、core、遥测、schema 和 policy 包含破坏性变更，因此十八个 crate 统一使用 0.2.0，Azure 和 Voyage 首次发布。[迁移指南](../02-api/02-api-reference.md#从-012-迁移到-020) 说明升级方法，本次不采用兼容补丁版本例外。
+
+【事实】发布准备更新工作区清单、内部依赖版本、锁文件、全部 crate 变更日志与双语文档。本地 0.2.0 验证通过 1115 项测试（跳过 10 项 live 测试）、全部 68 项 feature 构建、格式、Clippy、doctest、rustdoc、API 快照、docs-lint、typos 与依赖审计。发布提交仍需 CI、打包验证以及注册表和 docs.rs 验证。来源：发布文件与[逐模块核查](../05-appendix/03-reference-parity.md)。
+
+【事实】此前实现的 CI 发现 Google Live 背压 fixture 在 Linux 上存在时序假设。发布版本的 fixture 在推进虚拟时间前一次刷出两帧转录数据，两项定向背压回归本地通过，跨平台发布 CI 将重新检查；未增加重试或 sleep。
+
+【决策】发布包含已实现修复，不宣称完整参考对齐。已知剩余约定和 PV-031 保留在逐模块核查与待验证附录。现有提案 ADR 保留评审状态；发布实现不代表所有提议的对齐工作已完成。
