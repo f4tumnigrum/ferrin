@@ -9,12 +9,14 @@ It is an operational digest of `docs/03-engineering/`; when the two disagree,
 - Ferrin is an AI SDK for Rust applications: text generation, streaming, tools
   with approval, agents, structured output, an MCP client, and the embedding,
   image, speech, transcription, reranking and video modalities.
-- The workspace now has 18 crates, including the unreleased Azure OpenAI and
+- The workspace now has 18 crates, including the Azure OpenAI and
   Voyage adapters (ADR 0025). The original 16 crates, the `xtask` commands and the seven examples
   are implemented (first complete build: 2026-09-14). The original 15 crates
   were first published as 0.1.0 on 2026-09-14; `ferrin-policy` is new in
-  0.1.2. The current workspace version is 0.1.2, with dated changelog sections
-  for 2026-09-16 and fixture recording and capability-completion work under `Unreleased`. Version 0.1.1 retained
+  0.1.2. The current workspace version is 0.2.0, with dated changelog sections
+  for 2026-09-18 and publication verification tracked in the release document.
+  This breaking release includes capability completion and reference parity fixes;
+  `docs/05-appendix/03-reference-parity.md` records remaining differences. Version 0.1.1 retained
   breaking schema API changes by explicit exception (ADR 0019).
   All 16 crates were published as 0.1.2 on 2026-09-16 (Asia/Shanghai); detailed
   publication verification is recorded in the release document. Work in dependency order (`cargo xtask publish-order`): `ferrin-spec` →

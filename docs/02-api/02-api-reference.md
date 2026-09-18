@@ -263,7 +263,7 @@ let speech = ferrin::generate_speech(openai.speech("gpt-4o-mini-tts"), "Hello fr
 let transcript = ferrin::transcribe(openai.transcription("gpt-4o-transcribe"), audio /* Bytes or Url */)
     .await?;
 
-// feature `voyage` (unreleased)
+// feature `voyage` (since 0.2.0)
 let voyage = ferrin::voyage::create_voyage(Default::default())?;
 let ranked = ferrin::rerank(voyage.reranking("rerank-2.5"), "rust async", documents)
     .top_n(3)
@@ -364,17 +364,17 @@ assert_eq!(result.text(), "hello");
 
 [Decision] `Tool::into_builder()` preserves an existing tool's complete definition and callbacks while reopening it as `ToolBuilder<JsonValue>`; use it to attach `.execute(...)` to a provider-defined local tool factory. Parsed calls and all tool outcomes carry optional `tool_metadata` copied from the current definition. Provider routing metadata also survives local execution into response-message provider options.
 
-## Unreleased provider additions (2026-09-17)
+## Provider additions in 0.2.0 (2026-09-18)
 
 [Fact] The facade exports `ferrin::azure` with feature `azure` and `ferrin::voyage` with feature `voyage`; see [Azure](../providers/azure.md) and [Voyage](../providers/voyage.md). The `realtime` feature also enables streaming audio on enabled OpenAI/Google provider dependencies, without enabling either provider by itself. Source: `crates/ferrin/Cargo.toml`.
 
-## Migrating from 0.1.2 to unreleased development
+## Migrating from 0.1.2 to 0.2.0
 
 [Decision] State persistence in [ADR 0021](../04-decisions/2026-09-17-0021-agent-runtime-context.md) changes `prepare_step`: message, instruction and both context overrides continue into later steps; model, tool selection and sampling overrides still apply to one step. Prompt compression needs only one replacement. Callbacks requiring the previous behavior must explicitly restore the original instructions or context on the next step; reconstruct the full message history from `initial_messages` plus `response_messages`.
 
 [Fact] Added fields affect downstream Rust struct literals and exact enum patterns: `StepResult` and `StreamEvent::StartStep` gain `runtime_context` / `tools_context`; `ParsedToolCall`, `ToolResult`, `ToolExecutionError` and `ToolOutputDenied` gain `tool_metadata`; `ToolOutputDenied` also gains `provider_metadata`. Step preparation, approval, prepared agent calls and lifecycle events gain `runtime_context`. Supply new fields explicitly (`None` when unused), use `..` in `StartStep` patterns where the fields are irrelevant, and prefer existing builders/constructors. Persisted results lacking the optional fields still deserialize them as `None`. Sources: `crates/ferrin-core/src/generate_text/{step,prepare_step}.rs`, `stream_text/events.rs`, `agent/tool_loop_agent.rs` and `telemetry/events.rs`, 2026-09-17.
 
-[Decision] Application callbacks and results expose contexts; Telemetry excludes both contexts by default. Opt in separately with `TelemetryOptions::include_runtime_context` and `include_tools_context`, using `..Default::default()` for remaining defaults. New provider features are optional and are not enabled automatically. These source changes remain unreleased and do not constitute a new release-version decision.
+[Decision] Application callbacks and results expose contexts; Telemetry excludes both contexts by default. Opt in separately with `TelemetryOptions::include_runtime_context` and `include_tools_context`, using `..Default::default()` for remaining defaults. New provider features are optional and are not enabled automatically. These breaking changes are included in the coordinated 0.2.0 release; see the release record for publication verification.
 
 ### Reference alignment (ADR 0026)
 

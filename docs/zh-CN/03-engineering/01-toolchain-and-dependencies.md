@@ -124,6 +124,7 @@ MSRV 策略见[版本与发布](06-versioning-and-release.md)。
 | 2026-09-15 | Ferrin 0.1.1，crates.io 官方版本 API 与 docs.rs 状态端点 | 【事实】全部 15 个版本已上架且未 yank，15 个文档构建均成功；见[发布验证](06-versioning-and-release.md#9-011-发布2026-09-15) | 发布验证 |
 | 2026-09-16 | `ferrin` 与 `ferrin-policy` 的 crates.io 官方 API | 【事实】`ferrin` 最新稳定版为 0.1.1；首次发布前 `ferrin-policy` 返回 404。工作区准备 0.1.2，发布结果须另行验证 | 发布准备 |
 | 2026-09-16 | Ferrin 0.1.2，crates.io 官方版本 API 与 docs.rs 状态端点 | 【事实】全部 16 个版本已上架且未 yank，16 个文档构建均成功；见[发布验证](06-versioning-and-release.md#10-012-发布2026-09-16) | 发布验证 |
+| 2026-09-18 | `ferrin`、`ferrin-azure`、`ferrin-voyage` 的 crates.io 官方 API | 【事实】最新已发布 `ferrin` 为 0.1.2；Azure 和 Voyage 首次发布前返回 404。工作区针对破坏性约定准备 0.2.0，外部版本和 Rust 不变 | 发布准备 |
 
 核实脚本 `cargo xtask check-versions` 读取 `Cargo.toml` 中的版本并与 crates.io 比较，输出过期项；CI 每周执行一次并开 issue（见 [CI 与质量门禁](05-ci-and-quality-gates.md)）。
 - 【事实】2026-09-15：`regorus` 0.12.0 为 crates.io `max_stable_version`（`cargo info regorus --registry crates-io`）；许可 `MIT AND Apache-2.0 AND BSD-3-Clause`，各部分均在 deny 允许列表内；未声明 `rust-version`；`Engine: Clone`，提供 `add_policy`、`add_data`、`set_input`、`eval_rule`（crate 源码）。其 `std` feature 启用带 `error` feature 的 `msvc_spectre_libs` 0.1，该构建脚本在 MSVC 上缺少 Spectre 缓解版 CRT 库时 panic（PV-032）。已加入工作区依赖 `regorus = "0.12"`。

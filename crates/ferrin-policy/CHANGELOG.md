@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Added
 
 - Asynchronous shadow decision observers, explicit synchronous observer support,

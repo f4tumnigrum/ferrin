@@ -72,7 +72,7 @@ members = ["crates/ferrin", "crates/ferrin-*", "crates/providers/*", "xtask", "e
 exclude = ["verification"]
 
 [workspace.package]
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.98"
 license = "Apache-2.0"
@@ -81,8 +81,8 @@ authors = ["Ferrin contributors"]
 
 [workspace.dependencies]
 # internal
-ferrin-spec = { path = "crates/ferrin-spec", version = "0.1.2" }
-ferrin-schema = { path = "crates/ferrin-schema", version = "0.1.2" }
+ferrin-spec = { path = "crates/ferrin-spec", version = "0.2.0" }
+ferrin-schema = { path = "crates/ferrin-schema", version = "0.2.0" }
 # ... every workspace crate
 # external — versions from docs/03-engineering/01-toolchain-and-dependencies.md
 tokio = { version = "1.53", default-features = false }

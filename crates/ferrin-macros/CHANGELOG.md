@@ -5,6 +5,8 @@ All notable changes to this crate are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
 ### Changed
 
 - Synchronize bundled attribution with the Azure and Voyage adapter additions.

@@ -57,8 +57,8 @@ async fn run() -> Result<(), ferrin::Error> {
 | `openai` | off | `ferrin::openai` (crate `ferrin-openai`) |
 | `anthropic` | off | `ferrin::anthropic` (crate `ferrin-anthropic`) |
 | `google` | off | `ferrin::google` (crate `ferrin-google`) |
-| `azure` | off | `ferrin::azure` (unreleased crate `ferrin-azure`) |
-| `voyage` | off | `ferrin::voyage` (unreleased crate `ferrin-voyage`) |
+| `azure` | off | `ferrin::azure` (crate `ferrin-azure`) |
+| `voyage` | off | `ferrin::voyage` (crate `ferrin-voyage`) |
 | `openai-compatible` | off | `ferrin::openai_compatible` (crate `ferrin-openai-compatible`) |
 | `mcp` | off | `ferrin::mcp` (crate `ferrin-mcp`) |
 | `otel` | off | `ferrin::otel` (crate `ferrin-otel`) |

@@ -10,11 +10,11 @@
 [![rust 1.98+](https://img.shields.io/badge/rust-1.98%2B-orange.svg)](rust-toolchain.toml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#许可)
 
-Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和 OpenAI 兼容端点；当前检出还包含未发布的 Azure OpenAI 与 Voyage 适配器。
+Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大语言模型：文本生成、流式输出、带审批的工具调用、Agent 循环、结构化输出，以及嵌入、图像、语音、转写、重排、视频等其他模态；内置 MCP 客户端和 OpenTelemetry 导出。第一方供应商有 OpenAI、Anthropic、Google Generative AI 和 OpenAI 兼容端点、Azure OpenAI 和 Voyage。
 
-当前检出包含已发布的 0.1.2，[发布说明日期为 2026-09-16](CHANGELOG.md#012---2026-09-16)，新增模型中间件和策略化工具审批，并补齐执行边界与诊断信息保护。从 0.1.0 升级的调用方仍须遵循 0.1.1 引入的 Schema API 迁移，见 [ADR 0019](docs/zh-CN/04-decisions/2026-09-15-0019-fallible-schema-transforms.md)。注册表发布结果单独记录于[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#10-012-发布2026-09-16)。
+当前检出准备 0.2.0，[发布说明日期为 2026-09-18](CHANGELOG.md#020---2026-09-18)。相较 0.1.2，这是一次破坏性升级，更新前请阅读[迁移指南](docs/zh-CN/02-api/02-api-reference.md#从-012-迁移到-020)。注册表发布结果单独记录于[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#11-020-发布2026-09-18)。
 
-未发布开发版本新增 Azure OpenAI（`azure`）、Voyage 重排（`voyage`）、Google Interactions 与 Live 音频、供应商工具完整往返流程和 Agent 持续运行上下文。这些改动不属于已发布的 0.1.2。详见 [Azure](docs/zh-CN/providers/azure.md)、[Voyage](docs/zh-CN/providers/voyage.md) 和 [changelog](CHANGELOG.md)。已有调用方应查看[迁移说明](docs/zh-CN/02-api/02-api-reference.md#从-012-迁移到未发布开发版本)，了解步骤覆盖的延续语义及新增公共字段。
+0.2.0 新增 Azure OpenAI（`azure`）、Voyage 重排（`voyage`）、Google Interactions 与 Live 音频、供应商工具往返流程、Agent 持续运行上下文、独立流视图和可等待的遥测回调。[逐模块核查](docs/zh-CN/05-appendix/03-reference-parity.md) 记录已验证修复及参考 AI SDK 的剩余差异，不宣称完全对齐。
 
 ## 特性
 
@@ -36,7 +36,7 @@ Ferrin 是一个 Rust AI SDK。它用一套与供应商无关的接口调用大�
 
 ```toml
 [dependencies]
-ferrin = { version = "0.1", features = ["openai"] }
+ferrin = { version = "0.2", features = ["openai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -250,10 +250,10 @@ match generate_text(openai.responses("gpt-5")).prompt("hi").await {
 | Anthropic | `ferrin-anthropic` / `anthropic` | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` | Messages（工具、结构化输出、扩展思考、引用）、文件上传、技能、批处理 |
 | Google Generative AI | `ferrin-google` / `google` | `GOOGLE_GENERATIVE_AI_API_KEY` | `generateContent`、Interactions、嵌入、图像、语音、转写、流式语音翻译、视频、文件、批处理、Live API 会话 |
 | OpenAI 兼容端点 | `ferrin-openai-compatible` / `openai-compatible` | 由设置指定 | Chat Completions、Completions、嵌入、图像 |
-| Azure OpenAI（未发布） | `ferrin-azure` / `azure` | `AZURE_API_KEY`、`AZURE_RESOURCE_NAME` | Responses、Chat Completions、Completions、嵌入、图像、语音、非流式转写；API key 或 Entra 认证 |
-| Voyage（未发布） | `ferrin-voyage` / `voyage` | `VOYAGE_API_KEY` | 文本与 JSON 文档重排 |
+| Azure OpenAI（0.2.0 新增） | `ferrin-azure` / `azure` | `AZURE_API_KEY`、`AZURE_RESOURCE_NAME` | Responses、Chat Completions、Completions、嵌入、图像、语音、非流式转写；API key 或 Entra 认证 |
+| Voyage（0.2.0 新增） | `ferrin-voyage` / `voyage` | `VOYAGE_API_KEY` | 文本与 JSON 文档重排 |
 
-该表描述当前检出；Google Interactions 与 Live 流式转写/翻译属于未发布扩展。每个供应商的完整能力矩阵、设置项与供应商选项见 `docs/zh-CN/providers/`：[OpenAI](docs/zh-CN/providers/openai.md)、[Anthropic](docs/zh-CN/providers/anthropic.md)、[Google](docs/zh-CN/providers/google.md)、[OpenAI 兼容端点](docs/zh-CN/providers/openai-compatible.md)、[Azure OpenAI](docs/zh-CN/providers/azure.md)、[Voyage](docs/zh-CN/providers/voyage.md)。实现新的供应商适配器见[Provider 适配器实现指南](docs/zh-CN/01-architecture/17-provider-implementation-guide.md)。
+该表描述 0.2.0，包括 Google Interactions 与 Live 流式转写/翻译。每个供应商的完整能力矩阵、设置项与供应商选项见 `docs/zh-CN/providers/`：[OpenAI](docs/zh-CN/providers/openai.md)、[Anthropic](docs/zh-CN/providers/anthropic.md)、[Google](docs/zh-CN/providers/google.md)、[OpenAI 兼容端点](docs/zh-CN/providers/openai-compatible.md)、[Azure OpenAI](docs/zh-CN/providers/azure.md)、[Voyage](docs/zh-CN/providers/voyage.md)。实现新的供应商适配器见[Provider 适配器实现指南](docs/zh-CN/01-architecture/17-provider-implementation-guide.md)。
 
 ## Cargo features
 
@@ -319,7 +319,7 @@ verification/              prototypes behind the pending-verification items (sep
 
 ## 项目状态
 
-- 工作区包含 18 个 crate、`xtask` 与七个示例。原有 16 个 crate 的 0.1.2 均已上架（`ferrin-policy` 于 0.1.2 首次发布），Azure 和 Voyage 尚未发布；最初 15 个 crate 的 0.1.0 已于 2026-09-14 发布到 [crates.io](https://crates.io/crates/ferrin)（tag `v0.1.0`），API 文档在 [docs.rs](https://docs.rs/ferrin)。
+- 工作区包含 18 个 crate、`xtask` 与七个示例，统一使用 0.2.0。Azure 和 Voyage 首次加入本次发布；实际发布验证见[发布记录](docs/zh-CN/03-engineering/06-versioning-and-release.md#11-020-发布2026-09-18)，API 文档在 [docs.rs](https://docs.rs/ferrin)。
 - 2026-09-16 本机运行通过 810 个测试，跳过 10 个需要真实凭据的在线测试。发布提交的跨平台 CI 全部 14 个作业、覆盖率及 CodeQL 均通过，16 个 docs.rs 构建全部成功，详见发布记录。
 - 真实端点验证：七个示例与全部在线测试在一个第三方 OpenAI 兼容端点上通过。OpenAI 官方端点、Anthropic、Google、Azure 与 Voyage 尚未使用真实凭据验证。2026-09-17 已通过第三方代理录制四个 Responses fixture；其余 fixture 仍为手写（待验证事项 PV-031）。
 - 设计文档中 32 项待验证事项已关闭 31 项，详见[待验证事项汇总](docs/zh-CN/05-appendix/02-pending-verification.md)。
